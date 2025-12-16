@@ -2,7 +2,8 @@
     "initialization":
     {
         "systems_auto": [""],
-        "nnp_count": 3
+        "nnp_count": 3,
+        "nnp_program": "deepmd"
     },
     "training":
     {

@@ -1,7 +1,7 @@
 """
 #----------------------------------------------------------------------------------------------------#
 #   ArcaNN: Automatic training of Reactive Chemical Architecture with Neural Networks                #
-#   Copyright 2022-2024 ArcaNN developers group <https://github.com/arcann-chem>                     #
+#   Copyright 2022-2025 ArcaNN developers group <https://github.com/arcann-chem>                     #
 #                                                                                                    #
 #   SPDX-License-Identifier: AGPL-3.0-only                                                           #
 #----------------------------------------------------------------------------------------------------#
@@ -267,3 +267,21 @@ def check_typeraw_properties(type_raw_path, properties_dict):
         if type_val not in properties_dict:
             error_msg = f"Type {type_val} is not in properties file but is present in {type_raw_path}"
             raise ValueError(error_msg)
+
+
+@catch_errors_decorator
+def check_extxyz_properties(extxyz_path: Path):
+    with extxyz_path.open() as extxyz:
+        extxyz.readline()
+        comments = extxyz.readline()
+
+    missing = []
+
+    if "forces:R:3" not in comments:
+        missing.append("Forces")
+
+    if "energy:R:1" not in comments:
+        missing.append("Energy")
+
+    if not missing:
+        raise ValueError(f"XYZ file is missing {" and ".join(missing)} information.")
