@@ -314,9 +314,10 @@ def main(
     del data_dir
 
     # TODO Implement validation dataset
-    del validation_datasets
+    # del validation_datasets
 
     # Training sets list construction
+    #TODO construct the same list for the validation dataset
     dp_train_input_datasets = []
     training_datasets = []
 
@@ -463,20 +464,36 @@ def main(
     else:
         del extra_datasets
 
+    # and the validation sets now
+    dp_validate_input_datasets = []
+    validation_count = 0
+    for validation_dataset in validation_datasets:
+        dp_validate_input_datasets.append(
+            f"{(Path(data_path.parts[-1]) / validation_dataset / '_')}"[:-1]
+        )
+        validation_count += np.load(
+            data_path / validation_dataset / "set.000" / "box.npy"
+        ).shape[0]
+        del validation_dataset
+
     # Total
     trained_count = initial_count + added_auto_count + added_adhoc_count + extra_count
     arcann_logger.debug(
         f"trained_count: {trained_count} = {initial_count} + {added_auto_count} + {added_adhoc_count} + {extra_count}"
     )
     arcann_logger.debug(f"dp_train_input_datasets: {dp_train_input_datasets}")
+    arcann_logger.debug(f"validation_count: {validation_count}")
+    arcann_logger.debug(f"dp_validate_input_datasets: {dp_validate_input_datasets}")
 
     # Update the inputs with the sets
     dp_train_input["training"]["training_data"]["systems"] = dp_train_input_datasets
+    dp_train_input["training"]["validation_data"]["systems"] = dp_validate_input_datasets
 
     # Update the training JSON
     training_json = {
         **training_json,
         "training_datasets": training_datasets,
+        "validation_datasets": validation_datasets,
         "trained_count": trained_count,
         "initial_count": initial_count,
         "added_auto_count": added_auto_count,
@@ -484,6 +501,7 @@ def main(
         "added_auto_iter_count": added_auto_iter_count,
         "added_adhoc_iter_count": added_adhoc_iter_count,
         "extra_count": extra_count,
+        "validation_count": validation_count,
     }
     arcann_logger.debug(f"training_json: {training_json}")
 
@@ -533,6 +551,9 @@ def main(
         training_json["decay_steps"],
     )
     while decay_rate_new < training_json["decay_rate"]:
+        arcann_logger.debug(
+            f"numb_steps is too small to allow for the decay_rate, increasing numb_steps: {decay_rate_new} < {training_json["decay_rate"]}"
+        )
         numb_steps = numb_steps + 10000
         decay_rate_new = calculate_decay_rate(
             numb_steps,
@@ -585,7 +606,17 @@ def main(
                 f"{localdata_path}",
             ]
         )
-    del dp_train_input_dataset, localdata_path, dp_train_input_datasets
+    del dp_train_input_dataset, dp_train_input_datasets
+    for dp_validate_input_dataset in dp_validate_input_datasets:
+        subprocess.run(
+            [
+                "rsync",
+                "-a",
+                f"{training_path / (dp_validate_input_dataset.rsplit('/', 1)[0])}",
+                f"{localdata_path}",
+            ]
+        )
+    del dp_validate_input_dataset, localdata_path, dp_validate_input_datasets
 
     # Change some inside output
     dp_train_input["training"]["disp_file"] = "lcurve.out"
