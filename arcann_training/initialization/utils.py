@@ -25,17 +25,18 @@ check_typeraw_properties(type_raw_path, properties_dict)
 # TODO: Homogenize the docstrings for this module
 
 # Standard library modules
-from pathlib import Path
 from copy import deepcopy
+from pathlib import Path
 from typing import Dict, Tuple
 
 # Third-party modules
 import numpy as np
 
+from arcann_training.common.json import load_json_file
+from arcann_training.common.lammps import read_lammps_data
+
 # Local imports
 from arcann_training.common.utils import catch_errors_decorator
-from arcann_training.common.lammps import read_lammps_data
-from arcann_training.common.json import load_json_file
 
 
 # Unittested
@@ -118,7 +119,6 @@ def check_properties_file(file_path: Path) -> dict:
     ValueError
         If the file structure is incorrect, or line formats in the 'type' or 'masses' sections are invalid.
     """
-
     if not file_path.exists():
         error_msg = f"File not found: {file_path}"
         raise FileNotFoundError(error_msg)
@@ -135,7 +135,7 @@ def check_properties_file(file_path: Path) -> dict:
 
     if type_index >= masses_index:
         error_msg = (
-            f"'type' section should come before 'masses'. Check your properties file."
+            "'type' section should come before 'masses'. Check your properties file."
         )
         raise ValueError(error_msg)
 
@@ -151,9 +151,9 @@ def check_properties_file(file_path: Path) -> dict:
         else:
             try:
                 types[parts[0]] = int(parts[1])
-            except ValueError:
+            except ValueError as err:
                 error_msg = f"Second part of line '{line}' in your 'type' section is not an integer. Check your properties file."
-                raise ValueError(error_msg)
+                raise ValueError(error_msg) from err
 
     # Process 'masses' section
     for line in lines[masses_index + 1 : masses_index + 1 + len(types)]:
@@ -164,13 +164,13 @@ def check_properties_file(file_path: Path) -> dict:
         else:
             try:
                 masses[parts[0]] = float(parts[1])
-            except ValueError:
+            except ValueError as err:
                 error_msg = f"Second part of line '{line}' in your 'masses' section is not an float. Check your properties file."
-                raise ValueError(error_msg)
+                raise ValueError(error_msg) from err
 
     if set(types) != set(masses):
         error_msg = (
-            f"Number of types and masses do not match. Check your properties file."
+            "Number of types and masses do not match. Check your properties file."
         )
         raise ValueError(error_msg)
 
@@ -205,7 +205,6 @@ def check_lmp_properties(lmp_file: Path, properties: Dict) -> bool:
     ValueError
         If there's a mismatch in atom types or their properties between the LAMMPS file and the properties dictionary.
     """
-
     num_atoms, num_atom_types, cell, masses, atoms = read_lammps_data(lmp_file)
     del num_atoms, cell, atoms
 
@@ -284,4 +283,4 @@ def check_extxyz_properties(extxyz_path: Path):
         missing.append("Energy")
 
     if not missing:
-        raise ValueError(f"XYZ file is missing {" and ".join(missing)} information.")
+        raise ValueError(f"XYZ file is missing {' and '.join(missing)} information.")

@@ -25,16 +25,16 @@ from arcann_training.common.json import (
     load_json_file,
     write_json_file,
 )
+from arcann_training.common.utils import natural_sort_key
 from arcann_training.common.xyz import parse_xyz_trajectory_file
 from arcann_training.initialization.utils import (
-    generate_main_json,
-    check_properties_file,
     check_dptrain_properties,
+    check_extxyz_properties,
     check_lmp_properties,
+    check_properties_file,
     check_typeraw_properties,
-    check_extxyz_properties
+    generate_main_json,
 )
-from arcann_training.common.utils import natural_sort_key
 
 
 # Main function
@@ -49,7 +49,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path
     user_files_path = current_path / "user_files"
 
@@ -98,7 +98,7 @@ def main(
         list_of_lmp = [file.stem for file in user_files_path.glob("*.lmp")]
         if not list_of_lmp:
             arcann_logger.error(f"No lmp found in {user_files_path}")
-            arcann_logger.error(f"Aborting...")
+            arcann_logger.error("Aborting...")
             return 1
         list_of_lmp.sort(key=natural_sort_key)
         user_input_json["systems_auto"] = list_of_lmp
@@ -131,7 +131,7 @@ def main(
         user_input_json, default_input_json
     )
     arcann_logger.debug(f"main_json: {main_json}")
-    arcann_logger.debug(f"merged_input_json : {merged_input_json }")
+    arcann_logger.debug(f"merged_input_json : {merged_input_json}")
     arcann_logger.debug(f"padded_curr_iter : {padded_curr_iter}")
 
     nnp_program = main_json["nnp_program"]
@@ -152,14 +152,26 @@ def main(
         # Check the dptrain against the properties
         check_dptrain_properties(user_files_path, main_json["properties"])
     elif nnp_program == "mace":
-        if len(list(user_files_path.glob("mace_*.yml")) + list(user_files_path.glob("mace_*.yaml"))) == 0:
-            arcann_logger.error("MACE config file (mace_MACEVERSION.yml) is missing from user_files.")
+        if (
+            len(
+                list(user_files_path.glob("mace_*.yml"))
+                + list(user_files_path.glob("mace_*.yaml"))
+            )
+            == 0
+        ):
+            arcann_logger.error(
+                "MACE config file (mace_MACEVERSION.yml) is missing from user_files."
+            )
             arcann_logger.error("Aborting...")
             raise FileNotFoundError("MACE config file is missing from user_files.")
     else:
-        arcann_logger.error(f"NNP program: {nnp_program} not recognized. ArcaNN supports 'deepmd' or 'mace'.")
+        arcann_logger.error(
+            f"NNP program: {nnp_program} not recognized. ArcaNN supports 'deepmd' or 'mace'."
+        )
         arcann_logger.error("Aborting...")
-        raise ValueError(f"NNP program: {nnp_program} not recognized. ArcaNN supports 'deepmd' or 'mace'.")
+        raise ValueError(
+            f"NNP program: {nnp_program} not recognized. ArcaNN supports 'deepmd' or 'mace'."
+        )
 
     # Create the control directory
     control_path = training_path / "control"
@@ -196,8 +208,9 @@ def main(
             ).shape[0]
         elif nnp_program == "mace":
             check_extxyz_properties(initial_dataset_path)
-            initial_datasets_json[initial_dataset_path.name] = parse_xyz_trajectory_file(initial_dataset_path)[0].shape[0]
-
+            initial_datasets_json[initial_dataset_path.name] = (
+                parse_xyz_trajectory_file(initial_dataset_path)[0].shape[0]
+            )
 
     arcann_logger.debug(f"initial_datasets_json: {initial_datasets_json}")
     del initial_dataset_path, initial_datasets_paths, initial_dataset_set_path
