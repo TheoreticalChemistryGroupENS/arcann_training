@@ -32,10 +32,9 @@ from typing import Dict, Tuple
 # Third-party modules
 import numpy as np
 
+# Local imports
 from arcann_training.common.json import load_json_file
 from arcann_training.common.lammps import read_lammps_data
-
-# Local imports
 from arcann_training.common.utils import catch_errors_decorator
 
 
