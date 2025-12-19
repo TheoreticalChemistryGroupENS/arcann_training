@@ -9,7 +9,7 @@ description = "An automated enhanced sampling generation of training sets for ch
 authors = [{name = "Theoretical Chemistry Group - ENS"}]
 readme = "README.md"
 license = "AGPL-3.0-only"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 dependencies = ["numpy>=1.15", "pyyaml>=3.13"]
 classifiers = [
     "License :: OSI Approved :: GNU Affero General Public License v3",
