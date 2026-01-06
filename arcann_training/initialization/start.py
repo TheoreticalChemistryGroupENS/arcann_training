@@ -14,11 +14,10 @@ import logging
 import sys
 from pathlib import Path
 
-# Third-party modules
-import numpy as np
 
 # Local imports
-from arcann_training.common.filesystem import check_directory, check_file_existence
+from arcann_training.common.dataset import Datasets
+from arcann_training.common.filesystem import check_directory
 from arcann_training.common.json import (
     backup_and_overwrite_json_file,
     load_default_json_file,
@@ -26,13 +25,10 @@ from arcann_training.common.json import (
     write_json_file,
 )
 from arcann_training.common.utils import natural_sort_key
-from arcann_training.common.xyz import parse_xyz_trajectory_file
 from arcann_training.initialization.utils import (
     check_dptrain_properties,
-    check_extxyz_properties,
     check_lmp_properties,
     check_properties_file,
-    check_typeraw_properties,
     generate_main_json,
 )
 
@@ -183,44 +179,26 @@ def main(
     check_directory((training_path / f"{padded_curr_iter}-training"))
 
     # Check if data exists, get init_* datasets and extract number of atoms and cell dimensions
-    initial_datasets_paths = [_ for _ in (training_path / "data").glob("init_*")]
-    if len(initial_datasets_paths) == 0:
-        arcann_logger.error("No initial datasets found.")
+    try:
+        datasets = Datasets(
+            dataset_dir=(training_path / "data"), 
+            control_file_path=(control_path / "config.json"),
+            main_json=main_json,
+        )
+    except Exception as e:
+        arcann_logger.exception(f"Error in initializing the Datasets: {e}")
         arcann_logger.error("Aborting...")
         return 1
-    arcann_logger.debug(f"initial_datasets_paths: {initial_datasets_paths}")
 
-    # Create and set the initial datasets JSON
-    initial_datasets_json = {}
-    for initial_dataset_path in initial_datasets_paths:
-        if nnp_program == "deepmd":
-            check_file_existence(initial_dataset_path / "type.raw")
-            # Check the type.raw file against the properties
-            check_typeraw_properties(
-                initial_dataset_path / "type.raw", main_json["properties"]
-            )
-            initial_dataset_set_path = initial_dataset_path / "set.000"
-            for data_type in ["box", "coord", "energy", "force"]:
-                check_file_existence(initial_dataset_set_path / (data_type + ".npy"))
-            del data_type
-            initial_datasets_json[initial_dataset_path.name] = np.load(
-                initial_dataset_set_path / "box.npy"
-            ).shape[0]
-        elif nnp_program == "mace":
-            check_extxyz_properties(initial_dataset_path)
-            initial_datasets_json[initial_dataset_path.name] = (
-                parse_xyz_trajectory_file(initial_dataset_path)[0].shape[0]
-            )
-
-    arcann_logger.debug(f"initial_datasets_json: {initial_datasets_json}")
-    del initial_dataset_path, initial_datasets_paths, initial_dataset_set_path
+    arcann_logger.debug(f"initial_datasets_paths: {datasets.training_paths + datasets.validation_paths}")
+    arcann_logger.debug(f"initial_datasets_json: {datasets.control_file}")
 
     # Populate
-    main_json["initial_datasets"] = [_ for _ in initial_datasets_json.keys()]
+    main_json["initial_datasets"] = [_ for _ in datasets.control_file.keys()]
 
     # DEBUG: Print the JSON files
     arcann_logger.debug(f"main_json: {main_json}")
-    arcann_logger.debug(f"initial_datasets_json: {initial_datasets_json}")
+    arcann_logger.debug(f"initial_datasets_json: {datasets.control_file}")
     arcann_logger.debug(f"user_input_json: {user_input_json}")
     arcann_logger.debug(f"merged_input_json: {merged_input_json}")
 
@@ -228,7 +206,7 @@ def main(
     arcann_logger.info("-" * 88)
     write_json_file(main_json, (control_path / "config.json"), read_only=True)
     write_json_file(
-        initial_datasets_json, (control_path / "initial_datasets.json"), read_only=True
+        datasets.control_file, (control_path / "initial_datasets.json"), read_only=True
     )
     backup_and_overwrite_json_file(
         merged_input_json, (current_path / "used_input.json"), read_only=True
@@ -248,7 +226,8 @@ def main(
         user_input_json_filename,
     )
     del padded_curr_iter
-    del main_json, initial_datasets_json, merged_input_json
+    del main_json, merged_input_json
+    del datasets
 
     arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
