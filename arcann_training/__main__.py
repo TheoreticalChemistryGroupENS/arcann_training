@@ -108,6 +108,7 @@ if __name__ == "__main__":
             )
             del submodule, submodule_name
         except Exception as e:
+            arcann_logger.error(f"An error occurred: {e}")
             exit_code = 1
 
     del deepmd_iterative_path, fake_cluster, input_fn
