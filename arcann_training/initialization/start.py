@@ -183,6 +183,9 @@ def main(
         arcann_logger.error("Aborting...")
         return 1
 
+    # Populate the dataset with initial data
+    dataset.init_dataset()
+
     arcann_logger.debug(f"initial_dataset_paths: {dataset.training_paths + dataset.validation_paths}")
     arcann_logger.debug(f"initial_dataset_json: {dataset.control_file["initial_datasets"]}")
 

@@ -13,7 +13,7 @@ import logging
 import numpy as np
 import os
 from pathlib import Path
-from typing import Dict, Literal
+from typing import Dict, Literal, Union
 
 from arcann_training.common.filesystem import check_directory, check_file_existence
 from arcann_training.common.json import load_json_file
@@ -64,7 +64,35 @@ class DataEnsemble():
     
     def get_set000(self):
         raise NotImplementedError
-    
+
+
+class Set000Ensemble(DataEnsemble):
+    """Define a data ensemble in the set.000 format"""
+    def __init__(self, path, data_type, properties):
+        super().__init__(path, data_type, properties)
+        assert data_type == "set.000", "Data type must be 'set.000' for Set000Ensemble"
+
+        self.check_format()
+        self.size = self.get_size()
+
+    def check_format(self):
+        check_file_existence(self.path / "type.raw")
+        # Check the type.raw file against the properties
+        check_typeraw_properties(
+            self.path / "type.raw", self.properties
+        )
+        set_path = self.path / "set.000"
+        for data_type in ["box", "coord", "energy", "force"]:
+            check_file_existence(set_path / (data_type + ".npy"))
+
+    def get_size(self):
+        return np.load(self.path / "set.000" / "box.npy").shape[0]
+
+
+class ExtXYZEnsemble(DataEnsemble):
+    """Define a data ensemble in the extxyz format"""
+    pass
+
 
 class Dataset():
     """
@@ -110,7 +138,9 @@ class Dataset():
         
         # Populate data type and data ensemble class
         self.init_data_type()
-        self.init_dataset()
+
+        # Populate datasets
+        self.init_dataset() # Load initial datasets
 
     def __str__(self):
         pass
@@ -135,7 +165,9 @@ class Dataset():
                     self.data_ensemble = ExtXYZEnsemble
             
 
-    def init_dataset(self) -> None:
+    def init_dataset(self) -> Union[int, int]:
+        """Load the initial datasets from the dataset directory"""
+
         initial_datasets_paths = [_ for _ in (self.dataset_dir).glob("init_*")]
         if len(initial_datasets_paths) == 0:
             raise FileNotFoundError(f"No initial datasets found in the provided dataset directory: {self.dataset_dir}")
@@ -161,30 +193,3 @@ class Dataset():
         
     def update_control_file(self):
         raise NotImplementedError
-
-
-class Set000Ensemble(DataEnsemble):
-    """Define a data ensemble in the set.000 format"""
-    def __init__(self, path, data_type, properties):
-        super().__init__(path, data_type, properties)
-        assert data_type == "set.000", "Data type must be 'set.000' for Set000Ensemble"
-
-        self.check_format()
-        self.size = self.get_size()
-
-    def check_format(self):
-        check_file_existence(self.path / "type.raw")
-        # Check the type.raw file against the properties
-        check_typeraw_properties(
-            self.path / "type.raw", self.properties
-        )
-        set_path = self.path / "set.000"
-        for data_type in ["box", "coord", "energy", "force"]:
-            check_file_existence(set_path / (data_type + ".npy"))
-
-    def get_size(self):
-        return np.load(self.path / "set.000" / "box.npy").shape[0]
-
-class ExtXYZEnsemble(DataEnsemble):
-    """Define a data ensemble in the extxyz format"""
-    pass
