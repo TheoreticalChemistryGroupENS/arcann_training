@@ -16,7 +16,7 @@ from pathlib import Path
 
 
 # Local imports
-from arcann_training.common.dataset import Datasets
+from arcann_training.common.dataset import Dataset
 from arcann_training.common.filesystem import check_directory
 from arcann_training.common.json import (
     backup_and_overwrite_json_file,
@@ -180,7 +180,7 @@ def main(
 
     # Check if data exists, get init_* datasets and extract number of atoms and cell dimensions
     try:
-        datasets = Datasets(
+        datasets = Dataset(
             dataset_dir=(training_path / "data"), 
             control_file_path=(control_path / "config.json"),
             main_json=main_json,

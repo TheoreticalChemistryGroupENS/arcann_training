@@ -26,9 +26,19 @@ class DataEnsemble():
     Class defining an ensemble of data (understand a set of initial, or relabeled data)
 
     Attributes:
-
-        """
-
+    ----------
+        path (Path): Path to the data ensemble
+        data_type (Literal["extxyz", "set.000"]): Type of data ensemble
+        properties (Dict[int, Dict[str, str | float]]): Properties associated with the data ensemble
+    
+    Methods:
+    --------
+        check_format(): Check the format of the data ensemble
+        get_size(): Get the size of the data ensemble (ie. nb of confs)
+        load_data(): Load the data of data ensemble
+        get_extxyz(): Get the data under the extxyz format
+        get_set000(): Get the data under the set.000 format
+    """
     def __init__(
         self,
         path: str | Path,
@@ -43,6 +53,9 @@ class DataEnsemble():
     def check_format(self):
         raise NotImplementedError
     
+    def get_size(self):
+        raise NotImplementedError
+
     def load_data(self):
         raise NotImplementedError
     
@@ -53,7 +66,33 @@ class DataEnsemble():
         raise NotImplementedError
     
 
-class Datasets():
+class Dataset():
+    """
+    Class defining the dataset used for training and validation, as a list of DataEnsemble objects.
+    Each DataEnsemble corresponds to a set of data (initial or relabeled from a specific system md 
+    simulation etc..) stored in a specific format (extxyz or set.000).
+
+    Attributes:
+    -----------
+        training_dataset (Dict[str, DataEnsemble]): Dictionary of training data ensembles
+        validation_dataset (Dict[str, DataEnsemble]): Dictionary of validation data ensembles
+        training_paths (List[str]): List of paths to training data ensembles
+        validation_paths (List[str]): List of paths to validation data ensembles
+        control_file (Dict): Control file containing information about the data ensembles
+        dataset_dir (Path): Path to the dataset directory
+        data_type (Literal["extxyz", "set.000"]): Type of data ensemble
+        data_ensemble (DataEnsemble): Class of data ensemble
+    
+    Methods:
+    --------
+        get_training_dataset(): Get the training data ensembles
+        get_validation_dataset(): Get the validation data ensembles
+        init_data_type(): Initialize the data type and data ensemble class
+        init_dataset(main_json): Initialize the dataset from the dataset directory
+        update_dataset(): Update the data ensembles available for the dataset
+        init_control_file(): Initialize the control file
+        update_control_file(): Update the control file
+    """
     def __init__(
         self,
         dataset_dir,
@@ -129,6 +168,7 @@ class Datasets():
 
 
 class Set000Ensemble(DataEnsemble):
+    """Define a data ensemble in the set.000 format"""
     def __init__(self, path, data_type, properties):
         super().__init__(path, data_type, properties)
         assert data_type == "set.000", "Data type must be 'set.000' for Set000Ensemble"
@@ -150,4 +190,5 @@ class Set000Ensemble(DataEnsemble):
         return np.load(self.path / "set.000" / "box.npy").shape[0]
 
 class ExtXYZEnsemble(DataEnsemble):
+    """Define a data ensemble in the extxyz format"""
     pass
