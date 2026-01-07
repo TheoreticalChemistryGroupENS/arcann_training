@@ -95,9 +95,8 @@ class Dataset():
     """
     def __init__(
         self,
-        dataset_dir,
-        control_file_path,
-        main_json,
+        dataset_dir: str | Path,
+        control_file: Dict,
     ):
         # Attributes
         self.training_dataset: Dict[str, DataEnsemble] = {}
@@ -105,14 +104,13 @@ class Dataset():
         self.training_paths = {}
         self.validation_paths = {}
 
-        self.control_file = load_json_file(control_file_path)
+        self.control_file = control_file
         check_directory(Path(dataset_dir), abort_on_error=True, error_msg="The provided dataset directory does not exist.")
         self.dataset_dir = Path(dataset_dir)
         
         # Populate data type and data ensemble class
         self.init_data_type()
-        self.init_datasets(main_json)
-        self.init_control_file()
+        self.init_dataset()
 
     def __str__(self):
         pass
@@ -137,32 +135,30 @@ class Dataset():
                     self.data_ensemble = ExtXYZEnsemble
             
 
-    def init_datasets(self, main_json) -> None:
+    def init_dataset(self) -> None:
         initial_datasets_paths = [_ for _ in (self.dataset_dir).glob("init_*")]
         if len(initial_datasets_paths) == 0:
             raise FileNotFoundError(f"No initial datasets found in the provided dataset directory: {self.dataset_dir}")
         
         training_dataset_paths = [path for path in initial_datasets_paths if "init_valid" not in path.name]
         self.training_dataset = {
-            path.name: self.data_ensemble(path, self.data_type, main_json["properties"]) for path in training_dataset_paths
+            path.name: self.data_ensemble(path, self.data_type, self.control_file["properties"]) for path in training_dataset_paths
         }
         self.training_paths = list(self.training_dataset.keys())
         valid_dataset_paths = [path for path in initial_datasets_paths if "init_valid" in path.name]
         self.validation_dataset = {
-            path.name: self.data_ensemble(path, self.data_type, main_json["properties"]) for path in valid_dataset_paths
+            path.name: self.data_ensemble(path, self.data_type, self.control_file["properties"]) for path in valid_dataset_paths
         }
         self.validation_paths = list(self.validation_dataset.keys())
 
-    def update_datasets(self):
-        raise NotImplementedError
-    
-    def init_control_file(self):
-        self.control_file = {
+        self.control_file["initial_datasets"] = {
             **{key: dataset.size for key, dataset in self.training_dataset.items()},
             **{key: dataset.size for key, dataset in self.validation_dataset.items()},
         }
-        return self.control_file
-    
+
+    def update_datasets(self):
+        raise NotImplementedError
+        
     def update_control_file(self):
         raise NotImplementedError
 

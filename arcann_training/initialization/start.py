@@ -169,11 +169,6 @@ def main(
             f"NNP program: {nnp_program} not recognized. ArcaNN supports 'deepmd' or 'mace'."
         )
 
-    # Create the control directory
-    control_path = training_path / "control"
-    control_path.mkdir(exist_ok=True)
-    check_directory(control_path)
-
     # Create the initial training directory
     (training_path / f"{padded_curr_iter}-training").mkdir(exist_ok=True)
     check_directory((training_path / f"{padded_curr_iter}-training"))
@@ -181,8 +176,7 @@ def main(
     try:
         dataset = Dataset(
             dataset_dir=(training_path / "data"), 
-            control_file_path=(control_path / "config.json"),
-            main_json=main_json,
+            control_file=main_json,
         )
     except Exception as e:
         arcann_logger.exception(f"Error in initializing the Datasets: {e}")
@@ -190,23 +184,22 @@ def main(
         return 1
 
     arcann_logger.debug(f"initial_dataset_paths: {dataset.training_paths + dataset.validation_paths}")
-    arcann_logger.debug(f"initial_dataset_json: {dataset.control_file}")
-
-    # Populate
-    main_json["initial_datasets"] = [_ for _ in dataset.control_file.keys()]
+    arcann_logger.debug(f"initial_dataset_json: {dataset.control_file["initial_datasets"]}")
 
     # DEBUG: Print the JSON files
     arcann_logger.debug(f"main_json: {main_json}")
-    arcann_logger.debug(f"initial_datasets_json: {dataset.control_file}")
     arcann_logger.debug(f"user_input_json: {user_input_json}")
     arcann_logger.debug(f"merged_input_json: {merged_input_json}")
+
+    # Create the control directory
+    control_path = training_path / "control"
+    control_path.mkdir(exist_ok=True)
+    check_directory(control_path)
+    arcann_logger.debug(f"control_path: {control_path}")
 
     # Dump the JSON files (main, initial datasets and merged input)
     arcann_logger.info("-" * 88)
     write_json_file(main_json, (control_path / "config.json"), read_only=True)
-    write_json_file(
-        dataset.control_file, (control_path / "initial_datasets.json"), read_only=True
-    )
     backup_and_overwrite_json_file(
         merged_input_json, (current_path / "used_input.json"), read_only=True
     )
