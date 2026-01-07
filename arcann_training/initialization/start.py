@@ -178,9 +178,8 @@ def main(
     (training_path / f"{padded_curr_iter}-training").mkdir(exist_ok=True)
     check_directory((training_path / f"{padded_curr_iter}-training"))
 
-    # Check if data exists, get init_* datasets and extract number of atoms and cell dimensions
     try:
-        datasets = Dataset(
+        dataset = Dataset(
             dataset_dir=(training_path / "data"), 
             control_file_path=(control_path / "config.json"),
             main_json=main_json,
@@ -190,15 +189,15 @@ def main(
         arcann_logger.error("Aborting...")
         return 1
 
-    arcann_logger.debug(f"initial_datasets_paths: {datasets.training_paths + datasets.validation_paths}")
-    arcann_logger.debug(f"initial_datasets_json: {datasets.control_file}")
+    arcann_logger.debug(f"initial_dataset_paths: {dataset.training_paths + dataset.validation_paths}")
+    arcann_logger.debug(f"initial_dataset_json: {dataset.control_file}")
 
     # Populate
-    main_json["initial_datasets"] = [_ for _ in datasets.control_file.keys()]
+    main_json["initial_datasets"] = [_ for _ in dataset.control_file.keys()]
 
     # DEBUG: Print the JSON files
     arcann_logger.debug(f"main_json: {main_json}")
-    arcann_logger.debug(f"initial_datasets_json: {datasets.control_file}")
+    arcann_logger.debug(f"initial_datasets_json: {dataset.control_file}")
     arcann_logger.debug(f"user_input_json: {user_input_json}")
     arcann_logger.debug(f"merged_input_json: {merged_input_json}")
 
@@ -206,7 +205,7 @@ def main(
     arcann_logger.info("-" * 88)
     write_json_file(main_json, (control_path / "config.json"), read_only=True)
     write_json_file(
-        datasets.control_file, (control_path / "initial_datasets.json"), read_only=True
+        dataset.control_file, (control_path / "initial_datasets.json"), read_only=True
     )
     backup_and_overwrite_json_file(
         merged_input_json, (current_path / "used_input.json"), read_only=True
@@ -227,7 +226,7 @@ def main(
     )
     del padded_curr_iter
     del main_json, merged_input_json
-    del datasets
+    del dataset
 
     arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
