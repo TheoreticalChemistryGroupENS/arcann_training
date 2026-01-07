@@ -71,7 +71,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -175,8 +175,8 @@ def main(
             (control_path / f"labeling_{padded_curr_iter}.json")
         )
         if not labeling_json["is_extracted"]:
-            arcann_logger.error(f"Lock found. Please execute 'labeling extract' first.")
-            arcann_logger.error(f"Aborting...")
+            arcann_logger.error("Lock found. Please execute 'labeling extract' first.")
+            arcann_logger.error("Aborting...")
             return 1
         # exploration_json = load_json_file((control_path / f"exploration_{padded_curr_iter}.json"))
     else:
@@ -198,7 +198,7 @@ def main(
             arcann_logger.error(
                 f"No dptrain_DEEPMDVERSION.json files found in {(current_path.parent / 'user_files')}"
             )
-            arcann_logger.error(f"Aborting...")
+            arcann_logger.error("Aborting...")
             return 1
 
         dptrain_max_version = 0
@@ -233,7 +233,7 @@ def main(
         arcann_logger.error(
             f"No JOB file provided for '{current_step.capitalize()} / {current_phase.capitalize()}' for this machine."
         )
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Aborting...")
         return 1
 
     arcann_logger.debug(
@@ -266,7 +266,7 @@ def main(
         arcann_logger.error(
             f"Type map in {dp_train_input_path} does not match the one in config.json."
         )
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Aborting...")
         return 1
 
     # main_json["type_map"] = {}
@@ -304,7 +304,7 @@ def main(
                         if int(data_dir.name.rsplit("_", 1)[-1]) <= curr_iter:
                             systems.append(data_dir.name.rsplit("_", 1)[0])
                     # TODO Better except clause
-                    except:
+                    except ValueError:
                         pass
                 else:
                     validation_datasets.append(data_dir.name)
@@ -524,7 +524,7 @@ def main(
         decay_steps = calculate_decay_steps(
             training_json["trained_count"], training_json["decay_steps"]
         )
-        arcann_logger.debug(f"Recalculating decay_steps")
+        arcann_logger.debug("Recalculating decay_steps")
         # Update the training JSON and the merged input JSON
         training_json["decay_steps"] = decay_steps
         current_input_json["decay_steps"] = decay_steps
@@ -729,7 +729,7 @@ def main(
     del nnp, walltime_approx_s, dp_train_input, mean_s_per_step
 
     # Dump the JSON files (main, training and current input)
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     write_json_file(main_json, (control_path / "config.json"), read_only=True)
     write_json_file(
         training_json,
@@ -741,7 +741,7 @@ def main(
     )
 
     # End
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     arcann_logger.info(
         f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
     )
@@ -775,7 +775,7 @@ def main(
     )
     del master_job_file
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 
