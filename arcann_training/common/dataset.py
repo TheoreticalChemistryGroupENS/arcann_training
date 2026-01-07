@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import Dict, Literal, Union
 
 from arcann_training.common.filesystem import check_directory, check_file_existence
-from arcann_training.common.json import load_json_file
 from arcann_training.initialization.utils import check_typeraw_properties
 
 arcann_logger = logging.getLogger("ArcaNN")
@@ -42,13 +41,33 @@ class DataEnsemble():
     def __init__(
         self,
         path: str | Path,
+        step: Literal["initial", "extra", "system_auto", "system_adhoc", "system_disturbed"],
+        training_type: Literal["training", "validation"],
+        system_name: str | None,
+        iteration: int | None,
         data_type: Literal["extxyz", "set.000"],
         properties: Dict[int, Dict[str, str | float]],
     ):
         check_directory(Path(path), abort_on_error=True, error_msg="The provided data path does not exist.")
         self.path = Path(path)
+        self.step = step
+        self.training_type = training_type
+        self.system_name = system_name
+        self.iteration = iteration
+
         self.data_type = data_type
         self.properties = properties
+
+    def to_dict(self):
+        return {
+            "path": str(self.path),
+            "step": self.step,
+            "training_type": self.training_type,
+            "system_name": self.system_name,
+            "iteration": self.iteration,
+            "data_type": self.data_type,
+            "properties": self.properties,
+        }
 
     def check_format(self):
         raise NotImplementedError
@@ -68,8 +87,8 @@ class DataEnsemble():
 
 class Set000Ensemble(DataEnsemble):
     """Define a data ensemble in the set.000 format"""
-    def __init__(self, path, data_type, properties):
-        super().__init__(path, data_type, properties)
+    def __init__(self, path, step, training_type, system_name, iteration, data_type, properties):
+        super().__init__(path, step, training_type, system_name, iteration, data_type, properties)
         assert data_type == "set.000", "Data type must be 'set.000' for Set000Ensemble"
 
         self.check_format()
@@ -172,14 +191,24 @@ class Dataset():
         if len(initial_datasets_paths) == 0:
             raise FileNotFoundError(f"No initial datasets found in the provided dataset directory: {self.dataset_dir}")
         
+        dataensemble_kwargs = {
+            "dataset_type": "initial",
+            "system_name": None,
+            "properties": self.control_file["properties"],
+            "iteration": None,
+            "data_type": self.data_type, 
+        }
+
+        # Separate training and validation datasets
         training_dataset_paths = [path for path in initial_datasets_paths if "init_valid" not in path.name]
         self.training_dataset = {
-            path.name: self.data_ensemble(path, self.data_type, self.control_file["properties"]) for path in training_dataset_paths
+            path.name: self.data_ensemble(path=path, training_type="training" **dataensemble_kwargs) for path in training_dataset_paths
         }
         self.training_paths = list(self.training_dataset.keys())
+
         valid_dataset_paths = [path for path in initial_datasets_paths if "init_valid" in path.name]
         self.validation_dataset = {
-            path.name: self.data_ensemble(path, self.data_type, self.control_file["properties"]) for path in valid_dataset_paths
+            path.name: self.data_ensemble(path=path, training_type="validation", **dataensemble_kwargs) for path in valid_dataset_paths
         }
         self.validation_paths = list(self.validation_dataset.keys())
 
@@ -187,6 +216,65 @@ class Dataset():
             **{key: dataset.size for key, dataset in self.training_dataset.items()},
             **{key: dataset.size for key, dataset in self.validation_dataset.items()},
         }
+        self.control_file["used_datasets"]["training"] = {key: dataset.to_dict() for key, dataset in self.training_dataset.items()}
+        self.control_file["used_datasets"]["validation"] = {key: dataset.to_dict() for key, dataset in self.validation_dataset.items()}
+    
+        return len(self.training_dataset), len(self.validation_dataset)
+
+    def read_dataset(self) -> Union[int, int]:
+        """Read the datasets from the already processed datasets in the control file"""
+
+        self.training_dataset = {
+            key: self.data_ensemble(**kwargs) for key, kwargs in self.control_file["used_datasets"]["training"].items() 
+        }
+        self.training_paths = list(self.training_dataset.keys())
+        self.validation_dataset = {
+            key: self.data_ensemble(**kwargs) for key, kwargs in self.control_file["used_datasets"]["validation"].items()
+        }
+        self.validation_paths = list(self.validation_dataset.keys())
+
+    def load_dataset(self, bool, extra_dataset: bool) -> Union[int, int, int]:
+        """Load the new dataensembles from the dataset directory, depending on the control file information"""
+
+        dataset_names = list(self.control_file["used_datasets"]["training"].keys()) + list(self.control_file["used_datasets"]["validation"].keys()) #already existing data ensembles
+        common_kwargs = {
+            "data_type": self.data_type,
+            "properties": self.control_file["properties"],
+        } #attributes common to all data ensembles
+
+        extra_count, system_count = 0, 0
+
+        for datadir in self.dataset_dir.iterdir():
+            if datadir.is_dir() and datadir.name not in dataset_names:
+                step, system_name, iteration = None, None, None
+                if datadir.name.startswith("extra_") and extra_dataset:
+                    #case of extra datasets
+                    step = "extra"
+                    extra_count += 1
+                
+                elif not datadir.name.startswith("init_") and not datadir.name.startswith("extra_"):
+                    #case of system datasets
+                    system_name, iteration = datadir.name.rsplit("_", 1)
+                    iteration = int(iteration)
+                    if system_name in self.control_file["systems_auto"]:
+                        step = "system_auto"
+                    elif "-disturbed" in system_name and system_name.removesuffix("-disturbed") in self.control_file["systems_adhoc"]:
+                        step = "system_disturbed"
+                    else:
+                        step = "system_adhoc"
+                    system_count += 1    
+
+                if step:
+                    if "valid" in datadir.name:
+                        self.validation_dataset[datadir.name] = self.data_ensemble(
+                            path=datadir, step=step, training_type="validation", system_name=system_name, iteration=iteration, **common_kwargs
+                        )
+                    else:
+                        self.training_dataset[datadir.name] = self.data_ensemble(
+                            path=datadir, step=step, training_type="training", system_name=system_name, iteration=iteration, **common_kwargs
+                        )
+
+        return extra_count, system_count
 
     def update_datasets(self):
         raise NotImplementedError
