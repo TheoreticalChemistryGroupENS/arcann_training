@@ -176,7 +176,7 @@ def main(
     try:
         dataset = Dataset(
             dataset_dir=(training_path / "data"), 
-            control_file=main_json,
+            config_file=main_json,
         )
     except Exception as e:
         arcann_logger.exception(f"Error in initializing the Datasets: {e}")
@@ -184,7 +184,7 @@ def main(
         return 1
 
     # Populate the dataset with initial data
-    dataset.init_dataset()
+    dataset.load_init_dataset()
 
     arcann_logger.debug(f"initial_dataset_paths: {dataset.training_paths + dataset.validation_paths}")
     arcann_logger.debug(f"initial_dataset_json: {dataset.control_file["initial_datasets"]}")

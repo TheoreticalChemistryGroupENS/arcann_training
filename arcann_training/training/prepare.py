@@ -22,6 +22,7 @@ import numpy as np
 
 # Local imports
 from arcann_training.common.check import validate_step_folder
+from arcann_training.common.dataset import Dataset
 from arcann_training.common.filesystem import check_directory
 from arcann_training.common.json import (
     backup_and_overwrite_json_file,
@@ -275,79 +276,24 @@ def main(
     arcann_logger.debug(f"dp_train_input: {dp_train_input}")
     arcann_logger.debug(f"main_json: {main_json}")
 
-    # Check the initial sets json file
+    # Check the initial sets json file TODO maybe not to keep
     initial_datasets_info = check_initial_datasets(training_path)
     arcann_logger.debug(f"initial_datasets_info: {initial_datasets_info}")
 
     # Let us find what is in data
-    data_path = training_path / "data"
-    check_directory(data_path)
+    dataset = Dataset(dataset_dir=training_path / "data", config_file=main_json)
 
-    # This is building the datasets (roughly 200 lines)
-    # TODO later
-    systems = []
     extra_datasets = []
     validation_datasets = []
-    for data_dir in data_path.iterdir():
-        if data_dir.is_dir():
-            # Escape initial/extra sets, because initial get added first and extra as last, and also escape init_
-            # not in initial_json (in case of removal)
-            if (
-                data_dir.name not in initial_datasets_info.keys()
-                and "extra_" != data_dir.name[:6]
-                and "init_" != data_dir.name[:5]
-            ):
-                # Escape test sets
-                if "test_" != data_dir.name[:5]:
-                    # Escape if set iter is superior as iter, it is only for reprocessing old stuff
-                    try:
-                        if int(data_dir.name.rsplit("_", 1)[-1]) <= curr_iter:
-                            systems.append(data_dir.name.rsplit("_", 1)[0])
-                    # TODO Better except clause
-                    except ValueError:
-                        pass
-                else:
-                    validation_datasets.append(data_dir.name)
-            # Get the extra sets !
-            elif "extra_" == data_dir.name[:6]:
-                extra_datasets.append(data_dir.name)
-    del data_dir
-
-    # TODO Implement validation dataset
-    # del validation_datasets
-
-    # Training sets list construction
-    #TODO construct the same list for the validation dataset
     dp_train_input_datasets = []
     training_datasets = []
 
-    # Initial
-    initial_count = 0
+    # Initial dataensemble may not be used
     if training_json["use_initial_datasets"]:
-        for it_datasets_initial_json in initial_datasets_info.keys():
-            if (data_path / it_datasets_initial_json).is_dir():
-                dp_train_input_datasets.append(
-                    f"{(Path(data_path.parts[-1]) / it_datasets_initial_json / '_')}"[
-                        :-1
-                    ]
-                )
-                training_datasets.append(it_datasets_initial_json)
-                initial_count += initial_datasets_info[it_datasets_initial_json]
-
-        del it_datasets_initial_json
-    del initial_datasets_info
+        dataset.load_init_dataset() #load the initial dataset based on the config file
 
     # This trick remove duplicates from list via set
-    systems = list(set(systems))
-    systems = [i for i in systems if i not in main_json["systems_auto"]]
-    systems = [
-        i
-        for i in systems
-        if i not in [zzz + "-disturbed" for zzz in main_json["systems_auto"]]
-    ]
-    systems = sorted(systems)
-    main_json["systems_adhoc"] = systems
-    del systems
+    main_json["systems_adhoc"] = list(dataensemble)
 
     # TODO As function
     # Automatic Systems (aka systems_auto in the initialization first) && all the others are not automated !
@@ -357,124 +303,21 @@ def main(
     added_auto_iter_count = 0
     added_adhoc_iter_count = 0
 
-    if curr_iter > 0:
-        for iteration in np.arange(1, curr_iter + 1):
-            padded_iteration = str(iteration).zfill(3)
-            try:
-                for system_auto in main_json["systems_auto"]:
-                    if (data_path / f"{system_auto}_{padded_iteration}").is_dir():
-                        dp_train_input_datasets.append(
-                            f"{(Path(data_path.parts[-1]) / (system_auto+'_'+padded_iteration) / '_')}"[
-                                :-1
-                            ]
-                        )
-                        training_datasets.append(f"{system_auto}_{padded_iteration}")
-                        added_auto_count += np.load(
-                            data_path
-                            / f"{system_auto}_{padded_iteration}"
-                            / "set.000"
-                            / "box.npy"
-                        ).shape[0]
-                        if iteration == curr_iter:
-                            added_auto_iter_count += np.load(
-                                data_path
-                                / f"{system_auto}_{padded_iteration}"
-                                / "set.000"
-                                / "box.npy"
-                            ).shape[0]
-                del system_auto
-            except (KeyError, NameError):
-                pass
-            try:
-                for system_auto_disturbed in [
-                    zzz + "-disturbed" for zzz in main_json["systems_auto"]
-                ]:
-                    if (
-                        data_path / f"{system_auto_disturbed}_{padded_iteration}"
-                    ).is_dir():
-                        dp_train_input_datasets.append(
-                            f"{(Path(data_path.parts[-1]) / (system_auto_disturbed+'_'+padded_iteration) / '_')}"[
-                                :-1
-                            ]
-                        )
-                        training_datasets.append(
-                            f"{system_auto_disturbed}_{padded_iteration}"
-                        )
-                        added_auto_count += np.load(
-                            data_path
-                            / f"{system_auto_disturbed}_{padded_iteration}"
-                            / "set.000"
-                            / "box.npy"
-                        ).shape[0]
-                        if iteration == curr_iter:
-                            added_auto_iter_count += np.load(
-                                data_path
-                                / f"{system_auto_disturbed}_{padded_iteration}"
-                                / "set.000"
-                                / "box.npy"
-                            ).shape[0]
-                del system_auto_disturbed
-            except (KeyError, NameError):
-                pass
-            try:
-                for system_adhoc in main_json["systems_adhoc"]:
-                    if (data_path / f"{system_adhoc}_{padded_iteration}").is_dir():
-                        dp_train_input_datasets.append(
-                            f"{(Path(data_path.parts[-1]) / (system_adhoc+'_'+padded_iteration) / '_')}"[
-                                :-1
-                            ]
-                        )
-                        training_datasets.append(f"{system_adhoc}_{padded_iteration}")
-                        added_auto_count = (
-                            added_auto_count
-                            + np.load(
-                                data_path
-                                / f"{system_adhoc}_{padded_iteration}"
-                                / "set.000"
-                                / "box.npy"
-                            ).shape[0]
-                        )
-                        if iteration == curr_iter:
-                            added_auto_iter_count += np.load(
-                                data_path
-                                / f"{system_adhoc}_{padded_iteration}"
-                                / "set.000"
-                                / "box.npy"
-                            ).shape[0]
-                del system_adhoc
-            except (KeyError, NameError):
-                pass
-        del iteration, padded_iteration
-    # TODO End of As function
+    dataset.load_dataset(extra_dataset=training_json["use_extra_datasets"])
+    dp_train_input_datasets.append()
+    training_datasets.append()
+    added_auto_count += 0
+    added_auto_iter_count += 0
 
-    # Finally the extra sets !
     extra_count = 0
-    if training_json["use_extra_datasets"]:
-        main_json["extra_datasets"] = extra_datasets
-        del extra_datasets
-        for extra_dataset in main_json["extra_datasets"]:
-            dp_train_input_datasets.append(
-                f"{(Path(data_path.parts[-1]) / extra_dataset / '_')}"[:-1]
-            )
-            training_datasets.append(extra_dataset)
-            extra_count += np.load(
-                data_path / extra_dataset / "set.000" / "box.npy"
-            ).shape[0]
-        del extra_dataset
-    else:
-        del extra_datasets
+    main_json["extra_datasets"] = extra_datasets #NOOO
+    extra_count += 0
 
-    # and the validation sets now
     dp_validate_input_datasets = []
     validation_count = 0
     for validation_dataset in validation_datasets:
-        dp_validate_input_datasets.append(
-            f"{(Path(data_path.parts[-1]) / validation_dataset / '_')}"[:-1]
-        )
-        validation_count += np.load(
-            data_path / validation_dataset / "set.000" / "box.npy"
-        ).shape[0]
-        del validation_dataset
+        dp_validate_input_datasets.append()
+        validation_count += 0
 
     # Total
     trained_count = initial_count + added_auto_count + added_adhoc_count + extra_count
@@ -490,8 +333,7 @@ def main(
     dp_train_input["training"]["validation_data"]["systems"] = dp_validate_input_datasets
 
     # Update the training JSON
-    training_json = {
-        **training_json,
+    training_json |= {
         "training_datasets": training_datasets,
         "validation_datasets": validation_datasets,
         "trained_count": trained_count,

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Dict, Literal, Union
 
 from arcann_training.common.filesystem import check_directory, check_file_existence
+from arcann_training.common.json import load_json_file
 from arcann_training.initialization.utils import check_typeraw_properties
 
 arcann_logger = logging.getLogger("ArcaNN")
@@ -27,11 +28,17 @@ class DataEnsemble():
     Attributes:
     ----------
         path (Path): Path to the data ensemble
+        step (Literal["initial", "extra", "system_auto", "system_adhoc", "system_disturbed"]): 
+            Type of the data ensemble in the step of the arcann workflow
+        training_type (Literal["training", "validation"]): Whether the data ensemble is used for training or validation
+        system_name (str | None): Name of the system from which the data ensemble originates. None if not applicable
+        iteration (int | None): Iteration (of arcann) number from which the data ensemble originates. None if not applicable
         data_type (Literal["extxyz", "set.000"]): Type of data ensemble
         properties (Dict[int, Dict[str, str | float]]): Properties associated with the data ensemble
     
     Methods:
     --------
+        to_dict(): Convert the data ensemble to a dictionary
         check_format(): Check the format of the data ensemble
         get_size(): Get the size of the data ensemble (ie. nb of confs)
         load_data(): Load the data of data ensemble
@@ -125,7 +132,7 @@ class Dataset():
         validation_dataset (Dict[str, DataEnsemble]): Dictionary of validation data ensembles
         training_paths (List[str]): List of paths to training data ensembles
         validation_paths (List[str]): List of paths to validation data ensembles
-        control_file (Dict): Control file containing information about the data ensembles
+        config_file (Dict): Config file (usually config.json) containing information about the configuration
         dataset_dir (Path): Path to the dataset directory
         data_type (Literal["extxyz", "set.000"]): Type of data ensemble
         data_ensemble (DataEnsemble): Class of data ensemble
@@ -137,13 +144,14 @@ class Dataset():
         init_data_type(): Initialize the data type and data ensemble class
         init_dataset(main_json): Initialize the dataset from the dataset directory
         update_dataset(): Update the data ensembles available for the dataset
-        init_control_file(): Initialize the control file
-        update_control_file(): Update the control file
+        init_config_file(): Initialize the control file
+        update_config_file(): Update the control file
     """
     def __init__(
         self,
         dataset_dir: str | Path,
-        control_file: Dict,
+        training_dir: str | Path,
+        config_file: Dict,
     ):
         # Attributes
         self.training_dataset: Dict[str, DataEnsemble] = {}
@@ -151,15 +159,11 @@ class Dataset():
         self.training_paths = {}
         self.validation_paths = {}
 
-        self.control_file = control_file
+        self.control_file = load_json_file(training_dir / "control" / "dataset.json", abort_on_error=False)
+        self.config_file = config_file
         check_directory(Path(dataset_dir), abort_on_error=True, error_msg="The provided dataset directory does not exist.")
         self.dataset_dir = Path(dataset_dir)
-        
-        # Populate data type and data ensemble class
-        self.init_data_type()
-
-        # Populate datasets
-        self.init_dataset() # Load initial datasets
+        self.init_data_type() #get data type and data ensemble class
 
     def __str__(self):
         pass
@@ -184,7 +188,7 @@ class Dataset():
                     self.data_ensemble = ExtXYZEnsemble
             
 
-    def init_dataset(self) -> Union[int, int]:
+    def load_init_dataset(self) -> Union[int, int]:
         """Load the initial datasets from the dataset directory"""
 
         initial_datasets_paths = [_ for _ in (self.dataset_dir).glob("init_*")]
@@ -194,7 +198,7 @@ class Dataset():
         dataensemble_kwargs = {
             "dataset_type": "initial",
             "system_name": None,
-            "properties": self.control_file["properties"],
+            "properties": self.config_file["properties"],
             "iteration": None,
             "data_type": self.data_type, 
         }
@@ -216,8 +220,8 @@ class Dataset():
             **{key: dataset.size for key, dataset in self.training_dataset.items()},
             **{key: dataset.size for key, dataset in self.validation_dataset.items()},
         }
-        self.control_file["used_datasets"]["training"] = {key: dataset.to_dict() for key, dataset in self.training_dataset.items()}
-        self.control_file["used_datasets"]["validation"] = {key: dataset.to_dict() for key, dataset in self.validation_dataset.items()}
+        self.control_file["training"] = {key: dataset.to_dict() for key, dataset in self.training_dataset.items()}
+        self.control_file["validation"] = {key: dataset.to_dict() for key, dataset in self.validation_dataset.items()}
     
         return len(self.training_dataset), len(self.validation_dataset)
 
@@ -225,25 +229,26 @@ class Dataset():
         """Read the datasets from the already processed datasets in the control file"""
 
         self.training_dataset = {
-            key: self.data_ensemble(**kwargs) for key, kwargs in self.control_file["used_datasets"]["training"].items() 
+            key: self.data_ensemble(**kwargs) for key, kwargs in self.config_file["used_datasets"]["training"].items() 
         }
         self.training_paths = list(self.training_dataset.keys())
         self.validation_dataset = {
-            key: self.data_ensemble(**kwargs) for key, kwargs in self.control_file["used_datasets"]["validation"].items()
+            key: self.data_ensemble(**kwargs) for key, kwargs in self.config_file["used_datasets"]["validation"].items()
         }
         self.validation_paths = list(self.validation_dataset.keys())
 
-    def load_dataset(self, bool, extra_dataset: bool) -> Union[int, int, int]:
+    def load_dataset(self, extra_dataset: bool) -> Union[int, int, int]:
         """Load the new dataensembles from the dataset directory, depending on the control file information"""
 
-        dataset_names = list(self.control_file["used_datasets"]["training"].keys()) + list(self.control_file["used_datasets"]["validation"].keys()) #already existing data ensembles
+        dataset_names = list(self.training_dataset.keys()) + list(self.validation_dataset.keys()) #already existing/treated data ensembles
         common_kwargs = {
             "data_type": self.data_type,
-            "properties": self.control_file["properties"],
+            "properties": self.config_file["properties"],
         } #attributes common to all data ensembles
 
         extra_count, system_count = 0, 0
 
+        #Read the new data ensembles
         for datadir in self.dataset_dir.iterdir():
             if datadir.is_dir() and datadir.name not in dataset_names:
                 step, system_name, iteration = None, None, None
@@ -256,9 +261,9 @@ class Dataset():
                     #case of system datasets
                     system_name, iteration = datadir.name.rsplit("_", 1)
                     iteration = int(iteration)
-                    if system_name in self.control_file["systems_auto"]:
+                    if system_name in self.config_file["systems_auto"]:
                         step = "system_auto"
-                    elif "-disturbed" in system_name and system_name.removesuffix("-disturbed") in self.control_file["systems_adhoc"]:
+                    elif "-disturbed" in system_name and system_name.removesuffix("-disturbed") in self.config_file["systems_adhoc"]:
                         step = "system_disturbed"
                     else:
                         step = "system_adhoc"
@@ -274,10 +279,23 @@ class Dataset():
                             path=datadir, step=step, training_type="training", system_name=system_name, iteration=iteration, **common_kwargs
                         )
 
+        #Write the new data ensembles to the control file
+        self.control_file["extra_datasets"] = {
+            **{key: dataset.size for key, dataset in self.training_dataset.items() if dataset.step == "extra"},
+            **{key: dataset.size for key, dataset in self.validation_dataset.items() if dataset.step == "extra"},
+        }
+        self.control_file["adhoc_datasets"] = {
+            **{key: dataset.size for key, dataset in self.training_dataset.items() if dataset.step == "system_adhoc"},
+            **{key: dataset.size for key, dataset in self.validation_dataset.items() if dataset.step == "system_adhoc"},
+        }
+        #TODO that won't work!! we want to differenciate the new ones to the old ones
+        self.control_file["training"] |= {key: dataset.to_dict() for key, dataset in self.training_dataset.items()}
+        self.control_file["validation"] |= {key: dataset.to_dict() for key, dataset in self.validation_dataset.items()}
+
         return extra_count, system_count
 
     def update_datasets(self):
         raise NotImplementedError
         
-    def update_control_file(self):
+    def update_config_file(self):
         raise NotImplementedError
