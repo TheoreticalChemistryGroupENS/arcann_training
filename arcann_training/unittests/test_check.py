@@ -28,6 +28,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from contextlib import chdir
 from pathlib import Path
 from unittest.mock import patch
 
@@ -218,8 +219,7 @@ class TestValidateStepFolder(unittest.TestCase):
         """
         Test that 'validate_step_folder' returns None when the current directory name matches the expected directory for the step.
         """
-        os.chdir(self.step_folder)
-        with self.step_folder:
+        with chdir(self.step_folder):
             self.assertIsNone(validate_step_folder(self.step_name))
 
     def test_validate_step_folder_raises_error(self):

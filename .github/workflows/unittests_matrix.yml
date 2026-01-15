@@ -38,12 +38,12 @@ jobs:
               wheel-version: ''
               pyyaml-version: ''
 
-            # - python-version: '3.13'
-            #   numpy-version: '>=2.1,<2.2'
-            #   setuptools-version: '>=75.0,<76.0'
-            #   pip-version: '>=24.0,<25.0'
-            #   wheel-version: '>=0.45,<0.46'
-            #   pyyaml-version: '>=6.0,<6.1'
+            - python-version: '3.13'
+              numpy-version: '>=2.1,<2.2'
+              setuptools-version: '>=75.0,<76.0'
+              pip-version: '>=24.0,<25.0'
+              wheel-version: '>=0.45,<0.46'
+              pyyaml-version: '>=6.0,<6.1'
 
     steps:
     - uses: actions/checkout@v4
