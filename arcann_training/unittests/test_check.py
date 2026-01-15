@@ -23,12 +23,13 @@ TestValidateStepFolder():
 """
 
 # Standard library modules
+import contextlib
 import logging
 import os
 import shutil
 import tempfile
 import unittest
-from contextlib import chdir
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
@@ -38,6 +39,19 @@ from arcann_training.common.check import (
     check_vmd,
     validate_step_folder,
 )
+
+if hasattr(contextlib, "chdir"):
+    chdir = contextlib.chdir
+else:
+
+    @contextmanager
+    def chdir(path):
+        old = Path.cwd()
+        os.chdir(path)
+        try:
+            yield
+        finally:
+            os.chdir(old)
 
 
 class TestCheckAtomsk(unittest.TestCase):
