@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Dict, Literal, Union
 
 from arcann_training.common.filesystem import check_directory, check_file_existence
-from arcann_training.common.json import load_json_file
+from arcann_training.common.json import load_json_file, write_json_file
 from arcann_training.initialization.utils import check_typeraw_properties
 
 arcann_logger = logging.getLogger("ArcaNN")
@@ -65,6 +65,8 @@ class DataEnsemble():
         self.data_type = data_type
         self.properties = properties
 
+        self.size = None 
+
     def to_dict(self):
         return {
             "path": str(self.path),
@@ -74,6 +76,7 @@ class DataEnsemble():
             "iteration": self.iteration,
             "data_type": self.data_type,
             "properties": self.properties,
+            "size": self.size,
         }
 
     def check_format(self):
@@ -135,7 +138,7 @@ class Dataset():
         config_file (Dict): Config file (usually config.json) containing information about the configuration
         dataset_dir (Path): Path to the dataset directory
         data_type (Literal["extxyz", "set.000"]): Type of data ensemble
-        data_ensemble (DataEnsemble): Class of data ensemble
+        data_ensemble (DataEnsemble): Class of the data ensembles
     
     Methods:
     --------
@@ -191,11 +194,11 @@ class Dataset():
         """Read the datasets from the already processed datasets in the control file"""
 
         self.training_dataset = {
-            key: self.data_ensemble(**kwargs) for key, kwargs in self.config_file["used_datasets"]["training"].items() 
+            key: self.data_ensemble(**kwargs) for key, kwargs in self.control_file["used_datasets"]["training"].items() 
         }
         self.training_paths = list(self.training_dataset.keys())
         self.validation_dataset = {
-            key: self.data_ensemble(**kwargs) for key, kwargs in self.config_file["used_datasets"]["validation"].items()
+            key: self.data_ensemble(**kwargs) for key, kwargs in self.control_file["used_datasets"]["validation"].items()
         }
         self.validation_paths = list(self.validation_dataset.keys())
 
@@ -246,7 +249,31 @@ class Dataset():
                             path=datadir, step=step, training_type="training", system_name=system_name, iteration=iteration, **common_kwargs
                         )
 
-        #Write the new data ensembles to the control file
+        return extra_count, init_count, system_count
+
+    def remove_datasets(self, init_dataset:bool = True):
+        if init_dataset:
+            #remove the initial datasets
+            self.training_dataset = {
+                key: dataset for key, dataset in self.training_dataset.items() if dataset.step != "initial"
+            }
+            self.validation_dataset = {
+                key: dataset for key, dataset in self.validation_dataset.items() if dataset.step != "initial"
+            }
+            self.training_paths = list(self.training_dataset.keys())
+            self.validation_paths = list(self.validation_dataset.keys())
+        
+
+    def update_control_file(self):
+        #Write the new data ensembles to the control file and save it
+        self.control_file["initial_datasets"] = {
+            **{key: dataset.size for key, dataset in self.training_dataset.items() if dataset.step == "initial"},
+            **{key: dataset.size for key, dataset in self.validation_dataset.items() if dataset.step == "initial"},
+        }
+        self.control_file["system_datasets"] = {
+            **{key: dataset.size for key, dataset in self.training_dataset.items() if dataset.step in ["system_auto", "system_disturbed"]},
+            **{key: dataset.size for key, dataset in self.validation_dataset.items() if dataset.step in ["system_auto", "system_disturbed"]},
+        }
         self.control_file["extra_datasets"] = {
             **{key: dataset.size for key, dataset in self.training_dataset.items() if dataset.step == "extra"},
             **{key: dataset.size for key, dataset in self.validation_dataset.items() if dataset.step == "extra"},
@@ -255,14 +282,10 @@ class Dataset():
             **{key: dataset.size for key, dataset in self.training_dataset.items() if dataset.step == "system_adhoc"},
             **{key: dataset.size for key, dataset in self.validation_dataset.items() if dataset.step == "system_adhoc"},
         }
-        #TODO that won't work!! we want to differenciate the new ones to the old ones
-        self.control_file["training"] |= {key: dataset.to_dict() for key, dataset in self.training_dataset.items()}
-        self.control_file["validation"] |= {key: dataset.to_dict() for key, dataset in self.validation_dataset.items()}
+        self.control_file["used_datasets"]["training"] = {key: dataset.to_dict() for key, dataset in self.training_dataset.items()}
+        self.control_file["used_datasets"]["validation"] = {key: dataset.to_dict() for key, dataset in self.validation_dataset.items()}
 
-        return extra_count, system_count
-
-    def update_datasets(self):
-        raise NotImplementedError
-        
-    def update_config_file(self):
-        raise NotImplementedError
+        write_json_file(
+            json_dict=self.control_file,
+            file_path=self.dataset_dir.parent / "control" / "dataset.json",
+        )

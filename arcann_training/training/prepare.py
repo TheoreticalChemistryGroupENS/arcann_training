@@ -45,7 +45,6 @@ from arcann_training.common.slurm import replace_in_slurm_file_general
 from arcann_training.training.utils import (
     calculate_decay_rate,
     calculate_decay_steps,
-    check_initial_datasets,
     validate_deepmd_config,
     generate_training_json,
 )
@@ -276,85 +275,74 @@ def main(
     arcann_logger.debug(f"dp_train_input: {dp_train_input}")
     arcann_logger.debug(f"main_json: {main_json}")
 
-    # Check the initial sets json file TODO maybe not to keep
-    initial_datasets_info = check_initial_datasets(training_path)
-    arcann_logger.debug(f"initial_datasets_info: {initial_datasets_info}")
-
-    # Let us find what is in data
-    dataset = Dataset(dataset_dir=training_path / "data", config_file=main_json)
-
-    extra_datasets = []
-    validation_datasets = []
-    dp_train_input_datasets = []
-    training_datasets = []
+    # Load the datasets that were previously processed
+    dataset = Dataset(training_dir=training_path, config_file=main_json)
+    dataset.read_dataset() # all datasets from control/dataset.json
 
     # Initial dataensemble may not be used
-    if training_json["use_initial_datasets"]:
-        dataset.load_init_dataset() #load the initial dataset based on the config file
+    if not training_json["use_initial_datasets"]:
+        #in case we don't want to train with the initial datasets
+        dataset.remove_datasets(init_dataset=True)
 
-    # This trick remove duplicates from list via set
-    main_json["systems_adhoc"] = list(dataensemble)
-
-    # TODO As function
-    # Automatic Systems (aka systems_auto in the initialization first) && all the others are not automated !
-    # Total and what is added just for this iteration
-    added_auto_count = 0
-    added_adhoc_count = 0
-    added_auto_iter_count = 0
-    added_adhoc_iter_count = 0
-
-    dataset.load_dataset(extra_dataset=training_json["use_extra_datasets"])
-    dp_train_input_datasets.append()
-    training_datasets.append()
-    added_auto_count += 0
-    added_auto_iter_count += 0
-
-    extra_count = 0
-    main_json["extra_datasets"] = extra_datasets #NOOO
-    extra_count += 0
-
-    dp_validate_input_datasets = []
-    validation_count = 0
-    for validation_dataset in validation_datasets:
-        dp_validate_input_datasets.append()
-        validation_count += 0
-
-    # Total
-    trained_count = initial_count + added_auto_count + added_adhoc_count + extra_count
-    arcann_logger.debug(
-        f"trained_count: {trained_count} = {initial_count} + {added_auto_count} + {added_adhoc_count} + {extra_count}"
+    auto_iter_count, adhoc_iter_count, val_auto_iter_count, val_adhoc_iter_count = dataset.load_dataset(
+        extra_dataset=training_json["use_extra_datasets"],
+        init_dataset=training_json["use_initial_datasets"],
     )
-    arcann_logger.debug(f"dp_train_input_datasets: {dp_train_input_datasets}")
-    arcann_logger.debug(f"validation_count: {validation_count}")
-    arcann_logger.debug(f"dp_validate_input_datasets: {dp_validate_input_datasets}")
+    dataset.update_control_file() # update and save the control/dataset.json file
 
-    # Update the inputs with the sets
-    dp_train_input["training"]["training_data"]["systems"] = dp_train_input_datasets
-    dp_train_input["training"]["validation_data"]["systems"] = dp_validate_input_datasets
+    main_json["extra_datasets"] = [dataset.control_file["extra_datasets"].keys()]
+    main_json["systems_adhoc"] = [dataset.control_file["systems_adhoc"].keys()]
 
-    # Update the training JSON
+
+    # Total of points in the datasets
+    initial_count = sum(de.size for de in dataset.training_dataset.values() if de.step == "initial")
+    auto_count = sum(de.size for de in dataset.training_dataset.values() if de.step == "system_auto")
+    adhoc_count = sum(de.size for de in dataset.training_dataset.values() if de.step == "system_adhoc")
+    extra_count = sum(de.size for de in dataset.training_dataset.values() if de.step == "extra")
+    trained_count = initial_count + auto_count + adhoc_count + extra_count
+    arcann_logger.debug(
+        f"trained_count: {trained_count} = {initial_count} + {auto_count} + {adhoc_count} + {extra_count}"
+    )
+    arcann_logger.debug(f"training_dataset: {dataset.training_dataset}")
     training_json |= {
-        "training_datasets": training_datasets,
-        "validation_datasets": validation_datasets,
-        "trained_count": trained_count,
-        "initial_count": initial_count,
-        "added_auto_count": added_auto_count,
-        "added_adhoc_count": added_adhoc_count,
-        "added_auto_iter_count": added_auto_iter_count,
-        "added_adhoc_iter_count": added_adhoc_iter_count,
-        "extra_count": extra_count,
-        "validation_count": validation_count,
+        "training_datasets": dataset.training_paths,
+        "training_count": {
+            "total": trained_count,
+            "initial_count": initial_count,
+            "added_auto_count": auto_count,
+            "added_adhoc_count": adhoc_count,
+            "extra_count": extra_count,
+            "added_auto_iter_count": auto_iter_count,
+            "added_adhoc_iter_count": adhoc_iter_count,
+        }
+    }
+    
+    initial_count = sum(de.size for de in dataset.validation_dataset.values() if de.step == "initial")
+    auto_count = sum(de.size for de in dataset.validation_dataset.values() if de.step == "system_auto")
+    adhoc_count = sum(de.size for de in dataset.validation_dataset.values() if de.step == "system_adhoc")
+    extra_count = sum(de.size for de in dataset.validation_dataset.values() if de.step == "extra")
+    validation_count = initial_count + auto_count + adhoc_count + extra_count
+    arcann_logger.debug(
+        f"validation_count: {validation_count} = {initial_count} + {auto_count} + {adhoc_count} + {extra_count}"
+    )
+    arcann_logger.debug(f"validation_dataset: {dataset.validation_dataset}")
+    training_json |= {
+        "validation_datasets": dataset.validation_paths,
+        "validation_count": {
+            "total" : validation_count,
+            "initial_count": initial_count,
+            "added_auto_count": auto_count,
+            "added_adhoc_count": adhoc_count,
+            "extra_count": extra_count,
+            "added_auto_iter_count": val_auto_iter_count,
+            "added_adhoc_iter_count": val_adhoc_iter_count,
+        } 
     }
     arcann_logger.debug(f"training_json: {training_json}")
 
-    del training_datasets
-    del trained_count, initial_count, extra_count
-    del (
-        added_auto_count,
-        added_adhoc_count,
-        added_auto_iter_count,
-        added_adhoc_iter_count,
-    )
+    # Update the inputs with the sets
+    dp_train_input["training"]["training_data"]["systems"] = [ "data" / ds for ds in dataset.training_paths]
+    dp_train_input["training"]["validation_data"]["systems"] = [ "data" / ds for ds in dataset.validation_paths]
 
     # Here calculate the parameters
     # decay_steps it auto-recalculated as funcion of trained_count
@@ -439,26 +427,25 @@ def main(
     # Rsync data to local data
     localdata_path = current_path / "data"
     localdata_path.mkdir(exist_ok=True)
-    for dp_train_input_dataset in dp_train_input_datasets:
+    for train_dataset in dataset.training_paths:
         subprocess.run(
             [
                 "rsync",
                 "-a",
-                f"{training_path / (dp_train_input_dataset.rsplit('/', 1)[0])}",
+                f"{training_path / "data" / train_dataset}",
                 f"{localdata_path}",
             ]
         )
-    del dp_train_input_dataset, dp_train_input_datasets
-    for dp_validate_input_dataset in dp_validate_input_datasets:
+    for valid_dataset in dataset.validation_paths:
         subprocess.run(
             [
                 "rsync",
                 "-a",
-                f"{training_path / (dp_validate_input_dataset.rsplit('/', 1)[0])}",
+                f"{training_path / "data" / valid_dataset}",
                 f"{localdata_path}",
             ]
         )
-    del dp_validate_input_dataset, localdata_path, dp_validate_input_datasets
+    del train_dataset, valid_dataset, localdata_path
 
     # Change some inside output
     dp_train_input["training"]["disp_file"] = "lcurve.out"
@@ -589,7 +576,7 @@ def main(
     )
 
     # Cleaning
-    del current_path, control_path, training_path, data_path
+    del current_path, control_path, training_path
     del (
         default_input_json,
         default_input_json_present,
