@@ -175,7 +175,7 @@ def main(
 
     try:
         dataset = Dataset(
-            dataset_dir=(training_path / "data"), 
+            training_dir=training_path, 
             config_file=main_json,
         )
     except Exception as e:
@@ -184,10 +184,10 @@ def main(
         return 1
 
     # Populate the dataset with initial data
-    dataset.load_init_dataset()
+    dataset.load_dataset(only_init=True)
 
     arcann_logger.debug(f"initial_dataset_paths: {dataset.training_paths + dataset.validation_paths}")
-    arcann_logger.debug(f"initial_dataset_json: {dataset.control_file["initial_datasets"]}")
+    arcann_logger.debug(f"dataset_json: {dataset.control_file["initial_datasets"]}")
 
     # DEBUG: Print the JSON files
     arcann_logger.debug(f"main_json: {main_json}")

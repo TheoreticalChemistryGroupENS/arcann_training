@@ -149,20 +149,19 @@ class Dataset():
     """
     def __init__(
         self,
-        dataset_dir: str | Path,
         training_dir: str | Path,
         config_file: Dict,
     ):
         # Attributes
         self.training_dataset: Dict[str, DataEnsemble] = {}
         self.validation_dataset: Dict[str, DataEnsemble] = {}
-        self.training_paths = {}
-        self.validation_paths = {}
+        self.training_paths = []
+        self.validation_paths = []
 
         self.control_file = load_json_file(training_dir / "control" / "dataset.json", abort_on_error=False)
         self.config_file = config_file
-        check_directory(Path(dataset_dir), abort_on_error=True, error_msg="The provided dataset directory does not exist.")
-        self.dataset_dir = Path(dataset_dir)
+        self.dataset_dir = Path(training_dir) / "data"
+        check_directory(self.dataset_dir, abort_on_error=True, error_msg="The provided dataset directory does not exist.")
         self.init_data_type() #get data type and data ensemble class
 
     def __str__(self):
@@ -188,43 +187,6 @@ class Dataset():
                     self.data_ensemble = ExtXYZEnsemble
             
 
-    def load_init_dataset(self) -> Union[int, int]:
-        """Load the initial datasets from the dataset directory"""
-
-        initial_datasets_paths = [_ for _ in (self.dataset_dir).glob("init_*")]
-        if len(initial_datasets_paths) == 0:
-            raise FileNotFoundError(f"No initial datasets found in the provided dataset directory: {self.dataset_dir}")
-        
-        dataensemble_kwargs = {
-            "dataset_type": "initial",
-            "system_name": None,
-            "properties": self.config_file["properties"],
-            "iteration": None,
-            "data_type": self.data_type, 
-        }
-
-        # Separate training and validation datasets
-        training_dataset_paths = [path for path in initial_datasets_paths if "init_valid" not in path.name]
-        self.training_dataset = {
-            path.name: self.data_ensemble(path=path, training_type="training" **dataensemble_kwargs) for path in training_dataset_paths
-        }
-        self.training_paths = list(self.training_dataset.keys())
-
-        valid_dataset_paths = [path for path in initial_datasets_paths if "init_valid" in path.name]
-        self.validation_dataset = {
-            path.name: self.data_ensemble(path=path, training_type="validation", **dataensemble_kwargs) for path in valid_dataset_paths
-        }
-        self.validation_paths = list(self.validation_dataset.keys())
-
-        self.control_file["initial_datasets"] = {
-            **{key: dataset.size for key, dataset in self.training_dataset.items()},
-            **{key: dataset.size for key, dataset in self.validation_dataset.items()},
-        }
-        self.control_file["training"] = {key: dataset.to_dict() for key, dataset in self.training_dataset.items()}
-        self.control_file["validation"] = {key: dataset.to_dict() for key, dataset in self.validation_dataset.items()}
-    
-        return len(self.training_dataset), len(self.validation_dataset)
-
     def read_dataset(self) -> Union[int, int]:
         """Read the datasets from the already processed datasets in the control file"""
 
@@ -237,27 +199,32 @@ class Dataset():
         }
         self.validation_paths = list(self.validation_dataset.keys())
 
-    def load_dataset(self, extra_dataset: bool) -> Union[int, int, int]:
+    def load_dataset(self, extra_dataset: bool=True, init_dataset: bool=True, only_init: bool=False) -> Union[int, int, int]:
         """Load the new dataensembles from the dataset directory, depending on the control file information"""
 
-        dataset_names = list(self.training_dataset.keys()) + list(self.validation_dataset.keys()) #already existing/treated data ensembles
+        dataset_names = self.training_paths + self.validation_paths  #already existing/treated data ensembles
         common_kwargs = {
             "data_type": self.data_type,
             "properties": self.config_file["properties"],
         } #attributes common to all data ensembles
 
-        extra_count, system_count = 0, 0
+        extra_count, init_count, system_count = 0, 0, 0
 
-        #Read the new data ensembles
+        #Read the NEW data ensembles
         for datadir in self.dataset_dir.iterdir():
             if datadir.is_dir() and datadir.name not in dataset_names:
                 step, system_name, iteration = None, None, None
-                if datadir.name.startswith("extra_") and extra_dataset:
+                if datadir.name.startswith("extra_") and extra_dataset and not only_init:
                     #case of extra datasets
                     step = "extra"
                     extra_count += 1
                 
-                elif not datadir.name.startswith("init_") and not datadir.name.startswith("extra_"):
+                elif datadir.name.startswith("init_") and (init_dataset or only_init):
+                    #case of initial datasets
+                    step = "initial"
+                    init_count += 1
+
+                elif not only_init:
                     #case of system datasets
                     system_name, iteration = datadir.name.rsplit("_", 1)
                     iteration = int(iteration)
