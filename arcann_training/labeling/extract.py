@@ -41,21 +41,13 @@ try:
     Bohr_to_A = constants.physical_constants["Bohr radius"][0] / constants.angstrom
     au_to_eV_per_A = np.float64(Ha_to_eV / Bohr_to_A)
     eV_per_A3_to_GPa = np.float64(constants.eV / constants.angstrom**3 / constants.giga)
-except ImportError:
+except ImportError or Exception:
     import numpy as np
 
     Ha_to_eV = np.float64(27.211386245988)
     Bohr_to_A = np.float64(0.529177210903)
     au_to_eV_per_A = np.float64(Ha_to_eV / Bohr_to_A)
     eV_per_A3_to_GPa = np.float64(160.21766208)
-except Exception:
-    import numpy as np
-
-    Ha_to_eV = np.float64(27.211386245988)
-    Bohr_to_A = np.float64(0.529177210903)
-    au_to_eV_per_A = np.float64(Ha_to_eV / Bohr_to_A)
-    eV_per_A3_to_GPa = np.float64(160.21766208)
-
 
 def main(
     current_step: str,
@@ -78,7 +70,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -97,8 +89,8 @@ def main(
 
     # Check if we can continue
     if not labeling_json["is_checked"]:
-        arcann_logger.error(f"Lock found. Execute first: labeling launch.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Lock found. Execute first: labeling launch.")
+        arcann_logger.error("Aborting...")
         return 1
 
     # Create if it doesn't exists the data path.
@@ -902,7 +894,7 @@ def main(
     del program_version
     del system_disturbed_candidates_count, system_disturbed_candidates_skipped_count
 
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     # Update the booleans in the exploration JSON
     labeling_json["is_extracted"] = True
 
@@ -910,7 +902,7 @@ def main(
     write_json_file(labeling_json, (control_path / f"labeling_{padded_curr_iter}.json"))
 
     # End
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     arcann_logger.info(
         f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
     )
@@ -921,7 +913,7 @@ def main(
     del main_json, labeling_json
     del curr_iter, padded_curr_iter
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 
