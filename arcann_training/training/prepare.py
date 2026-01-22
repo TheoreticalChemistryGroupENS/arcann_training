@@ -290,8 +290,8 @@ def main(
     )
     dataset.update_control_file() # update and save the control/dataset.json file
 
-    main_json["extra_datasets"] = [dataset.control_file["extra_datasets"].keys()]
-    main_json["systems_adhoc"] = [dataset.control_file["systems_adhoc"].keys()]
+    main_json["extra_datasets"] = [list(dataset.control_file["extra_datasets"].keys())]
+    main_json["systems_adhoc"] = [list(dataset.control_file["adhoc_datasets"].keys())]
 
 
     # Total of points in the datasets
@@ -341,8 +341,8 @@ def main(
     arcann_logger.debug(f"training_json: {training_json}")
 
     # Update the inputs with the sets
-    dp_train_input["training"]["training_data"]["systems"] = [ "data" / ds for ds in dataset.training_paths]
-    dp_train_input["training"]["validation_data"]["systems"] = [ "data" / ds for ds in dataset.validation_paths]
+    dp_train_input["training"]["training_data"]["systems"] = [ "data/" + ds for ds in dataset.training_paths]
+    dp_train_input["training"]["validation_data"]["systems"] = [ "data/" + ds for ds in dataset.validation_paths]
 
     # Here calculate the parameters
     # decay_steps it auto-recalculated as funcion of trained_count
@@ -352,7 +352,7 @@ def main(
     )
     if not training_json["decay_steps_fixed"]:
         decay_steps = calculate_decay_steps(
-            training_json["trained_count"], training_json["decay_steps"]
+            training_json["training_count"]["total"], training_json["decay_steps"]
         )
         arcann_logger.debug("Recalculating decay_steps")
         # Update the training JSON and the merged input JSON
@@ -559,6 +559,7 @@ def main(
 
     # Dump the JSON files (main, training and current input)
     arcann_logger.info("-" * 88)
+    arcann_logger.debug(f"main_json: {main_json}")
     write_json_file(main_json, (control_path / "config.json"), read_only=True)
     write_json_file(
         training_json,
