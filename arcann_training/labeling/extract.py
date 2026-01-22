@@ -19,6 +19,7 @@ import importlib
 import numpy as np
 
 # Local imports
+from arcann_training.common.dataset import Dataset
 from arcann_training.common.json import load_json_file, write_json_file
 from arcann_training.common.list import textfile_to_string_list, string_list_to_textfile
 from arcann_training.common.filesystem import check_file_existence
@@ -94,7 +95,8 @@ def main(
         return 1
 
     # Create if it doesn't exists the data path.
-    (training_path / "data").mkdir(exist_ok=True)
+    #(training_path / "data").mkdir(exist_ok=True)
+    dataset = Dataset(training_dir=training_path, config_file=main_json)
 
     for system_auto_index, system_auto in enumerate(labeling_json["systems_auto"]):
         arcann_logger.info(
@@ -114,9 +116,9 @@ def main(
 
         system_path = current_path / system_auto
 
-        data_path = training_path / "data" / (system_auto + "_" + padded_curr_iter)
-        data_path.mkdir(exist_ok=True)
-        (data_path / "set.000").mkdir(exist_ok=True)
+        # data_path = training_path / "data" / (system_auto + "_" + padded_curr_iter)
+        # data_path.mkdir(exist_ok=True)
+        # (data_path / "set.000").mkdir(exist_ok=True)
 
         energy_array_raw = np.zeros(
             (system_candidates_count - system_candidates_skipped_count),
@@ -149,8 +151,8 @@ def main(
             dtype=np.float64,
         )
         # Options
-        is_virial = False
-        is_wannier = False
+        is_virial, virial_array_raw = False, None
+        is_wannier, wannier_array_raw = False, None
 
         # Wannier
         wannier_not_converged = ["#Indexes start at 0\n"]
@@ -212,20 +214,6 @@ def main(
                     lammps_data = [g.split(" ")[1:2] for g in lammps_data]
                     type_atom_array = np.asarray(lammps_data, dtype=np.int64).flatten()
                     type_atom_array = type_atom_array - 1
-                    np.savetxt(
-                        f"{system_path}/type.raw",
-                        type_atom_array,
-                        delimiter=" ",
-                        newline=" ",
-                        fmt="%d",
-                    )
-                    np.savetxt(
-                        f"{data_path}/type.raw",
-                        type_atom_array,
-                        delimiter=" ",
-                        newline=" ",
-                        fmt="%d",
-                    )
 
                     # Get the CP2K/Orca version
                     if labeling_program == "cp2k":
@@ -437,37 +425,36 @@ def main(
             system_candidates_not_skipped_counter,
         )
 
+        # Save the data in the system path as raw files
+        np.savetxt(system_path / "type.raw", type_atom_array, delimiter=" ", newline=" ", fmt="%d",)
         np.savetxt(system_path / "energy.raw", energy_array_raw, delimiter=" ")
-        np.save(data_path / "set.000" / "energy", energy_array_raw)
-        del energy_array_raw
-
         np.savetxt(system_path / "coord.raw", coord_array_raw, delimiter=" ")
-        np.save(data_path / "set.000" / "coord", coord_array_raw)
-        del coord_array_raw
-
         np.savetxt(system_path / "box.raw", box_array_raw, delimiter=" ")
-        np.save(data_path / "set.000" / "box", box_array_raw)
-        del box_array_raw, volume_array_raw
-
         np.savetxt(system_path / "force.raw", force_array_raw, delimiter=" ")
-        np.save(data_path / "set.000" / "force", force_array_raw)
-        del force_array_raw
-
         if is_virial:
             np.savetxt(system_path / "virial.raw", virial_array_raw, delimiter=" ")
-            np.save(data_path / "set.000" / "virial", virial_array_raw)
-        del virial_array_raw, is_virial
-
         if is_wannier:
             np.savetxt(system_path / "wannier.raw", wannier_array_raw, delimiter=" ")
-            np.save(data_path / "set.000" / "wannier", wannier_array_raw)
-            if len(wannier_not_converged) > 1:
-                string_list_to_textfile(
-                    data_path / "set.000" / "wannier_not-converged.txt",
-                    wannier_not_converged,
-                )
-            del wannier_not_converged, wannier_array_raw, is_wannier
 
+        # Add the data in the dataset, will do the split into training/validation in the data dir
+        dataset.add_system_dataset(
+            step="system_auto",
+            system_name=system_auto,
+            iteration=padded_curr_iter,
+            type=type_atom_array,
+            energy=energy_array_raw,
+            coord=coord_array_raw,
+            box=box_array_raw,
+            force=force_array_raw,
+            virial=virial_array_raw,
+            wannier=wannier_array_raw,
+            wannier_not_cvg=wannier_not_converged,
+        )
+
+        del energy_array_raw, coord_array_raw, box_array_raw, volume_array_raw, force_array_raw
+        del virial_array_raw, is_virial, wannier_not_converged, wannier_array_raw, is_wannier
+
+        ## IS IT NEW???
         if not is_periodic:
             arcann_logger.warning(f"System {system_auto} is not periodic.")
             np.savetxt(data_path / "nopbc", np.array([True]), fmt="%s")
@@ -488,14 +475,6 @@ def main(
             > 0
         ):
             arcann_logger.debug("Starting extraction for disturbed...")
-            data_path = (
-                training_path
-                / "data"
-                / (system_auto + "-disturbed_" + padded_curr_iter)
-            )
-            data_path.mkdir(exist_ok=True)
-            (data_path / "set.000").mkdir(exist_ok=True)
-
             energy_array_raw = np.zeros(
                 (
                     system_disturbed_candidates_count
@@ -544,8 +523,8 @@ def main(
             )
 
             # Options
-            is_virial = False
-            is_wannier = False
+            is_virial, virial_array_raw = False, None
+            is_wannier, wannier_array_raw = False, None
 
             # Wannier
             wannier_not_converged = ["#Indexes start at 0\n"]
@@ -612,20 +591,6 @@ def main(
                             lammps_data, dtype=np.int64
                         ).flatten()
                         type_atom_array = type_atom_array - 1
-                        np.savetxt(
-                            f"{system_path}/type.raw",
-                            type_atom_array,
-                            delimiter=" ",
-                            newline=" ",
-                            fmt="%d",
-                        )
-                        np.savetxt(
-                            f"{data_path}/type.raw",
-                            type_atom_array,
-                            delimiter=" ",
-                            newline=" ",
-                            fmt="%d",
-                        )
 
                         # Get the CP2K/Orca version
                         if labeling_program == "cp2k":
@@ -839,39 +804,36 @@ def main(
                 labeling_step_path,
                 system_disturbed_candidates_not_skipped_counter,
             )
-
+            
+            # Save the data in the system path as raw files
+            np.savetxt(system_path / "type.raw", type_atom_array, delimiter=" ", newline=" ", fmt="%d",)
             np.savetxt(system_path / "energy.raw", energy_array_raw, delimiter=" ")
-            np.save(data_path / "set.000" / "energy", energy_array_raw)
-            del energy_array_raw
-
             np.savetxt(system_path / "coord.raw", coord_array_raw, delimiter=" ")
-            np.save(data_path / "set.000" / "coord", coord_array_raw)
-            del coord_array_raw
-
             np.savetxt(system_path / "box.raw", box_array_raw, delimiter=" ")
-            np.save(data_path / "set.000" / "box", box_array_raw)
-            del box_array_raw, volume_array_raw
-
             np.savetxt(system_path / "force.raw", force_array_raw, delimiter=" ")
-            np.save(data_path / "set.000" / "force", force_array_raw)
-            del force_array_raw
-
             if is_virial:
                 np.savetxt(system_path / "virial.raw", virial_array_raw, delimiter=" ")
-                np.save(data_path / "set.000" / "virial", virial_array_raw)
-            del virial_array_raw, is_virial
-
             if is_wannier:
-                np.savetxt(
-                    system_path / "wannier.raw", wannier_array_raw, delimiter=" "
-                )
-                np.save(data_path / "set.000" / "wannier", wannier_array_raw)
-                if len(wannier_not_converged) > 1:
-                    string_list_to_textfile(
-                        data_path / "set.000" / "wannier_not-converged.txt",
-                        wannier_not_converged,
-                    )
-                del wannier_not_converged, wannier_array_raw, is_wannier
+                np.savetxt(system_path / "wannier.raw", wannier_array_raw, delimiter=" ")
+
+            # Add the data in the dataset, will do the split into training/validation in the data dir
+            dataset.add_system_dataset(
+                step="system_disturbed",
+                system_name=system_auto,
+                iteration=padded_curr_iter,
+                type=type_atom_array,
+                energy=energy_array_raw,
+                coord=coord_array_raw,
+                box=box_array_raw,
+                force=force_array_raw,
+                virial=virial_array_raw,
+                wannier=wannier_array_raw,
+                wannier_not_cvg=wannier_not_converged,
+            )
+
+            del energy_array_raw, coord_array_raw, box_array_raw, volume_array_raw, force_array_raw
+            del virial_array_raw, is_virial, wannier_not_converged, wannier_array_raw, is_wannier
+
             arcann_logger.debug("Extraction for disturbed done.")
 
             if not is_periodic:
@@ -889,7 +851,7 @@ def main(
         del output_orca
 
     del system_auto, system_auto_index
-    del system_candidates_count, system_candidates_skipped_count, system_path, data_path
+    del system_candidates_count, system_candidates_skipped_count, system_path
     del indexes, idx, type_atom_array, lammps_data
     del program_version
     del system_disturbed_candidates_count, system_disturbed_candidates_skipped_count
