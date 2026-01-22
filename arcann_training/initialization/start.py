@@ -173,6 +173,17 @@ def main(
     (training_path / f"{padded_curr_iter}-training").mkdir(exist_ok=True)
     check_directory((training_path / f"{padded_curr_iter}-training"))
 
+    # Create the control directory
+    control_path = training_path / "control"
+    control_path.mkdir(exist_ok=True)
+    check_directory(control_path)
+    arcann_logger.debug(f"control_path: {control_path}")
+
+    # DEBUG: Print the JSON files
+    arcann_logger.debug(f"main_json: {main_json}")
+    arcann_logger.debug(f"user_input_json: {user_input_json}")
+    arcann_logger.debug(f"merged_input_json: {merged_input_json}")
+
     try:
         dataset = Dataset(
             training_dir=training_path, 
@@ -185,20 +196,10 @@ def main(
 
     # Populate the dataset with initial data
     dataset.load_dataset(only_init=True)
+    dataset.update_control_file()
 
     arcann_logger.debug(f"initial_dataset_paths: {dataset.training_paths + dataset.validation_paths}")
     arcann_logger.debug(f"dataset_json: {dataset.control_file["initial_datasets"]}")
-
-    # DEBUG: Print the JSON files
-    arcann_logger.debug(f"main_json: {main_json}")
-    arcann_logger.debug(f"user_input_json: {user_input_json}")
-    arcann_logger.debug(f"merged_input_json: {merged_input_json}")
-
-    # Create the control directory
-    control_path = training_path / "control"
-    control_path.mkdir(exist_ok=True)
-    check_directory(control_path)
-    arcann_logger.debug(f"control_path: {control_path}")
 
     # Dump the JSON files (main, initial datasets and merged input)
     arcann_logger.info("-" * 88)
