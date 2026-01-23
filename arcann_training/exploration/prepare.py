@@ -382,7 +382,7 @@ def main(
                 training_path / "user_files" / (system_auto + ".in")
             )
             with (training_path / "user_files" / (system_auto + ".yaml")).open() as f:
-                master_system_sander_emle_yaml = yaml.load(f, Loader=yaml.FullLoader)
+                master_system_sander_emle_yaml = yaml.safe_load(f)
             # Check if the SANDER input ful contains any "plumed" lines
             if any("plumed" in zzz for zzz in master_system_sander_emle_in):
                 plumed[0] = True
