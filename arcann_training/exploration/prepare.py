@@ -121,6 +121,11 @@ def main(
     control_path = training_path / "control"
     main_json = load_json_file((control_path / "config.json"))
 
+    nnp_program: str = main_json["nnp_program"]
+
+    arcann_logger.info(f"Using {nnp_program} as NNP software")
+    arcann_logger.info("-" * 88)
+
     # Load the previous exploration and training JSON
     if curr_iter > 0:
         prev_iter = curr_iter - 1
@@ -220,7 +225,9 @@ def main(
         **exploration_json,
         "atomsk_path": atomsk_bin,
         "user_machine_keyword_exp": user_machine_keyword,
-        "deepmd_model_version": previous_training_json["deepmd_model_version"],
+        f"{nnp_program}_model_version": previous_training_json[
+            f"{nnp_program}_model_version"
+        ],
         "nnp_count": main_json["nnp_count"],
     }
 
@@ -244,11 +251,9 @@ def main(
         walltime_approx_s[exploration_type] = []
 
         job_file_name = (
-            f"job_{exploration_type}-deepmd_explore_{arch_type}_{machine}.sh"
+            f"job_{exploration_type}-{nnp_program}_explore_{arch_type}_{machine}.sh"
         )
-        job_array_file_name = (
-            f"job-array_{exploration_type}-deepmd_explore_{arch_type}_{machine}.sh"
-        )
+        job_array_file_name = f"job-array_{exploration_type}-{nnp_program}_explore_{arch_type}_{machine}.sh"
 
         if (current_path.parent / "user_files" / job_file_name).is_file():
             master_job_file[exploration_type] = textfile_to_string_list(
@@ -292,7 +297,7 @@ def main(
 
     job_array_params_file = {}
     job_array_params_file["lammps"] = [
-        "PATH/_R_DEEPMD_VERSION_/_R_MODEL_FILES_/_R_LAMMPS_IN_FILE_/_R_DATA_FILE_/_R_RERUN_FILE_/_R_PLUMED_FILES_/"
+        f"PATH/_R_{nnp_program.upper()}_VERSION_/_R_MODEL_FILES_/_R_LAMMPS_IN_FILE_/_R_DATA_FILE_/_R_RERUN_FILE_/_R_PLUMED_FILES_/"
     ]
     job_array_params_file["i-PI"] = [
         "PATH/_R_DEEPMD_VERSION_/_R_MODEL_FILES_/_R_INPUT_FILE_/_R_DATA_FILE_/_R_RERUN_FILE_/_R_PLUMED_FILES_/"
@@ -323,7 +328,17 @@ def main(
             f"{system_exploration_type, system_traj_count, system_timestep_ps, system_temperature_K, system_exp_time_ps, system_max_exp_time_ps, system_job_walltime_h, system_print_mult, system_previous_start, system_disturbed_start}"
         )
 
-        plumed = [False, False, False]
+        if nnp_program == "mace" and system_exploration_type != "lammps":
+            arcann_logger.error(
+                f"ArcaNN does not support MACE and {system_exploration_type.upper()}!"
+            )
+            sys.exit(1)
+
+        plumed = [
+            False,
+            False,
+            False,
+        ]  # [bool: flag informing if plumed input files have been found, bool: flag informing if MOVINGRESTRAINTS in input, bool | int: step of moving restraints, otherwise, False]
 
         input_replace_dict = {}
 
@@ -347,8 +362,8 @@ def main(
                 arcann_logger.error(
                     f"No 'run _R_NUMBER_OF_STEPS_' found in the LAMMPS input file: '{training_path / 'user_files' / (system_auto + '.in')}'."
                 )
-                arcann_logger.error(f"Aborting...")
-                return 1
+                arcann_logger.error("Aborting...")
+                sys.exit(1)
             master_system_lammps_in = (
                 master_system_lammps_in[:index_run]
                 + cell_info_lammps
@@ -966,7 +981,7 @@ def main(
                         + "/"
                     )
                     job_array_params_line += (
-                        f"{exploration_json['deepmd_model_version']}" + "/"
+                        f"{exploration_json[f'{nnp_program}_model_version']}" + "/"
                     )
                     job_array_params_line += (
                         str(models_string.replace(" ", '" "')) + "/"
@@ -988,8 +1003,8 @@ def main(
                     # Replace the inputs/variables in the job file
                     job_file = replace_substring_in_string_list(
                         job_file,
-                        "_R_DEEPMD_VERSION_",
-                        f"{exploration_json['deepmd_model_version']}",
+                        f"_R_{nnp_program.upper()}_VERSION_",
+                        f"{exploration_json[f'{nnp_program}_model_version']}",
                     )
                     job_file = replace_substring_in_string_list(
                         job_file,
@@ -1048,7 +1063,7 @@ def main(
 
                     string_list_to_textfile(
                         local_path
-                        / f"job_{system_exploration_type}-deepmd_explore_{arch_type}_{machine}.sh",
+                        / f"job_{system_exploration_type}-{nnp_program}_explore_{arch_type}_{machine}.sh",
                         job_file,
                         read_only=True,
                     )
@@ -1592,13 +1607,13 @@ def main(
 
             string_list_to_textfile(
                 current_path
-                / f"job-array_{exploration_type}-deepmd_explore_{arch_type}_{machine}.sh",
+                / f"job-array_{exploration_type}-{nnp_program}_explore_{arch_type}_{machine}.sh",
                 job_array_file,
                 read_only=True,
             )
             string_list_to_textfile(
                 current_path
-                / f"job-array-params_{exploration_type}-deepmd_explore_{arch_type}_{machine}.lst",
+                / f"job-array-params_{exploration_type}-{nnp_program}_explore_{arch_type}_{machine}.lst",
                 job_array_params_file[exploration_type],
                 read_only=True,
             )
