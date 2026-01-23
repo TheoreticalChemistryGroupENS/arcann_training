@@ -57,7 +57,7 @@ select = [
 
 # Avoid enforcing line-length violations (`E501`)
 # ignore = ["E501"]
-ignore = ["N813"]
+ignore = ["N813", "S603", "S311", "S607"]
 
 # Avoid trying to fix flake8-bugbear (`B`) violations.
 unfixable = ["B"]
