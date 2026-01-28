@@ -1033,23 +1033,10 @@ def main(
                         job_file, ' "_R_RERUN_FILE_"', ""
                     )
                     if plumed[0] == 1:
-                        for n, it_plumed_input in enumerate(plumed_input):
-                            if n == 0:
-                                job_file = replace_substring_in_string_list(
-                                    job_file, "_R_PLUMED_FILES_", it_plumed_input
-                                )
-                                job_array_params_line += it_plumed_input
-                            else:
-                                job_file = replace_substring_in_string_list(
-                                    job_file,
-                                    prev_plumed,
-                                    prev_plumed + '" "' + it_plumed_input,
-                                )
-                                job_array_params_line = job_array_params_line.replace(
-                                    prev_plumed, prev_plumed + '" "' + it_plumed_input
-                                )
-                            prev_plumed = it_plumed_input
-                        del n, it_plumed_input, prev_plumed
+                        job_file = replace_substring_in_string_list(
+                            job_file, "_R_PLUMED_FILES_", '" "'.join(plumed_input)
+                        )
+                        job_array_params_line += '" "'.join(plumed_input)
                     else:
                         job_file = replace_substring_in_string_list(
                             job_file, ' "_R_PLUMED_FILES_"', ""
@@ -1301,23 +1288,10 @@ def main(
                         job_file, "_R_EMLE_MODEL_FILE_", f"{system_auto}.mat"
                     )
                     if plumed[0] == 1:
-                        for n, it_plumed_input in enumerate(plumed_input):
-                            if n == 0:
-                                job_file = replace_substring_in_string_list(
-                                    job_file, "_R_PLUMED_FILES_", it_plumed_input
-                                )
-                                job_array_params_line += it_plumed_input
-                            else:
-                                job_file = replace_substring_in_string_list(
-                                    job_file,
-                                    prev_plumed,
-                                    prev_plumed + '" "' + it_plumed_input,
-                                )
-                                job_array_params_line = job_array_params_line.replace(
-                                    prev_plumed, prev_plumed + '" "' + it_plumed_input
-                                )
-                            prev_plumed = it_plumed_input
-                        del n, it_plumed_input, prev_plumed
+                        job_file = replace_substring_in_string_list(
+                            job_file, "_R_PLUMED_FILES_", '" "'.join(plumed_input)
+                        )
+                        job_array_params_line += '" "'.join(plumed_input)
                     else:
                         job_file = replace_substring_in_string_list(
                             job_file, ' "_R_PLUMED_FILES_"', ""
@@ -1472,19 +1446,10 @@ def main(
                     )
 
                     if plumed[0] == 1:
-                        for n, it_plumed_input in enumerate(plumed_input):
-                            if n == 0:
-                                job_file = replace_substring_in_string_list(
-                                    job_file, "_R_PLUMED_FILES_", it_plumed_input
-                                )
-                            else:
-                                job_file = replace_substring_in_string_list(
-                                    job_file,
-                                    prev_plumed,
-                                    prev_plumed + '" "' + it_plumed_input,
-                                )
-                            prev_plumed = it_plumed_input
-                        del n, it_plumed_input, prev_plumed
+                        job_file = replace_substring_in_string_list(
+                            job_file, "_R_PLUMED_FILES_", '" "'.join(plumed_input)
+                        )
+                        job_array_params_line += '" "'.join(plumed_input)
                     else:
                         job_file = replace_substring_in_string_list(
                             job_file, ' "_R_PLUMED_FILES_"', ""
