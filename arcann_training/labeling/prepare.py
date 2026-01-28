@@ -522,12 +522,13 @@ def main(
             if batch_number % (machine_max_array_size // system_machine_max_jobs) == 0:
                 block_start += effective_capacity_increment
 
+        #Check if we have one or two input job files:
+        labeling_json["two_steps_labeling"] = (training_path / "user_files" / f"2_{system_auto}_labeling_XXXXX_{machine}.inp").is_file()
+        two_steps = labeling_json["two_steps_labeling"]
+        first_job_input = training_path / "user_files" / f"1_{system_auto}_labeling_XXXXX_{machine}.inp" if two_steps else training_path / "user_files" / f"{system_auto}_labeling_XXXXX_{machine}.inp"
+
         # Labeling input first job
-        system_first_job_input = textfile_to_string_list(
-            training_path
-            / "user_files"
-            / f"1_{system_auto}_labeling_XXXXX_{machine}.inp"
-        )
+        system_first_job_input = textfile_to_string_list(first_job_input)
         system_first_job_input = replace_substring_in_string_list(
             system_first_job_input,
             "_R_WALLTIME_",
@@ -540,7 +541,7 @@ def main(
         )
 
         # Labeling input second job
-        if labeling_program == "cp2k":
+        if labeling_program == "cp2k" and two_steps:
             system_second_job_input = textfile_to_string_list(
                 training_path
                 / "user_files"
@@ -614,7 +615,7 @@ def main(
             )
             del first_job_input_t
 
-            if labeling_program == "cp2k":
+            if labeling_program == "cp2k" and two_steps:
                 second_job_input_t = deepcopy(system_second_job_input)
                 second_job_input_t = replace_substring_in_string_list(
                     second_job_input_t, "_R_PADDEDSTEP_", padded_labeling_step
@@ -666,7 +667,7 @@ def main(
             job_array_params_line = f":{system_auto}:"
             job_array_params_line += f"{padded_labeling_step}:"
             job_array_params_line += f"1_labeling_{padded_labeling_step}:"
-            job_array_params_line += f"2_labeling_{padded_labeling_step}:"
+            job_array_params_line += f"2_labeling_{padded_labeling_step}:" if two_steps else ""
             job_array_params_line += f"labeling_{padded_labeling_step}-SCF.wfn:"
             job_array_params_line += f"labeling_{padded_labeling_step}.xyz:"
             job_array_params_line += f"{system_nb_nodes}:"
@@ -741,7 +742,7 @@ def main(
                     first_job_input_t,
                 )
                 del first_job_input_t
-                if labeling_program == "cp2k":
+                if labeling_program == "cp2k" and two_steps:
                     second_job_input_t = deepcopy(system_second_job_input)
                     second_job_input_t = replace_substring_in_string_list(
                         second_job_input_t, "_R_PADDEDSTEP_", padded_labeling_step
@@ -780,7 +781,7 @@ def main(
                 )
                 del job_file_t
 
-                if np.any(cell_info) == None:
+                if np.any(cell_info) is None:
                     cell_info = np.array([])
                 write_xyz_frame(
                     labeling_step_path / f"labeling_{padded_labeling_step}.xyz",
@@ -795,7 +796,7 @@ def main(
                 job_array_params_line = f":{system_auto}:"
                 job_array_params_line += f"{padded_labeling_step}:"
                 job_array_params_line += f"1_labeling_{padded_labeling_step}:"
-                job_array_params_line += f"2_labeling_{padded_labeling_step}:"
+                job_array_params_line += f"2_labeling_{padded_labeling_step}:" if two_steps else ""
                 job_array_params_line += f"labeling_{padded_labeling_step}-SCF.wfn:"
                 job_array_params_line += f"labeling_{padded_labeling_step}.xyz:"
                 job_array_params_line += f"{system_nb_nodes}:"

@@ -217,9 +217,11 @@ def main(
 
                     # Get the CP2K/Orca version
                     if labeling_program == "cp2k":
+                        step_nb = 2 if labeling_json["two_steps_labeling"] else 1
+                        arcann_logger.debug(f"step_nb: {step_nb}")
                         output_cp2k = textfile_to_string_list(
                             labeling_step_path
-                            / f"2_labeling_{padded_labeling_step}.out"
+                            / f"{step_nb}_labeling_{padded_labeling_step}.out"
                         )
                         output_cp2k = [
                             _ for _ in output_cp2k if "CP2K| version string:" in _
@@ -249,11 +251,12 @@ def main(
                 del coordinate_xyz
 
                 if labeling_program == "cp2k":
-
+                    
+                    step_nb = 2 if labeling_json["two_steps_labeling"] else 1 
                     # Energy
                     energy_cp2k = textfile_to_string_list(
                         labeling_step_path
-                        / f"2_labeling_{padded_labeling_step}-Force_Eval.fe"
+                        / f"{step_nb}_labeling_{padded_labeling_step}-Force_Eval.fe"
                     )
                     energy_array_raw = extract_and_convert_energy(
                         energy_cp2k,
@@ -286,7 +289,7 @@ def main(
                     # Forces
                     force_cp2k = textfile_to_string_list(
                         labeling_step_path
-                        / f"2_labeling_{padded_labeling_step}-Forces.for"
+                        / f"{step_nb}_labeling_{padded_labeling_step}-Forces.for"
                     )
                     force_array_raw = extract_and_convert_forces(
                         force_cp2k,
@@ -301,11 +304,11 @@ def main(
                     # Virial
                     if (
                         labeling_step_path
-                        / f"2_labeling_{padded_labeling_step}-Stress_Tensor.st"
+                        / f"{step_nb}_labeling_{padded_labeling_step}-Stress_Tensor.st"
                     ).is_file():
                         stress_cp2k = textfile_to_string_list(
                             labeling_step_path
-                            / f"2_labeling_{padded_labeling_step}-Stress_Tensor.st"
+                            / f"{step_nb}_labeling_{padded_labeling_step}-Stress_Tensor.st"
                         )
                         virial_array_raw, is_virial = extract_and_convert_virial(
                             stress_cp2k,
@@ -321,15 +324,15 @@ def main(
                     # Wannier
                     if (
                         labeling_step_path
-                        / f"2_labeling_{padded_labeling_step}-Wannier.xyz"
+                        / f"{step_nb}_labeling_{padded_labeling_step}-Wannier.xyz"
                     ).is_file():
                         output_cp2k = textfile_to_string_list(
                             labeling_step_path
-                            / f"2_labeling_{padded_labeling_step}.out"
+                            / f"{step_nb}_labeling_{padded_labeling_step}.out"
                         )
                         wannier_xyz = textfile_to_string_list(
                             labeling_step_path
-                            / f"2_labeling_{padded_labeling_step}-Wannier.xyz"
+                            / f"{step_nb}_labeling_{padded_labeling_step}-Wannier.xyz"
                         )
                         if system_candidates_not_skipped_counter == 1:
                             wannier_array_raw = np.zeros(
