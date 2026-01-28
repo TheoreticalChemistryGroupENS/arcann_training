@@ -49,7 +49,7 @@ class DataEnsemble():
         self,
         path: str | Path,
         step: Literal["initial", "extra", "system_auto", "system_adhoc", "system_disturbed"],
-        training_type: Literal["training", "validation"],
+        training_type: Literal["training", "validation", "test"],
         system_name: str | None,
         iteration: int | None,
         data_format: Literal["extxyz", "set.000"],
@@ -103,7 +103,7 @@ class Set000Ensemble(DataEnsemble):
     def __init__(self, path, step, training_type, system_name, iteration, data_format, properties):
         super().__init__(path, step, training_type, system_name, iteration, data_format, properties)
         assert data_format == "set.000", "Data type must be 'set.000' for Set000Ensemble"
-
+        arcann_logger.debug(f"Initializing Set000Ensemble at path: {self.path}")
         self.size = self.get_size()
 
     def check_format(self):
@@ -117,7 +117,9 @@ class Set000Ensemble(DataEnsemble):
             check_file_existence(set_path / (data_type + ".npy"))
 
     def get_size(self):
-        return np.load(self.path / "set.000" / "box.npy").shape[0]
+        if self.path / "set.000" / "box.npy":
+            return np.load(self.path / "set.000" / "box.npy").shape[0]
+        return None
     
     def write_from_raw_arrays(
         self,
@@ -129,9 +131,11 @@ class Set000Ensemble(DataEnsemble):
         virial: np.ndarray | None,
         wannier: np.ndarray | None,
         wannier_not_cvg: list,
+        is_periodic: bool,
     ):
         """From the raw files (type.raw, energy.raw, coord.raw, box.raw, force.raw), write the set.000 files"""
         np.savetxt(self.path / "type.raw", type, fmt="%s")
+        (self.path / "set.000").mkdir(parents=True, exist_ok=True)
         np.save(self.path / "set.000" / "box.npy", box)
         np.save(self.path / "set.000" / "coord.npy", coord)
         np.save(self.path / "set.000" / "energy.npy", energy)
@@ -142,7 +146,8 @@ class Set000Ensemble(DataEnsemble):
             np.save(self.path / "set.000" / "wannier.npy", wannier)
         if len(wannier_not_cvg) > 1:
             string_list_to_textfile(self.path / "set.000" / "wannier-not-converged.txt", wannier_not_cvg)
-
+        if not is_periodic:
+            np.savetxt(self.path / "nopbc", np.array([True]), fmt="%s")
 
 class ExtXYZEnsemble(DataEnsemble):
     """Define a data ensemble in the extxyz format"""
@@ -331,8 +336,10 @@ class Dataset():
         virial: np.ndarray | None,
         wannier: np.ndarray | None,
         wannier_not_cvg: list | None,
+        is_periodic: bool = True,
     ) -> None:
-        """Add a new system dataset to the dataset"""
+        """Add a new system dataset to the dataset.
+        Create two data ensembles (training and validation) from the provided raw arrays."""
         if step == "system_disturbed":
             system_name += "-disturbed"
         training_dir = self.dataset_dir / f"{system_name}_{iteration}"
@@ -345,6 +352,7 @@ class Dataset():
             "system_name": system_name,
             "iteration": int(iteration),
             "data_format": self.data_format,
+            "properties": self.config_file["properties"],
         }
         training_data_ensemble = self.data_ensemble(path=training_dir, training_type="training", **common_kwargs)
         validation_data_ensemble = self.data_ensemble(path=validation_dir, training_type="validation", **common_kwargs)
@@ -355,7 +363,6 @@ class Dataset():
         train_idx = indices[:split_idx]
         val_idx = indices[split_idx:]
         arrays = {
-            "type": type,
             "energy": energy,
             "coord": coord,
             "box": box,
@@ -363,15 +370,25 @@ class Dataset():
             "virial": virial,
             "wannier": wannier,
         }
-        train_arrays = {name: arr[train_idx] if arr else None for name,arr in arrays.items()}
-        val_arrays   = {name: arr[val_idx] if arr else None for name,arr in arrays.items()}
+        train_arrays = {name: arr[train_idx] if arr is not None else None for name,arr in arrays.items()}
+        val_arrays   = {name: arr[val_idx] if arr is not None else None for name,arr in arrays.items()}
         #TODO probably these wannier not cvg should be splitted too but i dunno how
-        training_data_ensemble.write_from_raw_files(**train_arrays, wannier_not_cvg=wannier_not_cvg)
-        validation_data_ensemble.write_from_raw_files(**val_arrays, wannier_not_cvg=wannier_not_cvg)
+        training_data_ensemble.write_from_raw_arrays(type=type, **train_arrays, wannier_not_cvg=wannier_not_cvg, is_periodic=is_periodic)
+        validation_data_ensemble.write_from_raw_arrays(type=type, **val_arrays, wannier_not_cvg=wannier_not_cvg, is_periodic=is_periodic)
 
+        self.control_file.setdefault("intermediate_datasets", {})
+        self.control_file["intermediate_datasets"] |= {
+            training_dir.name: training_data_ensemble.size,
+            validation_dir.name: validation_data_ensemble.size,
+        }
+
+        #TODO at some point, we should add this new data ensemble that we creating to the dict so that they are 
+        #saved to the control file as system dataset and read at the next iteration without having to check if
+        #they are new of not
 
     def update_control_file(self):
-        #Write the new data ensembles to the control file and save it
+        #Write the LOADED new data ensembles to the control file and save it
+        # Be careful to not use that without having loaded the dataset first!!
         self.control_file["initial_datasets"] = {
             **{key: dataset.size for key, dataset in self.training_dataset.items() if dataset.step == "initial"},
             **{key: dataset.size for key, dataset in self.validation_dataset.items() if dataset.step == "initial"},
@@ -391,6 +408,9 @@ class Dataset():
         self.control_file["used_datasets"]["training"] = {key: dataset.to_dict() for key, dataset in self.training_dataset.items()}
         self.control_file["used_datasets"]["validation"] = {key: dataset.to_dict() for key, dataset in self.validation_dataset.items()}
 
+        self.save_control_file()
+
+    def save_control_file(self):
         self.control_file = {key: self.control_file[key] for key in sorted(self.control_file.keys())}
 
         write_json_file(

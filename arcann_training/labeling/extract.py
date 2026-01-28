@@ -21,7 +21,7 @@ import numpy as np
 # Local imports
 from arcann_training.common.dataset import Dataset
 from arcann_training.common.json import load_json_file, write_json_file
-from arcann_training.common.list import textfile_to_string_list, string_list_to_textfile
+from arcann_training.common.list import textfile_to_string_list
 from arcann_training.common.filesystem import check_file_existence
 from arcann_training.common.parsing_labeling import (
     extract_and_convert_energy,
@@ -452,15 +452,14 @@ def main(
             virial=virial_array_raw,
             wannier=wannier_array_raw,
             wannier_not_cvg=wannier_not_converged,
+            is_periodic=is_periodic,
         )
 
         del energy_array_raw, coord_array_raw, box_array_raw, volume_array_raw, force_array_raw
         del virial_array_raw, is_virial, wannier_not_converged, wannier_array_raw, is_wannier
 
-        ## IS IT NEW???
         if not is_periodic:
             arcann_logger.warning(f"System {system_auto} is not periodic.")
-            np.savetxt(data_path / "nopbc", np.array([True]), fmt="%s")
         del is_periodic
 
         arcann_logger.debug("Extraction done.")
@@ -832,6 +831,7 @@ def main(
                 virial=virial_array_raw,
                 wannier=wannier_array_raw,
                 wannier_not_cvg=wannier_not_converged,
+                is_periodic=is_periodic,
             )
 
             del energy_array_raw, coord_array_raw, box_array_raw, volume_array_raw, force_array_raw
@@ -841,7 +841,6 @@ def main(
 
             if not is_periodic:
                 arcann_logger.warning(f"System {system_auto} is not periodic.")
-                np.savetxt(data_path / "nopbc", np.array([True]), fmt="%s")
             del is_periodic
 
         arcann_logger.info(
@@ -865,6 +864,7 @@ def main(
 
     # Dump the JSON files (exploration JSONN)
     write_json_file(labeling_json, (control_path / f"labeling_{padded_curr_iter}.json"))
+    dataset.save_control_file()
 
     # End
     arcann_logger.info("-" * 88)
@@ -875,7 +875,7 @@ def main(
     # Cleaning
     del current_path, control_path, training_path
     del user_input_json_filename
-    del main_json, labeling_json
+    del main_json, labeling_json, dataset
     del curr_iter, padded_curr_iter
 
     arcann_logger.debug("LOCAL")
