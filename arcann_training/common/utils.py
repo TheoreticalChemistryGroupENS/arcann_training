@@ -23,6 +23,7 @@ natural_sort_key(s: str) -> List[Union[int, str]]
 # Standard library modules
 import logging
 import re
+from functools import wraps
 from typing import Any, Callable, List, Union
 
 
@@ -48,6 +49,7 @@ def catch_errors_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
     """
     logger = logging.getLogger("ArcaNN")
 
+    @wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
