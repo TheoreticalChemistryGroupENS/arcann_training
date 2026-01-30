@@ -50,6 +50,7 @@ from arcann_training.common.xml import (
     xml_to_string_list,
 )
 from arcann_training.exploration.utils import (
+    LAMMPSInputHandler,
     create_models_list,
     generate_input_exploration_json,
     generate_starting_points,
@@ -349,31 +350,13 @@ def main(
                 training_path / "user_files" / (system_auto + ".in")
             )
 
-            # Add cell info to the LAMMPS input file
-            index_run = next(
-                (
-                    i
-                    for i, item in enumerate(master_system_lammps_in)
-                    if item.startswith("run _R_NUMBER_OF_STEPS_")
-                ),
-                -1,
+            lmp_input_handler = LAMMPSInputHandler(
+                training_path / "user_files" / (system_auto + ".in")
             )
-            if index_run == -1:
-                arcann_logger.error(
-                    f"No 'run _R_NUMBER_OF_STEPS_' found in the LAMMPS input file: '{training_path / 'user_files' / (system_auto + '.in')}'."
-                )
-                arcann_logger.error("Aborting...")
-                sys.exit(1)
-            master_system_lammps_in = (
-                master_system_lammps_in[:index_run]
-                + cell_info_lammps
-                + master_system_lammps_in[index_run:]
-            )
-            del index_run
 
-            # Check if the LAMMPS input file contains any "plumed" lines
-            if any("plumed" in zzz for zzz in master_system_lammps_in):
-                plumed[0] = True
+            main_json["pair_style"] = lmp_input_handler.lmp_pair.value
+
+            plumed[0] = lmp_input_handler.has_plumed()
         # END LAMMPS
 
         # SANDER-EMLE
