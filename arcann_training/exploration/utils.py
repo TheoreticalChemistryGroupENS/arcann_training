@@ -45,17 +45,18 @@ update_system_nb_steps_factor(previous_json: Dict, system_auto_index: int) -> in
 
 # Standard library modules
 import logging
-from pathlib import Path
-from copy import deepcopy
-from typing import Dict, List, Tuple, Union
 import subprocess
+from copy import deepcopy
+from pathlib import Path
+from typing import Dict, List, Tuple, Union
 
 # Third-party modules
 import numpy as np
 
+from arcann_training.common.json import convert_control_to_input
+
 # Local imports
 from arcann_training.common.utils import catch_errors_decorator
-from arcann_training.common.json import convert_control_to_input
 
 
 # TODO: Add tests for this function
@@ -99,7 +100,6 @@ def generate_input_exploration_json(
     ValueError
         If the length of the value list is not equal to the system count.
     """
-
     system_count = len(main_json.get("systems_auto", []))
 
     previous_input_json = convert_control_to_input(previous_json, main_json)
@@ -120,7 +120,7 @@ def generate_input_exploration_json(
         default_used = False
         if key in user_input_json:
             if (
-                user_input_json[key] == "default" or user_input_json[key] == None
+                user_input_json[key] == "default" or user_input_json[key] is None
             ) and key in default_input_json:
                 value = default_input_json[key]
                 default_used = True
@@ -230,7 +230,9 @@ def generate_input_exploration_json(
 
 # TODO: Add tests for this function
 @catch_errors_decorator
-def get_system_exploration(merged_input_json: Dict, system_auto_index: int) -> Tuple[
+def get_system_exploration(
+    merged_input_json: Dict, system_auto_index: int
+) -> Tuple[
     str,
     Union[float, int],
     Union[float, int],
@@ -277,20 +279,21 @@ def get_system_exploration(merged_input_json: Dict, system_auto_index: int) -> T
         - disturbed_start : bool
             Whether to start exploration from a disturbed minimum.
     """
-    system_values = []
-    for key in [
-        "exploration_type",
-        "traj_count",
-        "timestep_ps",
-        "temperature_K",
-        "exp_time_ps",
-        "max_exp_time_ps",
-        "job_walltime_h",
-        "print_interval_mult",
-        "previous_start",
-        "disturbed_start",
-    ]:
-        system_values.append(merged_input_json[key][system_auto_index])
+    system_values = [
+        merged_input_json[key][system_auto_index]
+        for key in (
+            "exploration_type",
+            "traj_count",
+            "timestep_ps",
+            "temperature_K",
+            "exp_time_ps",
+            "max_exp_time_ps",
+            "job_walltime_h",
+            "print_interval_mult",
+            "previous_start",
+            "disturbed_start",
+        )
+    ]
 
     return tuple(system_values)
 
@@ -336,7 +339,6 @@ def generate_input_exploration_deviation_json(
     ValueError
         If the length of the value list is not equal to the system count.
     """
-
     system_count = len(main_json.get("systems_auto", []))
 
     previous_input_json = convert_control_to_input(previous_json, main_json)
@@ -352,7 +354,7 @@ def generate_input_exploration_deviation_json(
         default_used = False
         if key in user_input_json:
             if (
-                user_input_json[key] == "default" or user_input_json[key] == None
+                user_input_json[key] == "default" or user_input_json[key] is None
             ) and key in default_input_json:
                 value = default_input_json[key]
                 default_used = True
@@ -398,7 +400,9 @@ def generate_input_exploration_deviation_json(
 
 # TODO: Add tests for this function
 @catch_errors_decorator
-def get_system_deviation(merged_input_json: Dict, system_auto_index: int) -> Tuple[
+def get_system_deviation(
+    merged_input_json: Dict, system_auto_index: int
+) -> Tuple[
     Union[float, int],
     Union[float, int],
     Union[float, int],
@@ -425,15 +429,17 @@ def get_system_deviation(merged_input_json: Dict, system_auto_index: int) -> Tup
         - Sigma high limit : float
         - Ignore first x ps : float
     """
-    system_values = []
-    for key in [
-        "max_candidates",
-        "sigma_low",
-        "sigma_high",
-        "sigma_high_limit",
-        "ignore_first_x_ps",
-    ]:
-        system_values.append(merged_input_json[key][system_auto_index])
+    system_values = [
+        merged_input_json[key][system_auto_index]
+        for key in (
+            "max_candidates",
+            "sigma_low",
+            "sigma_high",
+            "sigma_high_limit",
+            "ignore_first_x_ps",
+        )
+    ]
+
     return tuple(system_values)
 
 
@@ -478,7 +484,6 @@ def generate_input_exploration_disturbed_json(
     ValueError
         If the length of the value list is not equal to the system count.
     """
-
     system_count = len(main_json.get("systems_auto", []))
 
     previous_input_json = convert_control_to_input(previous_json, main_json)
@@ -493,7 +498,7 @@ def generate_input_exploration_disturbed_json(
         default_used = False
         if key in user_input_json:
             if (
-                user_input_json[key] == "default" or user_input_json[key] == None
+                user_input_json[key] == "default" or user_input_json[key] is None
             ) and key in default_input_json:
                 value = default_input_json[key]
                 default_used = True
@@ -573,7 +578,9 @@ def generate_input_exploration_disturbed_json(
 
 # TODO: Add tests for this function
 @catch_errors_decorator
-def get_system_disturb(merged_input_json: Dict, system_auto_index: int) -> Tuple[
+def get_system_disturb(
+    merged_input_json: Dict, system_auto_index: int
+) -> Tuple[
     Union[float, int],
     Union[float, int],
     List[int],
@@ -596,14 +603,16 @@ def get_system_disturb(merged_input_json: Dict, system_auto_index: int) -> Tuple
         - disturbed_candidate_value : float
         - disturbed_candidate_indexes : float
     """
-    system_values = []
-    for key in [
-        "disturbed_start_value",
-        "disturbed_start_indexes",
-        "disturbed_candidate_value",
-        "disturbed_candidate_indexes",
-    ]:
-        system_values.append(merged_input_json[key][system_auto_index])
+    system_values = [
+        merged_input_json[key][system_auto_index]
+        for key in (
+            "disturbed_start_value",
+            "disturbed_start_indexes",
+            "disturbed_candidate_value",
+            "disturbed_candidate_indexes",
+        )
+    ]
+
     return tuple(system_values)
 
 
@@ -765,7 +774,6 @@ def create_models_list(
     Tuple[List[str], str]
         A tuple containing the list of model file names, and a string of space-separated model file names.
     """
-
     # Generate list of NNP model indices and reorder based on current model to propagate
     list_nnp = [zzz for zzz in range(1, main_json["nnp_count"] + 1)]
     reorder_nnp_list = (
