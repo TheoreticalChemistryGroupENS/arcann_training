@@ -3,7 +3,9 @@
     {
         "systems_auto": [""],
         "nnp_count": 3,
-        "nnp_program": "deepmd"
+        "nnp_program": "deepmd",
+        "validation/training_split": 0.2,
+        "data_format": "set.000"
     },
     "training":
     {
