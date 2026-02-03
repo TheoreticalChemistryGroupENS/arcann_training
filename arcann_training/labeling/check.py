@@ -517,7 +517,7 @@ def main(
     ):
         labeling_json["is_checked"] = True
     else:
-        arcann_logger.error(f"We did not reach the expected number of labeled data: expected {candidates_expected_count}, got {candidates_step_count + candidates_skipped_count}.")
+        arcann_logger.error(f"We did not reach the expected number of labeled data: expected {candidates_expected_count}, got {candidates_step_count[0] + candidates_skipped_count}.")
 
     del candidates_expected_count, candidates_skipped_count, candidates_step_count
 
