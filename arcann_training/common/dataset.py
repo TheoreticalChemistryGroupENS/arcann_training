@@ -102,8 +102,8 @@ class Set000Ensemble(DataEnsemble):
     """Define a data ensemble in the set.000 format"""
     def __init__(self, path, step, training_type, system_name, iteration, data_format, properties):
         super().__init__(path, step, training_type, system_name, iteration, data_format, properties)
-        assert data_format == "set.000", "Data type must be 'set.000' for Set000Ensemble"
-        arcann_logger.debug(f"Initializing Set000Ensemble at path: {self.path}")
+        if data_format != "set.000":
+            raise ValueError("Data type must be 'set.000' for Set000Ensemble")
         self.size = self.get_size()
 
     def check_format(self):
@@ -116,8 +116,8 @@ class Set000Ensemble(DataEnsemble):
         for data_type in ["box", "coord", "energy", "force"]:
             check_file_existence(set_path / (data_type + ".npy"))
 
-    def get_size(self):
-        if self.path / "set.000" / "box.npy":
+    def get_size(self) -> int | None:
+        if (self.path / "set.000" / "box.npy").is_file():
             return np.load(self.path / "set.000" / "box.npy").shape[0]
         return None
     
@@ -268,6 +268,8 @@ class Dataset():
                 elif not only_init:
                     #case of system datasets
                     system_name, iteration = datadir.name.rsplit("_", 1)
+                    system_name = system_name.removesuffix("_valid")
+                    arcann_logger.debug(f"Loading dataset from system {system_name} at iteration {iteration} from {datadir.name}")
                     iteration = int(iteration)
                     if system_name in self.config_file["systems_auto"]:
                         step = "system_auto"
@@ -297,7 +299,8 @@ class Dataset():
                         self.training_dataset[datadir.name] = self.data_ensemble(
                             path=datadir, step=step, training_type="training", system_name=system_name, iteration=iteration, **common_kwargs
                         )
-
+        self.training_paths = list(self.training_dataset.keys())
+        self.validation_paths = list(self.validation_dataset.keys())
         return system_count, system_val_count, adhoc_count, adhoc_val_count
 
     def check_dataset(self) -> None:
@@ -307,8 +310,10 @@ class Dataset():
         for dataset in self.validation_dataset.values():
             dataset.check_format()
         
-        assert len(self.training_dataset) == len(self.training_paths), "Mismatch between training dataset and training paths"
-        assert len(self.validation_dataset) == len(self.validation_paths), "Mismatch between validation dataset and validation paths"
+        if len(self.training_dataset) != len(self.training_paths):
+            raise ValueError("Mismatch between training dataset and training paths")
+        if len(self.validation_dataset) != len(self.validation_paths):
+            raise ValueError("Mismatch between validation dataset and validation paths")
 
     def remove_datasets(self, init_dataset:bool = True):
         if init_dataset:
@@ -412,7 +417,7 @@ class Dataset():
 
     def save_control_file(self):
         self.control_file = {key: self.control_file[key] for key in sorted(self.control_file.keys())}
-
+        self.control_file["system_datasets"] = {key: self.control_file["system_datasets"][key] for key in sorted(self.control_file["system_datasets"].keys())}
         write_json_file(
             json_dict=self.control_file,
             file_path=self.dataset_dir.parent / "control" / "dataset.json",
