@@ -141,8 +141,8 @@ def main(
         else:
             previous_exploration_json = {}
     else:
-        previous_training_json = {}
-        previous_exploration_json = {}
+        arcann_logger.error("Run training first before the first exploration phase!")
+        sys.exit(1)
 
     arcann_logger.debug(f"previous_training_json: {previous_training_json}")
     arcann_logger.debug(f"previous_exploration_json: {previous_exploration_json}")
