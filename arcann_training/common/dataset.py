@@ -10,13 +10,16 @@ Last modified: 2025/12/19
 """
 
 import logging
-import numpy as np
 from pathlib import Path
 from typing import Dict, Literal, Union
 
+import ase
+import numpy as np
+from ase.io.extxyz import read_extxyz, write_extxyz
+
 from arcann_training.common.filesystem import check_directory, check_file_existence
 from arcann_training.common.json import load_json_file, write_json_file
-from arcann_training.common.list import string_list_to_textfile
+from arcann_training.common.list import string_list_to_textfile, textfile_to_string_list
 from arcann_training.initialization.utils import check_typeraw_properties
 
 arcann_logger = logging.getLogger("ArcaNN")
@@ -67,6 +70,17 @@ class DataEnsemble():
 
         self.size = None 
 
+        # proper data
+        self.type = None
+        self.box = None
+        self.coord = None
+        self.energy = None
+        self.force = None
+        self.virial = None
+        self.wannier = None
+        self.is_periodic = None
+        self.wannier_not_cvg = None
+
     def to_dict(self):
         return {
             "path": str(self.path),
@@ -84,7 +98,10 @@ class DataEnsemble():
     def get_size(self):
         raise NotImplementedError
 
-    def write_from_raw_arrays(
+    def load(self):
+        raise NotImplementedError
+
+    def load_from_raw_arrays(
         self,
         type: np.ndarray,
         energy: np.ndarray,
@@ -96,7 +113,9 @@ class DataEnsemble():
         wannier_not_cvg: list,
     ):
         raise NotImplementedError
-        
+
+    def write(self):
+        raise NotImplementedError
 
 class Set000Ensemble(DataEnsemble):
     """Define a data ensemble in the set.000 format"""
@@ -106,7 +125,7 @@ class Set000Ensemble(DataEnsemble):
             raise ValueError("Data type must be 'set.000' for Set000Ensemble")
         self.size = self.get_size()
 
-    def check_format(self):
+    def check_format(self) -> None:
         check_file_existence(self.path / "type.raw")
         # Check the type.raw file against the properties
         check_typeraw_properties(
@@ -120,8 +139,22 @@ class Set000Ensemble(DataEnsemble):
         if (self.path / "set.000" / "box.npy").is_file():
             return np.load(self.path / "set.000" / "box.npy").shape[0]
         return None
-    
-    def write_from_raw_arrays(
+
+    def load(self) -> None:
+        """Load the data of the ensemble in the attributes"""
+        self.check_format()
+        self.type = np.loadtxt(self.path / "type.raw", dtype=int)
+        self.box =  np.load(self.path / "set.000" / "box.npy")
+        self.coord = np.load(self.path / "set.000" / "coord.npy")
+        self.energy = np.load(self.path / "set.000" / "energy.npy")
+        self.force = np.load(self.path / "set.000" / "force.npy")
+        self.virial = np.load(self.path / "set.000" / "virial.npy") if (self.path / "set.000" / "virial.npy").is_file() else None
+        self.wannier = np.load(self.path / "set.000" / "wannier.npy") if (self.path / "set.000" / "wannier.npy").is_file() else None
+        self.is_periodic = not (self.path / "nopbc").is_file()
+        self.wannier_not_cvg = textfile_to_string_list(self.path / "set.000" / "wannier-not-converged.txt") if (self.path / "set.000" / "wannier-not-converged.txt").is_file() else []
+        self.size = self.get_size()
+
+    def load_from_raw_arrays(
         self,
         type: np.ndarray,
         energy: np.ndarray,
@@ -132,22 +165,56 @@ class Set000Ensemble(DataEnsemble):
         wannier: np.ndarray | None,
         wannier_not_cvg: list,
         is_periodic: bool,
-    ):
+    ) -> None:
         """From the raw files (type.raw, energy.raw, coord.raw, box.raw, force.raw), write the set.000 files"""
-        np.savetxt(self.path / "type.raw", type, fmt="%s")
+        self.type = type
+        self.box = box
+        self.coord = coord
+        self.energy = energy
+        self.force = force
+        self.virial = virial
+        self.wannier = wannier
+        self.is_periodic = is_periodic
+        self.wannier_not_cvg = wannier_not_cvg
+        self.size = self.box.shape[0]
+
+    def write(self):
+        np.savetxt(self.path / "type.raw", self.type, fmt="%s")
         (self.path / "set.000").mkdir(parents=True, exist_ok=True)
-        np.save(self.path / "set.000" / "box.npy", box)
-        np.save(self.path / "set.000" / "coord.npy", coord)
-        np.save(self.path / "set.000" / "energy.npy", energy)
-        np.save(self.path / "set.000" / "force.npy", force)
-        if virial:
-            np.save(self.path / "set.000" / "virial.npy", virial)
-        if wannier:
-            np.save(self.path / "set.000" / "wannier.npy", wannier)
-        if len(wannier_not_cvg) > 1:
-            string_list_to_textfile(self.path / "set.000" / "wannier-not-converged.txt", wannier_not_cvg)
-        if not is_periodic:
-            np.savetxt(self.path / "nopbc", np.array([True]), fmt="%s")
+        np.save(self.path / "set.000" / "box.npy", self.box)
+        np.save(self.path / "set.000" / "coord.npy", self.coord)
+        np.save(self.path / "set.000" / "energy.npy", self.energy)
+        np.save(self.path / "set.000" / "force.npy", self.force)
+        if self.virial:
+            np.save(self.path / "set.000" / "virial.npy", self.virial)
+        if self.wannier:
+            np.save(self.path / "set.000" / "wannier.npy", self.wannier)      
+        if self.is_periodic is not None and not self.is_periodic:
+            np.savetxt(self.path / "nopbc", np.array([True]), fmt="%s") 
+        if len(self.wannier_not_cvg) > 1:
+            string_list_to_textfile(self.path / "set.000" / "wannier-not-converged.txt", self.wannier_not_cvg)
+
+
+    def to_extxyz(self) -> Dict[str, np.ndarray | list]:
+        """Convert the data into extxyz format and return the arrays"""
+        elements = [self.properties[tp] for tp in self.type]
+        frames = []
+        for i in range(self.size):
+            frame = ase.Atoms(
+                symbols=elements,
+                positions=self.coord[i].rechape(-1, 3),
+                cell=self.box[i].reshape(3, 3),
+                pbc = self.is_periodic,
+            )
+            frame.info["energy"] = float(self.energy[i])
+            frame.arrays["force"] = self.force[i].reshape(-1, 3)
+            if self.virial is not None:
+                frame.info["virial"] = self.virial[i].reshape(3, 3)
+            if self.wannier is not None:
+                frame.info["wannier"] = self.wannier[i].reshape(len(elements), 3)
+            frames.append(frame)
+
+    
 
 class ExtXYZEnsemble(DataEnsemble):
     """Define a data ensemble in the extxyz format"""
