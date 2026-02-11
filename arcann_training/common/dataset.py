@@ -206,8 +206,8 @@ class Set000Ensemble(DataEnsemble):
                 cell=self.box[i].reshape(3, 3),
                 pbc = self.is_periodic,
             )
-            frame.info["energy"] = np.array([float(self.energy[i])])
-            frame.arrays["force"] = self.force[i].reshape(-1, 3)
+            frame.info["REF_energy"] = np.array([float(self.energy[i])])
+            frame.arrays["REF_forces"] = self.force[i].reshape(-1, 3)
             if self.virial is not None:
                 frame.info["virial"] = self.virial[i].reshape(3, 3)
             frames.append(frame)
@@ -235,9 +235,9 @@ class ExtXYZEnsemble(DataEnsemble):
         """
         check_file_existence(self.path / f"{self.path.name}.extxyz")
         trajectory = read(self.path / f"{self.path.name}.extxyz", index=":")
-        if "force" not in trajectory[0].arrays:
+        if "REF_forces" not in trajectory[0].arrays:
             raise ValueError(f"The extxyz file {self.path / f'{self.path.name}.extxyz'} does not contain forces in the arrays.")
-        if trajectory[0].get_potential_energy() is None:
+        if "REF_energy" not in trajectory[0].info:
             raise ValueError(f"The extxyz file {self.path / f'{self.path.name}.extxyz'} does not contain energy.")
 
 
@@ -254,8 +254,8 @@ class ExtXYZEnsemble(DataEnsemble):
         trajectory = read(self.path / f"{self.path.name}.extxyz", index=":")
         self.box = np.array([atoms.get_cell().reshape(-1) for atoms in trajectory])
         self.coord = np.array([atoms.get_positions().reshape(-1) for atoms in trajectory])
-        self.force = np.array([atoms.arrays["force"].reshape(-1) for atoms in trajectory])
-        self.energy = np.array([atoms.get_potential_energy() for atoms in trajectory])
+        self.force = np.array([atoms.arrays["REF_forces"].reshape(-1) for atoms in trajectory])
+        self.energy = np.array([atoms.info["REF_energy"] for atoms in trajectory])
 
         self.virial = np.array([atoms.info["virial"].reshape(-1) for atoms in trajectory]) if "virial" in trajectory[0].info else None
         self.wannier = np.load(self.path / "wannier.npy") if (self.path / "wannier.npy").is_file() else None
@@ -280,8 +280,8 @@ class ExtXYZEnsemble(DataEnsemble):
                 cell=self.box[i].reshape(3, 3),
                 pbc = self.is_periodic,
             )
-            frame.info["energy"] = np.array([float(self.energy[i])])
-            frame.arrays["force"] = self.force[i].reshape(-1, 3)
+            frame.info["REF_energy"] = np.array([float(self.energy[i])])
+            frame.arrays["REF_forces"] = self.force[i].reshape(-1, 3)
             if self.virial is not None:
                 frame.info["virial"] = self.virial[i].reshape(3, 3)
             frames.append(frame)
