@@ -210,13 +210,13 @@ class Set000Ensemble(DataEnsemble):
             frame.arrays["force"] = self.force[i].reshape(-1, 3)
             if self.virial is not None:
                 frame.info["virial"] = self.virial[i].reshape(3, 3)
-            if self.wannier is not None:
-                frame.info["wannier"] = self.wannier[i].reshape(len(elements), 3)
             frames.append(frame)
 
         if save:
             with (self.path / f"{self.path.name}.extxyz").open("w+") as f:
                 write_extxyz(f, frames)
+            if self.wannier is not None:
+                np.save(self.path / "wannier.npy", self.wannier)              
         return frames
 
     
@@ -257,14 +257,8 @@ class ExtXYZEnsemble(DataEnsemble):
         self.force = np.array([atoms.arrays["force"].reshape(-1) for atoms in trajectory])
         self.energy = np.array([atoms.get_potential_energy() for atoms in trajectory])
 
-        if "virial" in trajectory[0].info:
-            self.virial = np.array([atoms.info["virial"].reshape(-1) for atoms in trajectory])
-        else: 
-            self.virial = None
-        if "wannier" in trajectory[0].info:
-            self.wannier = np.array([atoms.info["virial"].reshape(-1) for atoms in trajectory])
-        else: 
-            self.wannier = None
+        self.virial = np.array([atoms.info["virial"].reshape(-1) for atoms in trajectory]) if "virial" in trajectory[0].info else None
+        self.wannier = np.load(self.path / "wannier.npy") if (self.path / "wannier.npy").is_file() else None
 
         self.is_periodic = trajectory[0].get_pbc()
         self.type = np.array([int(k)-1 for elm in trajectory[0].get_chemical_symbols() for k, v in self.properties.items() if v["symbol"]==elm])
@@ -290,12 +284,12 @@ class ExtXYZEnsemble(DataEnsemble):
             frame.arrays["force"] = self.force[i].reshape(-1, 3)
             if self.virial is not None:
                 frame.info["virial"] = self.virial[i].reshape(3, 3)
-            if self.wannier is not None:
-                frame.info["wannier"] = self.wannier[i].reshape(len(elements), 3)
             frames.append(frame)
 
         if self.is_periodic is not None and not self.is_periodic:
             np.savetxt(self.path / "nopbc", np.array([True]), fmt="%s") 
+        if self.wannier:
+            np.save(self.path / "wannier.npy", self.wannier)      
         if len(self.wannier_not_cvg) > 1:
             string_list_to_textfile(self.path  / "wannier-not-converged.txt", self.wannier_not_cvg)
 
