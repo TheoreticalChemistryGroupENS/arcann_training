@@ -62,7 +62,7 @@ class TestCreateModelsList(unittest.TestCase):
         # Create a temporary config JSON file for the test
         self.config_file = Path(self.temp_dir.name) / "config.json"
         with self.config_file.open(mode="w") as f:
-            f.write('{"nnp_count": 3}')
+            f.write('{"nnp_count": 3,\n"nnp_program": "deepmd"}')
 
         # Create a temporary prevtraining JSON file for the test
         self.prevtraining_file = Path(self.temp_dir.name) / "prevtraining.json"

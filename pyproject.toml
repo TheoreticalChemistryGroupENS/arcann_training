@@ -10,7 +10,11 @@ authors = [{name = "Theoretical Chemistry Group - ENS"}]
 readme = "README.md"
 license = "AGPL-3.0-only"
 requires-python = ">=3.10"
-dependencies = ["numpy>=1.15", "pyyaml>=3.13"]
+dependencies = [
+    "ase>=3.27.0",
+    "numpy>=1.15",
+    "pyyaml>=3.13",
+]
 classifiers = [
     "License :: OSI Approved :: GNU Affero General Public License v3",
     "Intended Audience :: Science/Research",
@@ -19,6 +23,11 @@ classifiers = [
 [project.urls]
 Repository = "https://github.com/arcann-chem/arcann_training"
 Documentation = "https://arcann-chem.github.io/arcann_training/"
+
+[project.optional-dependencies]
+mace = [
+    "mace-torch>=0.3.14",
+]
 
 # [project.scripts]
 # arcann = "arcann_training:main"

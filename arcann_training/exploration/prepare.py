@@ -17,7 +17,6 @@ import sys
 from copy import deepcopy
 from pathlib import Path
 
-# Non-standard library imports
 import numpy as np
 import yaml
 
@@ -49,8 +48,8 @@ from arcann_training.common.xml import (
     write_xml_file,
     xml_to_string_list,
 )
+from arcann_training.exploration.lammps import LAMMPSInputHandler
 from arcann_training.exploration.utils import (
-    LAMMPSInputHandler,
     create_models_list,
     generate_input_exploration_json,
     generate_starting_points,
@@ -346,17 +345,16 @@ def main(
         # Get the input file (.in or .xml) for the current system and check if plumed is being used
         # LAMMPS
         if system_exploration_type == "lammps":
-            master_system_lammps_in = textfile_to_string_list(
-                training_path / "user_files" / (system_auto + ".in")
-            )
-
             lmp_input_handler = LAMMPSInputHandler(
-                training_path / "user_files" / (system_auto + ".in")
+                training_path / "user_files" / (system_auto + ".in"),
+                main_json["type_map"],
             )
 
             main_json["pair_style"] = lmp_input_handler.lmp_pair.value
 
             plumed[0] = lmp_input_handler.has_plumed()
+
+            master_system_lammps_in = lmp_input_handler.lines
         # END LAMMPS
 
         # SANDER-EMLE
@@ -848,6 +846,7 @@ def main(
 
                 # LAMMPS
                 if system_exploration_type == "lammps":
+                    lmp_input_handler.set_models(models_list)
                     system_lammps_in = deepcopy(master_system_lammps_in)
                     input_replace_dict["_R_SEED_VEL_"] = (
                         f"{nnp_index}{random.randrange(0, 1000)}{traj_index}{padded_curr_iter}"
@@ -943,17 +942,12 @@ def main(
                         "print_every_x_steps"
                     ] = int(system_print_every_x_steps)
 
-                    #  Write INPUT file
-                    for key, value in input_replace_dict.items():
-                        system_lammps_in = replace_substring_in_string_list(
-                            system_lammps_in, key, value
+                    with (
+                        local_path / f"{system_auto}_{nnp_index}_{padded_curr_iter}.in"
+                    ).open("w+") as input:
+                        input.write(
+                            lmp_input_handler.apply_variables(input_replace_dict)
                         )
-                    del key, value
-                    string_list_to_textfile(
-                        local_path / f"{system_auto}_{nnp_index}_{padded_curr_iter}.in",
-                        system_lammps_in,
-                        read_only=True,
-                    )
 
                     job_array_params_line = (
                         str(system_auto)

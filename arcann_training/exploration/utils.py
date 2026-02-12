@@ -45,298 +45,17 @@ update_system_nb_steps_factor(previous_json: Dict, system_auto_index: int) -> in
 
 # Standard library modules
 import logging
-import re
 import subprocess
 from copy import deepcopy
-from enum import StrEnum, auto
 from pathlib import Path
 from typing import Dict, List, Tuple, Union
 
-# Third-party modules
 import numpy as np
 
-from arcann_training.common.json import convert_control_to_input
-
 # Local imports
+from arcann_training.common.json import convert_control_to_input
 from arcann_training.common.utils import catch_errors_decorator
-
-
-class LAMMPSPair(StrEnum):
-    """
-    Enumeration of supported LAMMPS pair styles.
-
-    Attributes
-    ----------
-    MACE : auto
-        MACE pair style.
-    MLIAP : auto
-        MLIAP pair style.
-    SYMMETRIX : auto
-        SYMMETRIX pair style.
-    DEEPMD : auto
-        DeepMD pair style.
-    """
-
-    MACE = auto()
-    MLIAP = auto()
-    SYMMETRIX = auto()
-    DEEPMD = auto()
-
-    @classmethod
-    def from_string(cls, value: str) -> "LAMMPSPair":
-        """
-        Convert a string to a LAMMPSPair enum.
-
-        Parameters
-        ----------
-        value : str
-            The string representation of the LAMMPS pair style.
-
-        Returns
-        -------
-        LAMMPSPair
-            Corresponding enum member.
-
-        Raises
-        ------
-        ValueError
-            If the pair style is not supported.
-        """
-        try:
-            return cls(value)
-        except ValueError:
-            raise ValueError(
-                f"ArcaNN does not support the pair_style: {value}. Please use mace, mliap, or symmetrix/mace (Kokkos versions are allowed)."
-            ) from None
-
-
-class LAMMPSInputHandler:
-    """
-    Handler for reading, parsing, and modifying LAMMPS input files.
-
-    Provides methods to extract metadata, inject additional commands,
-    and apply variable replacements in LAMMPS input text.
-
-    Attributes
-    ----------
-    cell_info_lammps : list of str
-        LAMMPS commands to output cell information.
-    mace_dump_0 : str
-        Default dump command for MACE simulations.
-    """
-
-    cell_info_lammps = [
-        "variable v_xlo equal xlo",
-        "variable v_xhi equal xhi",
-        "variable v_ylo equal ylo",
-        "variable v_yhi equal yhi",
-        "variable v_zlo equal zlo",
-        "variable v_zhi equal zhi",
-        'fix extra all print _R_PRINT_FREQ_ "${v_xlo} ${v_xhi} ${v_ylo} ${v_yhi} ${v_zlo} ${v_zhi}" file cell.txt',
-        "",
-    ]
-
-    mace_dump_0 = (
-        "dump traj all custom _R_PRINT_FREQ_ _R_LMPTRJ_OUT_ id type x y z fx fy fz\n"
-    )
-
-    def __init__(self, lmp_input: str | Path):
-        """
-        Initialize a LAMMPS input handler.
-
-        Parameters
-        ----------
-        lmp_input : str or Path
-            Path to the LAMMPS input file.
-
-        Raises
-        ------
-        FileNotFoundError
-            If the LAMMPS input file does not exist.
-        """
-        if lmp_input.exists():
-            self._lmp_input = Path(lmp_input)
-        else:
-            raise FileNotFoundError(f"LAMMPS input not found: {lmp_input}")
-
-        self._raw_text = self._read_input_file()
-        self._parse_metadata()
-
-        self._load_prepare_input()
-        self._prepare_input_text()
-
-    @catch_errors_decorator
-    def _read_input_file(self) -> str:
-        """
-        Read the LAMMPS input file.
-
-        Returns
-        -------
-        str
-            The content of the LAMMPS input file.
-        """
-        return self._lmp_input.read_text()
-
-    @catch_errors_decorator
-    def _parse_metadata(self) -> None:
-        """
-        Extract metadata from the LAMMPS input.
-
-        Metadata includes:
-        - LAMMPS pair style
-        - Domain decomposition (for MACE)
-        - PLUMED usage
-
-        Raises
-        ------
-        ValueError
-            If no pair_style is found in the input.
-        """
-        # Extract pair_style
-        pair_style_match = re.search(
-            r"^\s*(?!#)pair_style\s+([^\s/]+)", self._raw_text, re.MULTILINE
-        )
-        if not pair_style_match:
-            raise ValueError(f"No pair_style found in {self._lmp_input}")
-
-        self._lmp_pair = LAMMPSPair.from_string(pair_style_match.group(1))
-
-        # Determine domain decomposition for MACE
-        self.domain_decomp = None
-        if self._lmp_pair == LAMMPSPair.MACE:
-            self.domain_decomp = "no_domain_decomposition" in self._raw_text
-
-        self._plumed = (
-            True
-            if re.search(r"^\s*(?!#)plumed", self._raw_text, re.MULTILINE)
-            else False
-        )
-
-    @catch_errors_decorator
-    def _prepare_input_text(self) -> None:
-        """
-        Inject additional commands into the LAMMPS input.
-
-        Typically includes cell info variables and MACE dump commands.
-
-        Raises
-        ------
-        ValueError
-            If no 'run _R_NUMBER_OF_STEPS_' command is found.
-        """
-        match = re.search(
-            r"^\s*(?!#)run\s+_R_NUMBER_OF_STEPS_", self._raw_text, re.MULTILINE
-        )
-        if not match:
-            raise ValueError(
-                f"No 'run _R_NUMBER_OF_STEPS_' found in the LAMMPS input file: {self._lmp_input}"
-            )
-
-        run_index = match.start()
-        self._raw_text = (
-            self._raw_text[:run_index]
-            + "\n".join(self.cell_info_lammps)
-            + self.mace_dump_0
-            + self._raw_text[run_index:]
-        )
-
-    @property
-    def lines(self, keepends=False) -> list[str]:
-        """
-        Split the LAMMPS input into lines.
-
-        Parameters
-        ----------
-        keepends : bool, optional
-            If True, line endings are preserved, by default False.
-
-        Returns
-        -------
-        list of str
-            Lines of the LAMMPS input.
-        """
-        return self._raw_text.splitlines(keepends=keepends)
-
-    @catch_errors_decorator
-    def apply_variables(
-        self, variables: dict[str, str | int | float], splitlines=False
-    ) -> str | list[str]:
-        """
-        Replace placeholders in the LAMMPS input with provided variables.
-
-        Parameters
-        ----------
-        variables : dict
-            Mapping of placeholders (keys) to replacement values.
-        splitlines : bool, optional
-            If True, returns a list of lines instead of a single string, by default False.
-
-        Returns
-        -------
-        str or list of str
-            Formatted input text as a string or list of lines.
-        """
-        formatted_text = str(self._raw_text)  # copy text
-
-        for key, value in variables.items():
-            formatted_text.replace(key, value)
-
-        return formatted_text if not splitlines else formatted_text.splitlines()
-
-    @property
-    def lmp_pair(self) -> LAMMPSPair:
-        """
-        Get the detected LAMMPS pair style.
-
-        Returns
-        -------
-        LAMMPSPair
-            The pair style detected in the input.
-        """
-        return self._lmp_pair
-
-    @property
-    def raw_text(self) -> str:
-        """
-        Get the preprocessed raw LAMMPS input text.
-
-        Returns
-        -------
-        str
-            The LAMMPS input text.
-        """
-        return self._raw_text
-
-    def has_plumed(self) -> bool:
-        """
-        Check if the LAMMPS input includes PLUMED commands.
-
-        Returns
-        -------
-        bool
-            True if PLUMED is detected, False otherwise.
-        """
-        return self._plumed
-
-    @catch_errors_decorator
-    def _parse(self) -> None:
-        raw_text = self.lmp_input.read_text()
-        pair_style = re.search(
-            r"^\s*(?!#)pair_style\s+([^\s/]+)", raw_text
-        )  # get the pair_style being used ignoring commented lines, and anything that modifies the pair like /kk
-
-        if not pair_style:
-            raise ValueError(f"No pair_style found in {self.lmp_input}")
-
-        self.lmp_pair = LAMMPSPair.from_string(pair_style.group(1))
-
-        if self.lmp_pair == LAMMPSPair.MACE:
-            if "no_domain_decomposition" in raw_text:
-                self.domain_decomp = True
-            else:
-                self.domain_decomp = False
-        else:
-            self.domain_decomp = None
+from arcann_training.exploration.lammps import LAMMPSPair, mace_model_converter
 
 
 # TODO: Add tests for this function
@@ -1021,7 +740,7 @@ def generate_starting_points(
         return starting_points, starting_points_bckp, True, False
 
 
-# Unittested
+# TODO: test all MACE model conversion options in unittest
 @catch_errors_decorator
 def create_models_list(
     main_json: Dict,
@@ -1040,6 +759,8 @@ def create_models_list(
         The main JSON.
     previous_json : Dict
         The JSON from the previous iteration.
+    previous_training_json : Dict
+        The JSON from the previous training iteration.
     it_nnp : int
         An integer representing the index of the NNP model to start from.
     padded_prev_iter : str
@@ -1060,29 +781,69 @@ def create_models_list(
         list_nnp[list_nnp.index(it_nnp) :] + list_nnp[: list_nnp.index(it_nnp)]
     )
 
+    nnp_program = main_json["nnp_program"]
+    pair_style = main_json.get("pair_style", None)  # get when lammps is used
+
     # Determine whether to use compressed models
-    compress_str = "_compressed" if previous_json["is_compressed"] else ""
+    compress_str = (
+        "_compressed"
+        if previous_json["is_compressed"] and nnp_program == "deepmd"
+        else ""
+    )
+
+    models_list = []
 
     # Generate list of model file names
-    models_list = [
-        "graph_" + str(f) + "_" + padded_prev_iter + compress_str + ".pb"
-        for f in reorder_nnp_list
-    ]
+    if pair_style is not None and nnp_program == "mace":
+        for nnp in reorder_nnp_list:
+            model_name = "graph_" + str(nnp) + "_" + padded_prev_iter
+            model_path = (
+                Path(model_name + ".model")
+                if (model_dir := previous_json["mace_model_dir"]) is None
+                else Path(model_dir + ".model") / model_name
+            )
+            # * Probably better to move it later to another place so converting is handled separately
+            match pair_style:
+                case LAMMPSPair.MACE:
+                    md_ext = "-lammps.pt"
+                    mace_model_converter(
+                        model_path,
+                        to=LAMMPSPair.MACE,
+                        cmd_args={"dtype": previous_json["mace_dtype"]},
+                    )
+                case LAMMPSPair.MLIAP:
+                    md_ext = "-mliap_lammps.pt"
+                    mace_model_converter(
+                        model_path,
+                        to=LAMMPSPair.MLIAP,
+                        cmd_args={"dtype": previous_json["mace_dtype"]},
+                    )
+                case LAMMPSPair.SYMMETRIX:
+                    md_ext = ".json"
+                    mace_model_converter(
+                        model_path,
+                        to=LAMMPSPair.SYMMETRIX,
+                        cmd_args={
+                            "output": str(
+                                model_path.with_name(model_path.name + md_ext)
+                            ),
+                            "chemical-symbols": main_json["type_map"],
+                        },
+                    )
+                case _:
+                    raise ValueError(
+                        "If this was raised open an Issue on GitHub (https://github.com/arcann-chem/arcann_training)"
+                    )
+            models_list.append(str(model_path.with_name(model_path.name + md_ext)))
+    else:
+        models_list = [
+            "graph_" + str(f) + "_" + padded_prev_iter + compress_str + ".pb"
+            for f in reorder_nnp_list
+        ]
 
     # Create symbolic links to the model files in the local directory
-    for it_sub_nnp in range(1, main_json["nnp_count"] + 1):
-        nnp_apath = (
-            training_path
-            / "NNP"
-            / (
-                "graph_"
-                + str(it_sub_nnp)
-                + "_"
-                + padded_prev_iter
-                + compress_str
-                + ".pb"
-            )
-        ).resolve()
+    for model in models_list:
+        nnp_apath = (training_path / "NNP" / model).resolve()
         subprocess.call(["ln", "-nsf", str(nnp_apath), str(local_path)])
 
     # Join the model file names into a single string for ease of use
