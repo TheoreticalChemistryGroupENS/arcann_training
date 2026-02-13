@@ -775,6 +775,8 @@ def create_models_list(
     Tuple[List[str], str]
         A tuple containing the list of model file names, and a string of space-separated model file names.
     """
+    arcann_logger = logging.getLogger("ArcaNN")
+
     # Generate list of NNP model indices and reorder based on current model to propagate
     list_nnp = [zzz for zzz in range(1, main_json["nnp_count"] + 1)]
     reorder_nnp_list = (
@@ -804,6 +806,9 @@ def create_models_list(
                 case LAMMPSPair.MACE:
                     md_ext = "-lammps.pt"
                     if not model_path.with_name(model_path.name + md_ext).is_file():
+                        arcann_logger.info(
+                            f"Converting model to MACE-libtorch: {str(model_path)}"
+                        )
                         mace_model_converter(
                             model_path,
                             to=LAMMPSPair.MACE,
@@ -812,6 +817,9 @@ def create_models_list(
                 case LAMMPSPair.MLIAP:
                     md_ext = "-mliap_lammps.pt"
                     if not model_path.with_name(model_path.name + md_ext).is_file():
+                        arcann_logger.info(
+                            f"Converting model to MACE-MLIAP: {str(model_path)}"
+                        )
                         mace_model_converter(
                             model_path,
                             to=LAMMPSPair.MLIAP,
@@ -820,6 +828,9 @@ def create_models_list(
                 case LAMMPSPair.SYMMETRIX:
                     md_ext = ".json"
                     if not model_path.with_name(model_path.name + md_ext).is_file():
+                        arcann_logger.info(
+                            f"Converting model to MACE-SYMMETRIX: {str(model_path)}"
+                        )
                         mace_model_converter(
                             model_path,
                             to=LAMMPSPair.SYMMETRIX,
