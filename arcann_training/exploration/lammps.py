@@ -10,6 +10,7 @@
 import builtins
 import re
 import sys
+import warnings
 from collections.abc import Iterable
 from contextlib import contextmanager
 from enum import StrEnum, auto
@@ -407,6 +408,8 @@ def mace_model_converter(
         str(model.resolve()),
         *cmd_args_list,
     ]  # argv[0] does not matter, can be anything
+
+    warnings.filterwarnings("ignore", category=UserWarning)
 
     if to != "symmetrix":
         with patched_cli(argv):
