@@ -798,40 +798,43 @@ def create_models_list(
         nnp_path = training_path / Path("NNP")
         for nnp in reorder_nnp_list:
             model_name = "graph_" + str(nnp) + "_" + padded_prev_iter
-            model_path = nnp_path / Path(model_name + ".model")
+            model_path = nnp_path.resolve() / Path(model_name + ".model")
             # * Probably better to move it later to another place so converting is handled separately
             match pair_style:
                 case LAMMPSPair.MACE:
                     md_ext = "-lammps.pt"
-                    mace_model_converter(
-                        model_path,
-                        to=LAMMPSPair.MACE,
-                        cmd_args={"dtype": previous_json["mace_dtype"]},
-                    )
+                    if not model_path.with_name(model_path.name + md_ext).is_file():
+                        mace_model_converter(
+                            model_path,
+                            to=LAMMPSPair.MACE,
+                            cmd_args={"dtype": previous_json["mace_dtype"]},
+                        )
                 case LAMMPSPair.MLIAP:
                     md_ext = "-mliap_lammps.pt"
-                    mace_model_converter(
-                        model_path,
-                        to=LAMMPSPair.MLIAP,
-                        cmd_args={"dtype": previous_json["mace_dtype"]},
-                    )
+                    if not model_path.with_name(model_path.name + md_ext).is_file():
+                        mace_model_converter(
+                            model_path,
+                            to=LAMMPSPair.MLIAP,
+                            cmd_args={"dtype": previous_json["mace_dtype"]},
+                        )
                 case LAMMPSPair.SYMMETRIX:
                     md_ext = ".json"
-                    mace_model_converter(
-                        model_path,
-                        to=LAMMPSPair.SYMMETRIX,
-                        cmd_args={
-                            "output": str(
-                                model_path.with_name(model_path.name + md_ext)
-                            ),
-                            "chemical-symbols": main_json["type_map"],
-                        },
-                    )
+                    if not model_path.with_name(model_path.name + md_ext).is_file():
+                        mace_model_converter(
+                            model_path,
+                            to=LAMMPSPair.SYMMETRIX,
+                            cmd_args={
+                                "output": str(
+                                    model_path.with_name(model_path.name + md_ext)
+                                ),
+                                "chemical-symbols": main_json["type_map"],
+                            },
+                        )
                 case _:
                     raise ValueError(
                         "If this was raised open an Issue on GitHub (https://github.com/arcann-chem/arcann_training)"
                     )
-            models_list.append(str(model_path.with_name(model_path.name + md_ext)))
+            models_list.append(model_path.name + md_ext)
     else:
         models_list = [
             "graph_" + str(f) + "_" + padded_prev_iter + compress_str + ".pb"
