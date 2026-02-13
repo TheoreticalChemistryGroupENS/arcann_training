@@ -28,6 +28,9 @@ Documentation = "https://arcann-chem.github.io/arcann_training/"
 mace = [
     "mace-torch>=0.3.14",
 ]
+mace-mliap = [
+    "cuequivariance-torch>=0.8.1",
+]
 
 # [project.scripts]
 # arcann = "arcann_training:main"
