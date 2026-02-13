@@ -795,13 +795,10 @@ def create_models_list(
 
     # Generate list of model file names
     if pair_style is not None and nnp_program == "mace":
+        nnp_path = training_path / Path("NNP")
         for nnp in reorder_nnp_list:
             model_name = "graph_" + str(nnp) + "_" + padded_prev_iter
-            model_path = (
-                Path(model_name + ".model")
-                if (model_dir := previous_json["mace_model_dir"]) is None
-                else Path(model_dir + ".model") / model_name
-            )
+            model_path = nnp_path / Path(model_name + ".model")
             # * Probably better to move it later to another place so converting is handled separately
             match pair_style:
                 case LAMMPSPair.MACE:
@@ -843,8 +840,8 @@ def create_models_list(
 
     # Create symbolic links to the model files in the local directory
     for model in models_list:
-        nnp_apath = (training_path / "NNP" / model).resolve()
-        subprocess.call(["ln", "-nsf", str(nnp_apath), str(local_path)])
+        nnp_path = (training_path / "NNP" / model).resolve()
+        subprocess.call(["ln", "-nsf", str(nnp_path), str(local_path)])
 
     # Join the model file names into a single string for ease of use
     models_string = " ".join(models_list)
