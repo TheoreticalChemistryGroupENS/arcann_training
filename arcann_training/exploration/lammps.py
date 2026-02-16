@@ -343,6 +343,10 @@ class LAMMPSInputHandler:
 # Rerun with model {i}
 # ------------------
 clear
+
+atom_style atomic
+atom_modify map yes
+
 read_restart _R_RESTART_OUT_
 
 {self._get_pair_lmp_string(model)}
