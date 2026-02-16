@@ -138,9 +138,10 @@ class LAMMPSInputHandler:
     ]
 
     mace_dump_0 = (
-        "dump traj all custom _R_PRINT_FREQ_ mace_run_model1.lammpstrj id type x y z",
-        "dump traj all custom _R_PRINT_FREQ_ mace_forces_model1.lammpstrj id type fx fy fz",
-        "",
+        "dump traj_xyz all custom _R_PRINT_FREQ_ mace_run_model1.lammpstrj id type x y z",
+        "dump traj_frc all custom _R_PRINT_FREQ_ mace_forces_model1.lammpstrj id type fx fy fz",
+        "dump_modify traj_xyz sort id",
+        "dump_modify traj_frc sort id",
     )
 
     def __init__(self, lmp_input: str | Path, elements: list[str]):
@@ -355,6 +356,7 @@ thermo_style custom step pe
 thermo 1
 
 dump traj{i} all custom _R_PRINT_FREQ_ mace_forces_model{i}.lammpstrj id type fx fy fz
+dump_modify traj{i} sort id
 
 rerun mace_run_model1.lammpstrj dump x y z
 """
