@@ -10,28 +10,29 @@ Last modified: 2024/08/28
 """
 
 # Standard library modules
+import importlib
 import logging
 import sys
 from pathlib import Path
-import importlib
 
 # Non-standard library imports
 import numpy as np
 
+from arcann_training.common.check import validate_step_folder
+
 # Local imports
 from arcann_training.common.dataset import Dataset
+from arcann_training.common.filesystem import check_file_existence
 from arcann_training.common.json import load_json_file, write_json_file
 from arcann_training.common.list import textfile_to_string_list
-from arcann_training.common.filesystem import check_file_existence
 from arcann_training.common.parsing_labeling import (
+    extract_and_convert_box_volume,
+    extract_and_convert_coordinates,
     extract_and_convert_energy,
     extract_and_convert_forces,
     extract_and_convert_virial,
     extract_and_convert_wannier,
-    extract_and_convert_box_volume,
-    extract_and_convert_coordinates,
 )
-from arcann_training.common.check import validate_step_folder
 
 # Import constants
 try:
@@ -40,15 +41,16 @@ try:
 
     Ha_to_eV = constants.physical_constants["atomic unit of electric potential"][0]
     Bohr_to_A = constants.physical_constants["Bohr radius"][0] / constants.angstrom
-    au_to_eV_per_A = np.float64(Ha_to_eV / Bohr_to_A)
-    eV_per_A3_to_GPa = np.float64(constants.eV / constants.angstrom**3 / constants.giga)
-except ImportError or Exception:
+    au_to_eV_per_A = np.float64(Ha_to_eV / Bohr_to_A)  # noqa: N816
+    eV_per_A3_to_GPa = np.float64(constants.eV / constants.angstrom**3 / constants.giga)  # noqa: N816
+except (ImportError, Exception):
     import numpy as np
 
     Ha_to_eV = np.float64(27.211386245988)
     Bohr_to_A = np.float64(0.529177210903)
-    au_to_eV_per_A = np.float64(Ha_to_eV / Bohr_to_A)
-    eV_per_A3_to_GPa = np.float64(160.21766208)
+    au_to_eV_per_A = np.float64(Ha_to_eV / Bohr_to_A)  # noqa: N816
+    eV_per_A3_to_GPa = np.float64(160.21766208)  # noqa: N816
+
 
 def main(
     current_step: str,
@@ -61,7 +63,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -95,7 +97,7 @@ def main(
         return 1
 
     # Create if it doesn't exists the data path.
-    #(training_path / "data").mkdir(exist_ok=True)
+    # (training_path / "data").mkdir(exist_ok=True)
     dataset = Dataset(training_dir=training_path, config_file=main_json)
 
     for system_auto_index, system_auto in enumerate(labeling_json["systems_auto"]):
@@ -251,8 +253,7 @@ def main(
                 del coordinate_xyz
 
                 if labeling_program == "cp2k":
-                    
-                    step_nb = 2 if labeling_json["two_steps_labeling"] else 1 
+                    step_nb = 2 if labeling_json["two_steps_labeling"] else 1
                     # Energy
                     energy_cp2k = textfile_to_string_list(
                         labeling_step_path
@@ -429,7 +430,13 @@ def main(
         )
 
         # Save the data in the system path as raw files
-        np.savetxt(system_path / "type.raw", type_atom_array, delimiter=" ", newline=" ", fmt="%d",)
+        np.savetxt(
+            system_path / "type.raw",
+            type_atom_array,
+            delimiter=" ",
+            newline=" ",
+            fmt="%d",
+        )
         np.savetxt(system_path / "energy.raw", energy_array_raw, delimiter=" ")
         np.savetxt(system_path / "coord.raw", coord_array_raw, delimiter=" ")
         np.savetxt(system_path / "box.raw", box_array_raw, delimiter=" ")
@@ -455,8 +462,20 @@ def main(
             is_periodic=is_periodic,
         )
 
-        del energy_array_raw, coord_array_raw, box_array_raw, volume_array_raw, force_array_raw
-        del virial_array_raw, is_virial, wannier_not_converged, wannier_array_raw, is_wannier
+        del (
+            energy_array_raw,
+            coord_array_raw,
+            box_array_raw,
+            volume_array_raw,
+            force_array_raw,
+        )
+        del (
+            virial_array_raw,
+            is_virial,
+            wannier_not_converged,
+            wannier_array_raw,
+            is_wannier,
+        )
 
         if not is_periodic:
             arcann_logger.warning(f"System {system_auto} is not periodic.")
@@ -767,15 +786,15 @@ def main(
                         # TODO
                         system_cell = main_json["systems_auto"][system_auto]["cell"]
                         # box_array_raw, volume_array_raw = extract_and_convert_box_volume(energy_orca, box_array_raw, volume_array_raw, system_candidates_not_skipped_counter, 1.0, labeling_program, program_version)
-                        box_array_raw[system_candidates_not_skipped_counter, 0] = (
-                            system_cell[0]
-                        )
-                        box_array_raw[system_candidates_not_skipped_counter, 4] = (
-                            system_cell[1]
-                        )
-                        box_array_raw[system_candidates_not_skipped_counter, 8] = (
-                            system_cell[2]
-                        )
+                        box_array_raw[
+                            system_disturbed_candidates_not_skipped_counter, 0
+                        ] = system_cell[0]
+                        box_array_raw[
+                            system_disturbed_candidates_not_skipped_counter, 4
+                        ] = system_cell[1]
+                        box_array_raw[
+                            system_disturbed_candidates_not_skipped_counter, 8
+                        ] = system_cell[2]
                         is_periodic = False
                         del system_cell
 
@@ -806,9 +825,15 @@ def main(
                 labeling_step_path,
                 system_disturbed_candidates_not_skipped_counter,
             )
-            
+
             # Save the data in the system path as raw files
-            np.savetxt(system_path / "type.raw", type_atom_array, delimiter=" ", newline=" ", fmt="%d",)
+            np.savetxt(
+                system_path / "type.raw",
+                type_atom_array,
+                delimiter=" ",
+                newline=" ",
+                fmt="%d",
+            )
             np.savetxt(system_path / "energy.raw", energy_array_raw, delimiter=" ")
             np.savetxt(system_path / "coord.raw", coord_array_raw, delimiter=" ")
             np.savetxt(system_path / "box.raw", box_array_raw, delimiter=" ")
@@ -816,7 +841,9 @@ def main(
             if is_virial:
                 np.savetxt(system_path / "virial.raw", virial_array_raw, delimiter=" ")
             if is_wannier:
-                np.savetxt(system_path / "wannier.raw", wannier_array_raw, delimiter=" ")
+                np.savetxt(
+                    system_path / "wannier.raw", wannier_array_raw, delimiter=" "
+                )
 
             # Add the data in the dataset, will do the split into training/validation in the data dir
             dataset.add_system_dataset(
@@ -834,8 +861,20 @@ def main(
                 is_periodic=is_periodic,
             )
 
-            del energy_array_raw, coord_array_raw, box_array_raw, volume_array_raw, force_array_raw
-            del virial_array_raw, is_virial, wannier_not_converged, wannier_array_raw, is_wannier
+            del (
+                energy_array_raw,
+                coord_array_raw,
+                box_array_raw,
+                volume_array_raw,
+                force_array_raw,
+            )
+            del (
+                virial_array_raw,
+                is_virial,
+                wannier_not_converged,
+                wannier_array_raw,
+                is_wannier,
+            )
 
             arcann_logger.debug("Extraction for disturbed done.")
 
