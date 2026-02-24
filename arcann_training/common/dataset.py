@@ -540,8 +540,10 @@ class Dataset():
         train_arrays = {name: arr[train_idx] if arr is not None else None for name,arr in arrays.items()}
         val_arrays   = {name: arr[val_idx] if arr is not None else None for name,arr in arrays.items()}
         #TODO probably these wannier not cvg should be splitted too but i dunno how
-        training_data_ensemble.write_from_raw_arrays(type=type, **train_arrays, wannier_not_cvg=wannier_not_cvg, is_periodic=is_periodic)
-        validation_data_ensemble.write_from_raw_arrays(type=type, **val_arrays, wannier_not_cvg=wannier_not_cvg, is_periodic=is_periodic)
+        training_data_ensemble.load_from_raw_arrays(type=type, **train_arrays, wannier_not_cvg=wannier_not_cvg, is_periodic=is_periodic)
+        training_data_ensemble.write() 
+        validation_data_ensemble.load_from_raw_arrays(type=type, **val_arrays, wannier_not_cvg=wannier_not_cvg, is_periodic=is_periodic)
+        validation_data_ensemble.write()
 
         self.control_file.setdefault("intermediate_datasets", {})
         self.control_file["intermediate_datasets"] |= {
