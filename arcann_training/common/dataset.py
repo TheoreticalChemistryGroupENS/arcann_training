@@ -209,7 +209,7 @@ class Set000Ensemble(DataEnsemble):
             frame.info["REF_energy"] = np.array([float(self.energy[i])])
             frame.arrays["REF_forces"] = self.force[i].reshape(-1, 3)
             if self.virial is not None:
-                frame.info["virial"] = self.virial[i].reshape(3, 3)
+                frame.info["REF_virial"] = self.virial[i].reshape(3, 3)
             frames.append(frame)
 
         if save:
@@ -257,7 +257,7 @@ class ExtXYZEnsemble(DataEnsemble):
         self.force = np.array([atoms.arrays["REF_forces"].reshape(-1) for atoms in trajectory])
         self.energy = np.array([atoms.info["REF_energy"] for atoms in trajectory])
 
-        self.virial = np.array([atoms.info["virial"].reshape(-1) for atoms in trajectory]) if "virial" in trajectory[0].info else None
+        self.virial = np.array([atoms.info["REF_virial"].reshape(-1) for atoms in trajectory]) if "virial" in trajectory[0].info else None
         self.wannier = np.load(self.path / "wannier.npy") if (self.path / "wannier.npy").is_file() else None
 
         self.is_periodic = trajectory[0].get_pbc()
@@ -283,7 +283,7 @@ class ExtXYZEnsemble(DataEnsemble):
             frame.info["REF_energy"] = np.array([float(self.energy[i])])
             frame.arrays["REF_forces"] = self.force[i].reshape(-1, 3)
             if self.virial is not None:
-                frame.info["virial"] = self.virial[i].reshape(3, 3)
+                frame.info["REF_virial"] = self.virial[i].reshape(3, 3)
             frames.append(frame)
 
         if self.is_periodic is not None and not self.is_periodic:
