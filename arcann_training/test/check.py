@@ -11,17 +11,17 @@ Last modified: 2024/08/27
 
 # Standard library modules
 import logging
+import re
 import sys
 from pathlib import Path
-import re
 
 # Non-standard imports
 import numpy as np
 
 # Local imports
 from arcann_training.common.check import validate_step_folder
-from arcann_training.common.list import textfile_to_string_list
 from arcann_training.common.json import load_json_file, write_json_file
+from arcann_training.common.list import textfile_to_string_list
 
 
 def main(
@@ -35,7 +35,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -45,7 +45,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -62,8 +62,8 @@ def main(
 
     # Check if we can continue
     if not testing_json["is_launched"]:
-        arcann_logger.error(f"Lock found. Please execute 'training launch' first.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Lock found. Please execute 'training launch' first.")
+        arcann_logger.error("Aborting...")
         return 1
 
     # Regular expressions for each value
@@ -181,7 +181,7 @@ def main(
     )
 
     # End
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     arcann_logger.debug(f"completed_count: {completed_count}")
     arcann_logger.debug(f"expected: {expected_count}")
     arcann_logger.debug(f"main_json['nnp_count']: {main_json['nnp_count']}")
@@ -196,9 +196,9 @@ def main(
         arcann_logger.critical(
             f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a failure!"
         )
-        arcann_logger.critical(f"Some DP Test did not finish correctly.")
-        arcann_logger.critical(f"Please check manually before re-executing this step.")
-        arcann_logger.critical(f"Aborting...")
+        arcann_logger.critical("Some DP Test did not finish correctly.")
+        arcann_logger.critical("Please check manually before re-executing this step.")
+        arcann_logger.critical("Aborting...")
         return 1
     del completed_count
 
@@ -208,7 +208,7 @@ def main(
     del main_json, training_json, testing_json
     del curr_iter, padded_curr_iter
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 
