@@ -14,6 +14,7 @@ dependencies = [
     "ase>=3.27.0",
     "numpy>=1.15",
     "pyyaml>=3.13",
+    "strenum>=0.4.15 ; python_full_version == '3.10.*'",
 ]
 classifiers = [
     "License :: OSI Approved :: GNU Affero General Public License v3",

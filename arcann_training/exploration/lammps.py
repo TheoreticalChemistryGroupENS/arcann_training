@@ -13,7 +13,13 @@ import sys
 import warnings
 from collections.abc import Iterable
 from contextlib import contextmanager
-from enum import StrEnum, auto
+from enum import auto
+
+try:
+    from enum import StrEnum
+except ImportError:
+    from strenum import StrEnum  # type: ignore
+
 from pathlib import Path
 from typing import Literal
 
