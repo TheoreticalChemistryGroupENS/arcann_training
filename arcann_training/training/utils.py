@@ -42,6 +42,7 @@ from typing import Dict, Tuple
 
 # Third-party modules
 import numpy as np
+from packaging import version
 
 # Local imports
 from arcann_training.common.utils import catch_errors_decorator
@@ -337,4 +338,33 @@ def validate_deepmd_config(training_config) -> None:
         or float(training_config["deepmd_model_version"]) > 3.0
     ):
         error_msg = f"Only 2.x and 3.0 versions of deepmd are suppported: '{training_config['deepmd_model_version']}'."
+        raise ValueError(error_msg)
+
+
+@catch_errors_decorator
+def validate_mace_config(training_config) -> None:
+    """
+    Validate the provided training configuration for a MACE model.
+
+    Parameters
+    ----------
+    training_config : dict
+        A dictionary containing the training configuration.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    ValueError
+        If mace_model_version is not 0.3x
+        If the configuration is not valid with respect to machine/arch_name/arch and MACE.
+    """
+    # Check MACE version
+    current = version.parse(training_config["mace_model_version"])
+    min_v = version.parse("0.3.0")
+    max_v = version.parse("0.4.0")
+    if current < min_v or current >= max_v:
+        error_msg = f"Only versions 0.3x of MACE are suppported: '{training_config['mace_model_version']}'."
         raise ValueError(error_msg)
