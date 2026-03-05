@@ -11,8 +11,9 @@ Last modified: 2026/02/06
 
 # Standard library modules
 import logging
+import os
 import random
-import subprocess
+import shutil
 import sys
 from copy import deepcopy
 from pathlib import Path
@@ -48,6 +49,7 @@ from arcann_training.training.utils import (
     calculate_decay_steps,
     generate_training_json,
     validate_deepmd_config,
+    validate_mace_config,
 )
 
 
@@ -221,6 +223,7 @@ def main(
         arcann_logger.info(
             f"Using DeePMD version: {current_input_json['deepmd_model_version']}"
         )
+
     elif "mace_model_version" not in user_input_json and nnp_program == "mace":
         macetrain_list = list(
             (current_path.parent / "user_files").glob("*.yml")
@@ -286,7 +289,7 @@ def main(
             / f"dptrain_{training_json['deepmd_model_version']}.json"
         ).resolve()
 
-        dp_train_input = load_json_file(dp_train_input_path)
+        nnp_input = load_json_file(dp_train_input_path)
         if "type_map" not in main_json:
             type_map = [
                 main_json["properties"][element]["symbol"]
@@ -295,18 +298,19 @@ def main(
             main_json["type_map"] = type_map
 
         # Make sure they are the same
-        if dp_train_input["model"]["type_map"] != main_json["type_map"]:
+        if nnp_input["model"]["type_map"] != main_json["type_map"]:
             arcann_logger.error(
                 f"Type map in {dp_train_input_path} does not match the one in config.json."
             )
             arcann_logger.error("Aborting...")
             return 1
 
-        # main_json["type_map"] = {}
-        # main_json["type_map"] = dp_train_input["model"]["type_map"]
         del dp_train_input_path
-        arcann_logger.debug(f"dp_train_input: {dp_train_input}")
+        arcann_logger.debug(f"dp_train_input: {nnp_input}")
+
     elif nnp_program == "mace":
+        validate_mace_config(training_json)
+
         mace_input_path = (
             training_path
             / "user_files"
@@ -320,23 +324,14 @@ def main(
                 / f"mace_{training_json['mace_model_version']}.yaml"
             ).resolve()
 
-        mace_input = load_yaml_file(mace_input_path)
+        nnp_input = load_yaml_file(mace_input_path)
 
-        if "type_map" not in main_json:
-            type_map = [
-                main_json["properties"][element]["symbol"]
-                for element in main_json["properties"]
-            ]
-            main_json["type_map"] = type_map
+        # control the key to align with MACE references
+        nnp_input["energy_key"] = "REF_energy"
+        nnp_input["forces_key"] = "REF_forces"
+        nnp_input["virials_key"] = "REF_virials"
 
-        training_json |= {
-            "mace_dtype": mace_input.get("default_dtype", "float64"),
-            "mace_model_dir": mace_input.get(
-                "model_dir", mace_input.get("work_dir", None)
-            ),
-        }
-
-        arcann_logger.debug(f"mace_input: {mace_input}")
+        arcann_logger.debug(f"mace_input: {nnp_input}")
 
     arcann_logger.debug(f"main_json: {main_json}")
 
@@ -428,80 +423,91 @@ def main(
 
     if nnp_program == "deepmd":
         # Update the inputs with the sets
-        dp_train_input["training"]["training_data"]["systems"] = [
+        nnp_input["training"]["training_data"]["systems"] = [
             "data/" + ds for ds in dataset.training_paths
         ]
-        dp_train_input["training"]["validation_data"]["systems"] = [
+        nnp_input["training"]["validation_data"]["systems"] = [
             "data/" + ds for ds in dataset.validation_paths
         ]
+    elif nnp_program == "mace":
+        nnp_input["train_file"] = "data/training_dataset.extxyz"
+        nnp_input["valid_file"] = "data/validation_dataset.extxyz"
+        nnp_input["test_file"] = "data/test_dataset.extxyz"
 
     # Here calculate the parameters
-    # decay_steps it auto-recalculated as funcion of trained_count
-    arcann_logger.debug(f"training_json - decay_steps: {training_json['decay_steps']}")
-    arcann_logger.debug(
-        f"current_input_json - decay_steps: {current_input_json['decay_steps']}"
-    )
-    if not training_json["decay_steps_fixed"]:
-        decay_steps = calculate_decay_steps(
-            training_json["training_count"]["total"], training_json["decay_steps"]
-        )
-        arcann_logger.debug("Recalculating decay_steps")
-        # Update the training JSON and the merged input JSON
-        training_json["decay_steps"] = decay_steps
-        current_input_json["decay_steps"] = decay_steps
-    else:
-        decay_steps = training_json["decay_steps"]
-    arcann_logger.debug(f"decay_steps: {decay_steps}")
-    arcann_logger.debug(f"training_json - decay_steps: {training_json['decay_steps']}")
-    arcann_logger.debug(
-        f"current_input_json - decay_steps: {current_input_json['decay_steps']}"
-    )
-
-    # numb_steps and decay_rate
-    arcann_logger.debug(
-        f"training_json - numb_steps / decay_rate: {training_json['numb_steps']} / {training_json['decay_rate']}"
-    )
-    arcann_logger.debug(
-        f"current_input_json - numb_steps / decay_rate: {current_input_json['numb_steps']} / {current_input_json['decay_rate']}"
-    )
-    numb_steps = training_json["numb_steps"]
-    decay_rate_new = calculate_decay_rate(
-        numb_steps,
-        training_json["start_lr"],
-        training_json["stop_lr"],
-        training_json["decay_steps"],
-    )
-    while decay_rate_new < training_json["decay_rate"]:
+    # decay_steps it auto-recalculated as funcion of trained_count only for DeepMD
+    if nnp_program == "deepmd":
         arcann_logger.debug(
-            f"numb_steps is too small to allow for the decay_rate, increasing numb_steps: {decay_rate_new} < {training_json['decay_rate']}"
+            f"training_json - decay_steps: {training_json['decay_steps']}"
         )
-        numb_steps = numb_steps + 10000
+        arcann_logger.debug(
+            f"current_input_json - decay_steps: {current_input_json['decay_steps']}"
+        )
+        if not training_json["decay_steps_fixed"]:
+            decay_steps = calculate_decay_steps(
+                training_json["training_count"]["total"], training_json["decay_steps"]
+            )
+            arcann_logger.debug("Recalculating decay_steps")
+            # Update the training JSON and the merged input JSON
+            training_json["decay_steps"] = decay_steps
+            current_input_json["decay_steps"] = decay_steps
+        else:
+            decay_steps = training_json["decay_steps"]
+        arcann_logger.debug(f"decay_steps: {decay_steps}")
+        arcann_logger.debug(
+            f"training_json - decay_steps: {training_json['decay_steps']}"
+        )
+        arcann_logger.debug(
+            f"current_input_json - decay_steps: {current_input_json['decay_steps']}"
+        )
+
+        # numb_steps and decay_rate
+        arcann_logger.debug(
+            f"training_json - numb_steps / decay_rate: {training_json['numb_steps']} / {training_json['decay_rate']}"
+        )
+        arcann_logger.debug(
+            f"current_input_json - numb_steps / decay_rate: {current_input_json['numb_steps']} / {current_input_json['decay_rate']}"
+        )
+        numb_steps = training_json["numb_steps"]
         decay_rate_new = calculate_decay_rate(
             numb_steps,
             training_json["start_lr"],
             training_json["stop_lr"],
             training_json["decay_steps"],
         )
-    # Update the training JSON and the merged input JSON
-    training_json["numb_steps"] = int(numb_steps)
-    training_json["decay_rate"] = decay_rate_new
-    current_input_json["numb_steps"] = int(numb_steps)
-    current_input_json["decay_rate"] = decay_rate_new
-    arcann_logger.debug(f"numb_steps: {numb_steps}")
-    arcann_logger.debug(f"decay_rate: {decay_rate_new}")
-    arcann_logger.debug(
-        f"training_json - numb_steps / decay_rate: {training_json['numb_steps']} / {training_json['decay_rate']}"
-    )
-    arcann_logger.debug(
-        f"current_input_json - numb_steps / decay_rate: {current_input_json['numb_steps']} / {current_input_json['decay_rate']}"
-    )
+        while decay_rate_new < training_json["decay_rate"]:
+            arcann_logger.debug(
+                f"numb_steps is too small to allow for the decay_rate, increasing numb_steps: {decay_rate_new} < {training_json['decay_rate']}"
+            )
+            numb_steps = numb_steps + 10000
+            decay_rate_new = calculate_decay_rate(
+                numb_steps,
+                training_json["start_lr"],
+                training_json["stop_lr"],
+                training_json["decay_steps"],
+            )
+        # Update the training JSON and the merged input JSON
+        training_json["numb_steps"] = int(numb_steps)
+        training_json["decay_rate"] = decay_rate_new
+        current_input_json["numb_steps"] = int(numb_steps)
+        current_input_json["decay_rate"] = decay_rate_new
+        arcann_logger.debug(f"numb_steps: {numb_steps}")
+        arcann_logger.debug(f"decay_rate: {decay_rate_new}")
+        arcann_logger.debug(
+            f"training_json - numb_steps / decay_rate: {training_json['numb_steps']} / {training_json['decay_rate']}"
+        )
+        arcann_logger.debug(
+            f"current_input_json - numb_steps / decay_rate: {current_input_json['numb_steps']} / {current_input_json['decay_rate']}"
+        )
 
-    del decay_steps, numb_steps, decay_rate_new
+        del decay_steps, numb_steps, decay_rate_new
+        nnp_input["training"]["numb_steps"] = training_json["numb_steps"]
+        nnp_input["learning_rate"]["decay_steps"] = training_json["decay_steps"]
+        nnp_input["learning_rate"]["stop_lr"] = training_json["stop_lr"]
 
-    if nnp_program == "deepmd":
-        dp_train_input["training"]["numb_steps"] = training_json["numb_steps"]
-        dp_train_input["learning_rate"]["decay_steps"] = training_json["decay_steps"]
-        dp_train_input["learning_rate"]["stop_lr"] = training_json["stop_lr"]
+    elif nnp_program == "mace":
+        nnp_input["max_num_epochs"] = training_json["max_num_epochs"]
+        # TODO se pencher sur le lr, est-ce que c'est possible dans mace et comment?
 
     # Set booleans in the training JSON
     training_json = {
@@ -517,32 +523,38 @@ def main(
     }
 
     # Rsync data to local data
+    # TODO not rsync, maybe just symlink + compress everything into one big dataset + possibly convert depending on the NNP
+
     localdata_path = current_path / "data"
     localdata_path.mkdir(exist_ok=True)
-    for train_dataset in dataset.training_paths:
-        subprocess.run(
-            [
-                "rsync",
-                "-a",
-                f"{training_path / 'data' / train_dataset}",
-                f"{localdata_path}",
-            ]
-        )
-    for valid_dataset in dataset.validation_paths:
-        subprocess.run(
-            [
-                "rsync",
-                "-a",
-                f"{training_path / 'data' / valid_dataset}",
-                f"{localdata_path}",
-            ]
-        )
-    del train_dataset, localdata_path
+    if nnp_program == "deepmd":
+        for train_dataset in dataset.training_paths:
+            target_path = localdata_path / train_dataset
+            if target_path.exists():
+                shutil.rmtree(target_path)
+            shutil.copytree(
+                training_path / "data" / train_dataset,
+                target_path,
+                copy_function=os.link,
+            )
+        for valid_dataset in dataset.validation_paths:
+            target_path = localdata_path / valid_dataset
+            if target_path.exists():
+                shutil.rmtree(target_path)
+            shutil.copytree(
+                training_path / "data" / valid_dataset,
+                target_path,
+                copy_function=os.link,
+            )
+        del train_dataset, valid_dataset, localdata_path
+
+    elif nnp_program == "mace":
+        dataset.prepare_for_mace_train(data_path=localdata_path)
 
     if nnp_program == "deepmd":
         # Change some inside output
-        dp_train_input["training"]["disp_file"] = "lcurve.out"
-        dp_train_input["training"]["save_ckpt"] = "model.ckpt"
+        nnp_input["training"]["disp_file"] = "lcurve.out"
+        nnp_input["training"]["save_ckpt"] = "model.ckpt"
 
     arcann_logger.debug(f"training_json: {training_json}")
     arcann_logger.debug(f"user_input_json: {user_input_json}")
@@ -607,26 +619,26 @@ def main(
         check_directory(local_path)
 
         random.seed()
-        random_0_1000 = random.randrange(0, 1000)
+        random_0_1000 = random.randrange(0, 1000)  # noqa: S311
         if nnp_program == "deepmd":
             replace_values_by_key_name(
-                dp_train_input, "seed", int(f"{nnp}{random_0_1000}{padded_curr_iter}")
+                nnp_input, "seed", int(f"{nnp}{random_0_1000}{padded_curr_iter}")
             )
 
             dp_train_input_file = (Path(f"{nnp}") / "training.json").resolve()
 
             write_json_file(
-                dp_train_input,
+                nnp_input,
                 dp_train_input_file,
                 enable_logging=False,
                 read_only=True,
             )
         elif nnp_program == "mace":
-            mace_input["seed"] = int(f"{nnp}{random_0_1000}{padded_curr_iter}")
-            mace_input["name"] = f"model_{nnp}_{padded_curr_iter}"
+            nnp_input["seed"] = int(f"{nnp}{random_0_1000}{padded_curr_iter}")
+            nnp_input["name"] = f"model_{nnp}_{padded_curr_iter}"
             mace_input_file = (Path(f"{nnp}") / "training.yaml").resolve()
             write_yaml_file(
-                mace_input, mace_input_file, enable_logging=False, read_only=True
+                nnp_input, mace_input_file, enable_logging=False, read_only=True
             )
 
         job_file = replace_in_slurm_file_general(
@@ -653,11 +665,12 @@ def main(
             job_file = replace_substring_in_string_list(
                 job_file, "_R_DEEPMD_OUTPUT_FILE_", "training.out"
             )
+
         elif nnp_program == "mace":
             # Replace the inputs/variables in the job file
             job_file = replace_substring_in_string_list(
                 job_file, "_R_MACE_VERSION_", f"{training_json['mace_model_version']}"
-            )
+            )  # maybe not a version but a repo
             job_file = replace_substring_in_string_list(
                 job_file, "_R_MACE_INPUT_FILE_", "training.yaml"
             )

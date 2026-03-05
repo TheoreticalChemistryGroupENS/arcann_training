@@ -64,6 +64,11 @@ def main(
     # Get control path and load the main JSON and the training JSON
     control_path = training_path / "control"
     main_json = load_json_file((control_path / "config.json"))
+    nnp_program: str = main_json["nnp_program"]
+
+    arcann_logger.info(f"Using {nnp_program} as NNP software")
+    arcann_logger.info("-" * 88)
+
     training_json = load_json_file((control_path / f"training_{padded_curr_iter}.json"))
 
     user_machine_keyword = current_input_json["user_machine_keyword_train"]
@@ -123,14 +128,15 @@ def main(
     for nnp in range(1, main_json["nnp_count"] + 1):
         local_path = current_path / f"{nnp}"
         if (
-            local_path / f"job_deepmd_train_{machine_spec['arch_type']}_{machine}.sh"
+            local_path
+            / f"job_{nnp_program}_train_{machine_spec['arch_type']}_{machine}.sh"
         ).is_file():
             change_directory(local_path)
             try:
                 subprocess.run(  # noqa: S603
                     [
                         machine_launch_command,
-                        f"./job_deepmd_train_{machine_spec['arch_type']}_{machine}.sh",
+                        f"./job_{nnp_program}_train_{machine_spec['arch_type']}_{machine}.sh",
                     ]
                 )
                 arcann_logger.info(f"DP Train - '{nnp}' launched.")
