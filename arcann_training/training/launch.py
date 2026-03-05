@@ -11,9 +11,9 @@ Last modified: 2024/05/15
 
 # Standard library modules
 import logging
+import subprocess
 import sys
 from pathlib import Path
-import subprocess
 
 # Local imports
 from arcann_training.common.check import validate_step_folder
@@ -36,7 +36,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -46,7 +46,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -104,18 +104,18 @@ def main(
 
     # Check if we can continue
     if training_json["is_launched"]:
-        arcann_logger.critical(f"Already launched...")
+        arcann_logger.critical("Already launched...")
         continuing = input(
-            f"Do you want to continue?\n['Y' for yes, anything else to abort]\n"
+            "Do you want to continue?\n['Y' for yes, anything else to abort]\n"
         )
         if continuing == "Y":
             del continuing
         else:
-            arcann_logger.error(f"Aborting...")
+            arcann_logger.error("Aborting...")
             return 0
     if not training_json["is_prepared"]:
-        arcann_logger.error(f"Lock found. Please execute 'training prepare' first.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Lock found. Please execute 'training prepare' first.")
+        arcann_logger.error("Aborting...")
         return 1
 
     # Launch the jobs
@@ -127,7 +127,7 @@ def main(
         ).is_file():
             change_directory(local_path)
             try:
-                subprocess.run(
+                subprocess.run(  # noqa: S603
                     [
                         machine_launch_command,
                         f"./job_deepmd_train_{machine_spec['arch_type']}_{machine}.sh",
@@ -145,7 +145,7 @@ def main(
         del local_path
     del nnp
 
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     # Update the boolean in the training JSON
     if completed_count == main_json["nnp_count"]:
         training_json["is_launched"] = True
@@ -158,7 +158,7 @@ def main(
     )
 
     # End
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     if completed_count == main_json["nnp_count"]:
         arcann_logger.info(
             f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
@@ -167,9 +167,9 @@ def main(
         arcann_logger.critical(
             f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is semi-success!"
         )
-        arcann_logger.critical(f"Some jobs did not launch correctly.")
+        arcann_logger.critical("Some jobs did not launch correctly.")
         arcann_logger.critical(
-            f"Please launch manually before continuing to the next step."
+            "Please launch manually before continuing to the next step."
         )
         arcann_logger.critical(
             f"Replace the key 'is_launched' to 'True' in the 'training_{padded_curr_iter}.json'."
@@ -192,7 +192,7 @@ def main(
         machine_max_array_size,
     )
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 
@@ -202,7 +202,7 @@ if __name__ == "__main__":
         main(
             "training",
             "launch",
-            Path(sys.argv[1]),
+            deepmd_iterative_path=Path(sys.argv[1]),
             fake_machine=sys.argv[2],
             user_input_json_filename=sys.argv[3],
         )

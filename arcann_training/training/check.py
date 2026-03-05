@@ -11,21 +11,21 @@ Last modified: 2024/07/14
 
 # Standard library modules
 import logging
+import re
 import sys
 from pathlib import Path
-import re
 
 # Non-standard imports
 import numpy as np
 
 # Local imports
 from arcann_training.common.check import validate_step_folder
-from arcann_training.common.list import textfile_to_string_list
 from arcann_training.common.json import (
+    find_key_in_dict,
     load_json_file,
     write_json_file,
-    find_key_in_dict,
 )
+from arcann_training.common.list import textfile_to_string_list
 
 
 def main(
@@ -39,7 +39,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -49,7 +49,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -65,8 +65,8 @@ def main(
 
     # Check if we can continue
     if not training_json["is_launched"]:
-        arcann_logger.error(f"Lock found. Please execute 'training launch' first.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Lock found. Please execute 'training launch' first.")
+        arcann_logger.error("Aborting...")
         return 1
 
     # Check the normal termination of the training phase
@@ -91,14 +91,15 @@ def main(
         if training_out:
             # Finished correctly
             if any("finished training" in s for s in training_out):
-
                 if deepmd_version == 3.0:
                     training_out_time = [s for s in training_out if "wall time" in s]
                     batch_pattern = r"batch\s*(\d+)\b"
                     time_pattern = r"wall time = (\d+\.\d+) s"
-                
-                else: 
-                    training_out_time = [s for s in training_out if "training time" in s]
+
+                else:
+                    training_out_time = [
+                        s for s in training_out if "training time" in s
+                    ]
                     batch_pattern = r"batch\s*(\d+)\s"
                     time_pattern = r"training time (\d+\.\d+) s"
 
@@ -165,9 +166,9 @@ def main(
         arcann_logger.info(f"Your minimum neighbor distance is: {min_nbor_dist:.3f}")
         if min_nbor_dist < 0.1:
             arcann_logger.warning(
-                f"Your minimum neighbor distance is lower than 0.1 Angstrom."
+                "Your minimum neighbor distance is lower than 0.1 Angstrom."
             )
-            arcann_logger.warning(f"You might have a funky system.")
+            arcann_logger.warning("You might have a funky system.")
 
     if max_nbor_size is not None:
         training_json["max_nbor_size"] = max_nbor_size
@@ -182,18 +183,18 @@ def main(
         )
         if sum(max_nbor_size) > sum(selection_list[0]):
             arcann_logger.warning(
-                f"The maximum number of type-i neighbors of an atom is higher than the expected maximum number of type-i neighbors of an atom (keyword 'sel')."
+                "The maximum number of type-i neighbors of an atom is higher than the expected maximum number of type-i neighbors of an atom (keyword 'sel')."
             )
-            arcann_logger.warning(f"Please correct this.")
+            arcann_logger.warning("Please correct this.")
         if sum(selection_list[0]) > 2.0 * sum(max_nbor_size):
             arcann_logger.warning(
-                f"The expected maximum number of type-i neighbors of an atom is at least 100% larger that the ones present in the training datasets."
+                "The expected maximum number of type-i neighbors of an atom is at least 100% larger that the ones present in the training datasets."
             )
             arcann_logger.warning(
-                f"You may want to decrease the expected maximum number of type-i neighbors of an atom (keyword 'sel')."
+                "You may want to decrease the expected maximum number of type-i neighbors of an atom (keyword 'sel')."
             )
 
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     # Update the boolean in the training JSON
     if completed_count == main_json["nnp_count"]:
         training_json["is_checked"] = True
@@ -229,7 +230,7 @@ def main(
     )
 
     # End
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     if completed_count == main_json["nnp_count"]:
         arcann_logger.info(
             f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
@@ -238,9 +239,9 @@ def main(
         arcann_logger.critical(
             f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a failure!"
         )
-        arcann_logger.critical(f"Some DP Train did not finished correctly.")
-        arcann_logger.critical(f"Please check manually before re-exectuing this step.")
-        arcann_logger.critical(f"Aborting...")
+        arcann_logger.critical("Some DP Train did not finished correctly.")
+        arcann_logger.critical("Please check manually before re-exectuing this step.")
+        arcann_logger.critical("Aborting...")
         return 1
     del completed_count
 
@@ -250,7 +251,7 @@ def main(
     del main_json, training_json
     del curr_iter, padded_curr_iter
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 
