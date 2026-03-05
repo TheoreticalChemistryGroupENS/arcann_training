@@ -14,7 +14,6 @@ import logging
 import sys
 from pathlib import Path
 
-
 # Local imports
 from arcann_training.common.dataset import Dataset
 from arcann_training.common.filesystem import check_directory
@@ -199,7 +198,7 @@ def main(
     dataset.update_control_file()
 
     arcann_logger.debug(f"initial_dataset_paths: {dataset.training_paths + dataset.validation_paths}")
-    arcann_logger.debug(f"dataset_json: {dataset.control_file["initial_datasets"]}")
+    arcann_logger.debug(f"dataset_json: {dataset.control_file['initial_datasets']}")
 
     # Dump the JSON files (main, initial datasets and merged input)
     arcann_logger.info("-" * 88)
