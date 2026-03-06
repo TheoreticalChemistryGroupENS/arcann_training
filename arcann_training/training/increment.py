@@ -11,9 +11,9 @@ Last modified: 2024/05/15
 
 # Standard library modules
 import logging
+import subprocess
 import sys
 from pathlib import Path
-import subprocess
 
 # Local imports
 from arcann_training.common.check import validate_step_folder
@@ -32,7 +32,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -42,7 +42,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -58,15 +58,13 @@ def main(
 
     # Check if we can continue
     if not training_json["is_frozen"]:
-        arcann_logger.error(
-            f"Lock found. Please execute 'training check_freeze' first."
-        )
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Lock found. Please execute 'training check_freeze' first.")
+        arcann_logger.error("Aborting...")
         return 1
 
     # Check if pb files are present and delete temp files
     for nnp in range(1, main_json["nnp_count"] + 1):
-        local_path = Path(".").resolve() / f"{nnp}"
+        local_path = Path().resolve() / f"{nnp}"
         check_file_existence(local_path / f"graph_{nnp}_{padded_curr_iter}.pb")
         if training_json["is_compressed"]:
             check_file_existence(
@@ -77,8 +75,8 @@ def main(
     (training_path / f"{padded_curr_iter}-test").mkdir(exist_ok=True)
     check_directory((training_path / f"{padded_curr_iter}-test"))
 
-    subprocess.run(
-        [
+    subprocess.run(  # noqa: S603
+        [  # noqa: S607
             "rsync",
             "-a",
             f"{training_path / 'data'}",
@@ -90,12 +88,12 @@ def main(
     (training_path / "NNP").mkdir(exist_ok=True)
     check_directory(training_path / "NNP")
 
-    local_path = Path(".").resolve()
+    local_path = Path().resolve()
 
     for nnp in range(1, main_json["nnp_count"] + 1):
         if training_json["is_compressed"]:
-            subprocess.run(
-                [
+            subprocess.run(  # noqa: S603
+                [  # noqa: S607
                     "rsync",
                     "-a",
                     str(
@@ -106,8 +104,8 @@ def main(
                     str((training_path / "NNP")),
                 ]
             )
-        subprocess.run(
-            [
+        subprocess.run(  # noqa: S603
+            [  # noqa: S607
                 "rsync",
                 "-a",
                 str(local_path / f"{nnp}" / f"graph_{nnp}_{padded_curr_iter}.pb"),
@@ -126,7 +124,7 @@ def main(
         check_directory(training_path / f"{padded_next_iter}-{step}")
     del step
 
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     # Update the boolean in the training JSON
     training_json["is_incremented"] = True
 
@@ -149,7 +147,7 @@ def main(
     del main_json, training_json
     del curr_iter, padded_curr_iter, next_iter, padded_next_iter
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 
