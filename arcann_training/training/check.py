@@ -17,6 +17,7 @@ from pathlib import Path
 
 # Non-standard imports
 import numpy as np
+from packaging import version
 
 # Local imports
 from arcann_training.common.check import validate_step_folder
@@ -26,6 +27,7 @@ from arcann_training.common.json import (
     write_json_file,
 )
 from arcann_training.common.list import textfile_to_string_list
+from arcann_training.common.yaml import load_yaml_file
 
 
 def main(
@@ -62,6 +64,9 @@ def main(
     control_path = training_path / "control"
     main_json = load_json_file((control_path / "config.json"))
     training_json = load_json_file((control_path / f"training_{padded_curr_iter}.json"))
+    nnp_program: str = main_json["nnp_program"]
+
+    arcann_logger.info(f"Using {nnp_program} as NNP software")
 
     # Check if we can continue
     if not training_json["is_launched"]:
@@ -77,8 +82,21 @@ def main(
     completed_count = 0
     min_nbor_dist = None
     max_nbor_size = None
-    training_input_json = None
-    deepmd_version = training_json["deepmd_model_version"]
+    if nnp_program == "deepmd":
+        nnp_version = version.parse(training_json["deepmd_model_version"])
+        training_input = (
+            load_json_file(current_path / "1" / "training.json")
+            if (current_path / "1" / "training.json").is_file()
+            else None
+        )
+
+    elif nnp_program == "mace":
+        nnp_version = version.parse(training_json["mace_model_version"])
+        training_input = (
+            load_yaml_file(current_path / "1" / "training.yaml")
+            if (current_path / "1" / "training.yaml").is_file()
+            else None
+        )
 
     for nnp in range(1, main_json["nnp_count"] + 1):
         local_path = current_path / f"{nnp}"
@@ -90,8 +108,10 @@ def main(
             training_out = []
         if training_out:
             # Finished correctly
-            if any("finished training" in s for s in training_out):
-                if deepmd_version == 3.0:
+            if nnp_program == "deepmd" and any(
+                "finished training" in s for s in training_out
+            ):
+                if nnp_program == "deepmd" and nnp_version >= version.parse("3.0.0"):
                     training_out_time = [s for s in training_out if "wall time" in s]
                     batch_pattern = r"batch\s*(\d+)\b"
                     time_pattern = r"wall time = (\d+\.\d+) s"
@@ -120,9 +140,6 @@ def main(
                                     int(n) for n in max_nbor_size_match.group(1).split()
                                 ]
 
-                if training_input_json is None:
-                    training_input_json = load_json_file(local_path / "training.json")
-
                 batch_numbers = []
 
                 for entry in training_out_time:
@@ -136,7 +153,14 @@ def main(
                         batch_numbers.append(batch_number)
                         training_times.append(training_time)
 
-                del entry, batch_match, time_match, batch_number, training_time
+                del (
+                    entry,
+                    batch_match,
+                    time_match,
+                    batch_number,
+                    training_time,
+                    training_out_time,
+                )
                 del time_pattern, batch_pattern
 
                 for suffix in ["index", "meta", "data-00000-of-00001"]:
@@ -151,9 +175,14 @@ def main(
                 step_sizes.extend(np.diff(batch_numbers))
                 del batch_numbers
                 completed_count += 1
+
+            elif nnp_program == "mace" and any(
+                "Training complete" in s for s in training_out
+            ):
+                completed_count += 1
             else:
                 arcann_logger.critical(f"DP Train - '{nnp}' not finished/failed.")
-            del training_out, training_out_time
+            del training_out
         else:
             arcann_logger.critical(f"DP Train - '{nnp}' still running/no outfile.")
         del local_path
@@ -177,7 +206,7 @@ def main(
         )
         arcann_logger.info(f"Your type map was: {main_json['type_map']}")
         arcann_logger.info(f"The total is: {sum(max_nbor_size)}")
-        selection_list = find_key_in_dict(training_input_json, "sel")
+        selection_list = find_key_in_dict(training_input, "sel")
         arcann_logger.info(
             f"In the training parameters, the expected maximum number of type-i neighbors of an atom was: {selection_list[0]} (keyword 'sel')."
         )
