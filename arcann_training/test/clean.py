@@ -17,9 +17,9 @@ from pathlib import Path
 # Local imports
 from arcann_training.common.check import validate_step_folder
 from arcann_training.common.filesystem import (
+    remove_all_symlink,
     remove_files_matching_glob,
     remove_tree,
-    remove_all_symlink,
 )
 from arcann_training.common.json import load_json_file
 
@@ -35,7 +35,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -45,7 +45,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -61,26 +61,26 @@ def main(
 
     # Check if we can continue
     if not testing_json["is_checked"]:
-        arcann_logger.error(f"Lock found. Please execute 'testing check' first.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Lock found. Please execute 'testing check' first.")
+        arcann_logger.error("Aborting...")
         return 1
-    arcann_logger.critical(f"This is the cleaning step for testing step.")
-    arcann_logger.critical(f"It should be run after testing check phase.")
-    arcann_logger.critical(f"This is will delete:")
+    arcann_logger.critical("This is the cleaning step for testing step.")
+    arcann_logger.critical("It should be run after testing check phase.")
+    arcann_logger.critical("This is will delete:")
     arcann_logger.critical(f"The current folder {current_path} and all subdirectories.")
     arcann_logger.critical(
         f"The results are stored in the {(control_path / f'testing_{padded_curr_iter}.json')} file."
     )
     arcann_logger.critical(
-        f"If you asked to have detailed results, the .npy files will not be deleted."
+        "If you asked to have detailed results, the .npy files will not be deleted."
     )
     continuing = input(
-        f"Do you want to continue? [Enter 'Y' for yes, or any other key to abort]: "
+        "Do you want to continue? [Enter 'Y' for yes, or any other key to abort]: "
     )
     if continuing == "Y":
         del continuing
     else:
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Aborting...")
         return 0
 
     # Delete
@@ -88,13 +88,13 @@ def main(
     remove_all_symlink(current_path)
     arcann_logger.info("Deleting job files...")
     remove_files_matching_glob(current_path, "**/job_*.sh")
-    arcann_logger.info(f"Deleting testing output files..")
+    arcann_logger.info("Deleting testing output files..")
     remove_files_matching_glob(current_path, "**/*.out")
-    arcann_logger.info(f"Deleting testing log files..")
+    arcann_logger.info("Deleting testing log files..")
     remove_files_matching_glob(current_path, "**/*.log")
-    arcann_logger.info(f"Deleting testing json inputs files..")
+    arcann_logger.info("Deleting testing json inputs files..")
     remove_files_matching_glob(current_path, "**/*.json")
-    arcann_logger.info(f"Deleting SLURM files..")
+    arcann_logger.info("Deleting SLURM files..")
     remove_files_matching_glob(current_path, "**/DeepMD_Test.*")
 
     if (current_path / "data").is_dir():
@@ -117,7 +117,7 @@ def main(
         )  # Update logging message
         del total_size, total_size_mb
 
-    arcann_logger.info(f"Cleaning done!")
+    arcann_logger.info("Cleaning done!")
 
     # End
     arcann_logger.info(
@@ -130,7 +130,7 @@ def main(
     del main_json, testing_json
     del curr_iter, padded_curr_iter
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 

@@ -11,15 +11,15 @@ Last modified: 2024/06/11
 
 # Standard library modules
 import logging
+import re
 import sys
 from pathlib import Path
-import re
 
 # Local imports
-from arcann_training.common.json import load_json_file, write_json_file
-from arcann_training.common.list import textfile_to_string_list, string_list_to_textfile
-from arcann_training.common.filesystem import remove_file
 from arcann_training.common.check import validate_step_folder
+from arcann_training.common.filesystem import remove_file
+from arcann_training.common.json import load_json_file, write_json_file
+from arcann_training.common.list import string_list_to_textfile, textfile_to_string_list
 
 
 def main(
@@ -33,7 +33,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -43,7 +43,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -73,8 +73,8 @@ def main(
 
     # Check if we can continue
     if not labeling_json["is_launched"]:
-        arcann_logger.error(f"Lock found. Execute first: labeling launch.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Lock found. Execute first: labeling launch.")
+        arcann_logger.error("Aborting...")
         return 1
 
     # Check the normal termination of the labeling phase
@@ -149,7 +149,7 @@ def main(
                     for step in range(steps):
                         system_output_cp2k_file[step] = (
                             labeling_step_path
-                            / f"{step+1}_labeling_{padded_labeling_step}.out"
+                            / f"{step + 1}_labeling_{padded_labeling_step}.out"
                         )
                         if system_output_cp2k_file[step].is_file():
                             system_output_cp2k[step] = textfile_to_string_list(
@@ -210,7 +210,7 @@ def main(
                                 "Sum of individual times" in _
                                 for _ in system_output_orca
                             ):
-                                arcann_logger.debug(f"ORCA")
+                                arcann_logger.debug("ORCA")
                                 system_timings[0] = [
                                     _
                                     for _ in system_output_orca
@@ -249,7 +249,7 @@ def main(
                         for step in range(steps):
                             system_output_cp2k_file[step] = (
                                 labeling_step_path
-                                / f"{step+1}_labeling_{padded_labeling_step}.out"
+                                / f"{step + 1}_labeling_{padded_labeling_step}.out"
                             )
                             if system_output_cp2k_file[step].is_file():
                                 system_output_cp2k[step] = textfile_to_string_list(
@@ -346,7 +346,7 @@ def main(
         elif (
             candidates_step_count[0] == 0
             and candidates_skipped_count == 0
-            and labeling_program == "cp2k"            
+            and labeling_program == "cp2k"
         ):
             arcann_logger.critical(
                 "ALL jobs have failed/not converged/still running (first step)."
@@ -388,9 +388,9 @@ def main(
             timings[0],
             timings[1],
         ]
-        labeling_json["systems_auto"][system_auto][
-            "candidates_skipped_count"
-        ] = system_candidates_skipped_count
+        labeling_json["systems_auto"][system_auto]["candidates_skipped_count"] = (
+            system_candidates_skipped_count
+        )
         labeling_json["systems_auto"][system_auto][
             "disturbed_candidates_skipped_count"
         ] = system_disturbed_candidates_skipped_count
@@ -400,7 +400,7 @@ def main(
             if labeling_program == "orca" and step == 1:
                 continue
             not_converged_file = (
-                system_path / f"{system_auto}_step{step+1}_not_converged.txt"
+                system_path / f"{system_auto}_step{step + 1}_not_converged.txt"
             )
             remove_file(not_converged_file)
             if len(system_candidates_not_converged[step]) > 0:
@@ -408,16 +408,16 @@ def main(
                     not_converged_file, system_candidates_not_converged[step]
                 )
                 arcann_logger.warning(
-                    f"{system_auto} | step {step+1}: {len(system_candidates_not_converged[step])} jobs did not converge. List in '{not_converged_file}'"
+                    f"{system_auto} | step {step + 1}: {len(system_candidates_not_converged[step])} jobs did not converge. List in '{not_converged_file}'"
                 )
             del not_converged_file
 
-            failed_file = system_path / f"{system_auto}_step{step+1}_failed.txt"
+            failed_file = system_path / f"{system_auto}_step{step + 1}_failed.txt"
             remove_file(failed_file)
             if len(system_candidates_failed[step]) > 0:
                 string_list_to_textfile(failed_file, system_candidates_failed[step])
                 arcann_logger.warning(
-                    f"{system_auto} | step {step+1}: {len(system_candidates_failed[step])} jobs did not converge. List in '{failed_file}'."
+                    f"{system_auto} | step {step + 1}: {len(system_candidates_failed[step])} jobs did not converge. List in '{failed_file}'."
                 )
             del failed_file
 
@@ -480,9 +480,13 @@ def main(
         return 1
     # Check second step, abort if not converged/failed and CP2K
     if (
-        candidates_expected_count
-        != (candidates_step_count[1] + candidates_skipped_count)
-    ) and labeling_program == "cp2k" and two_steps:
+        (
+            candidates_expected_count
+            != (candidates_step_count[1] + candidates_skipped_count)
+        )
+        and labeling_program == "cp2k"
+        and two_steps
+    ):
         arcann_logger.critical(
             "Some jobs have failed/not converged/still running (second step). Check manually."
         )
@@ -492,7 +496,7 @@ def main(
         arcann_logger.critical("Aborting")
         return 1
 
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     # Update the booleans in the exploration JSON
     arcann_logger.debug(f"candidates_expected_count: {candidates_expected_count}")
     arcann_logger.debug(f"candidates_skipped_count: {candidates_skipped_count}")
@@ -517,7 +521,7 @@ def main(
     ):
         labeling_json["is_checked"] = True
     else:
-        arcann_logger.error(f"We did not reach the expected number of labeled data: expected {candidates_expected_count}, got {candidates_step_count + candidates_skipped_count}.")
+        arcann_logger.error(f"We did not reach the expected number of labeled data: expected {candidates_expected_count}, got {candidates_step_count[0] + candidates_skipped_count}.")
 
     del candidates_expected_count, candidates_skipped_count, candidates_step_count
 
@@ -525,7 +529,7 @@ def main(
     write_json_file(labeling_json, (control_path / f"labeling_{padded_curr_iter}.json"))
 
     # End
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     arcann_logger.info(
         f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
     )
@@ -536,7 +540,7 @@ def main(
     del main_json, labeling_json
     del curr_iter, padded_curr_iter
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 

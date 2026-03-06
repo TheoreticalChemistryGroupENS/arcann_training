@@ -12,18 +12,14 @@ Last modified: 2024/08/05
 # Standard library modules
 import logging
 import sys
-from pathlib import Path
 from copy import deepcopy
+from pathlib import Path
 
 # Non-standard library imports
 import numpy as np
 
 # Local imports
 from arcann_training.common.check import validate_step_folder
-from arcann_training.labeling.utils import (
-    generate_input_labeling_json,
-    get_system_labeling,
-)
 from arcann_training.common.json import (
     backup_and_overwrite_json_file,
     get_key_in_dict,
@@ -42,6 +38,10 @@ from arcann_training.common.machine import (
 )
 from arcann_training.common.slurm import replace_in_slurm_file_general
 from arcann_training.common.xyz import parse_xyz_trajectory_file, write_xyz_frame
+from arcann_training.labeling.utils import (
+    generate_input_labeling_json,
+    get_system_labeling,
+)
 
 
 def main(
@@ -55,7 +55,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -65,7 +65,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -177,8 +177,8 @@ def main(
         (control_path / f"exploration_{padded_curr_iter}.json")
     )
     if not exploration_json["is_extracted"]:
-        arcann_logger.error(f"Lock found. Run/Check first: exploration extract.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Lock found. Run/Check first: exploration extract.")
+        arcann_logger.error("Aborting...")
         return 1
 
     # Generate/update the merged input JSON
@@ -220,7 +220,7 @@ def main(
             arcann_logger.error(
                 f"No JOB file provided for '{current_step.capitalize()} / {current_phase.capitalize()}' for this machine."
             )
-            arcann_logger.error(f"Aborting...")
+            arcann_logger.error("Aborting...")
             return 1
         arcann_logger.debug(
             f"master_job_file: {master_job_file[filename_idx][0:5]}, {master_job_file[filename_idx][-5:-1]}"
@@ -244,7 +244,7 @@ def main(
     total_to_label = 0
     system_auto_list = []
     # First loop to get the total number of jobs and the lsit of system
-    for system_auto_index, system_auto in enumerate(exploration_json["systems_auto"]):
+    for _, system_auto in enumerate(exploration_json["systems_auto"]):
         candidates_count = exploration_json["systems_auto"][system_auto][
             "selected_count"
         ]
@@ -262,7 +262,6 @@ def main(
     labeling_json["total_to_label"] = total_to_label
     # Second loop to create the jobs
     for system_auto_index, system_auto in enumerate(exploration_json["systems_auto"]):
-
         arcann_logger.info(
             f"Processing system: {system_auto} ({system_auto_index + 1}/{len(exploration_json['systems_auto'])})"
         )
@@ -295,29 +294,29 @@ def main(
         ) = get_system_labeling(current_input_json, system_auto_index)
 
         arcann_logger.debug(
-            f"{system_labeling_program, system_walltime_first_job_h,system_walltime_second_job_h,system_nb_nodes,system_nb_mpi_per_node,system_nb_threads_per_mpi}"
+            f"{system_labeling_program, system_walltime_first_job_h, system_walltime_second_job_h, system_nb_nodes, system_nb_mpi_per_node, system_nb_threads_per_mpi}"
         )
 
         if labeling_count == 0:
-            labeling_json["systems_auto"][system_auto][
-                "walltime_first_job_h"
-            ] = system_walltime_first_job_h
-            labeling_json["systems_auto"][system_auto][
-                "walltime_second_job_h"
-            ] = system_walltime_second_job_h
+            labeling_json["systems_auto"][system_auto]["walltime_first_job_h"] = (
+                system_walltime_first_job_h
+            )
+            labeling_json["systems_auto"][system_auto]["walltime_second_job_h"] = (
+                system_walltime_second_job_h
+            )
             labeling_json["systems_auto"][system_auto]["nb_nodes"] = system_nb_nodes
-            labeling_json["systems_auto"][system_auto][
-                "nb_mpi_per_node"
-            ] = system_nb_mpi_per_node
-            labeling_json["systems_auto"][system_auto][
-                "nb_threads_per_mpi"
-            ] = system_nb_threads_per_mpi
-            labeling_json["systems_auto"][system_auto][
-                "candidates_count"
-            ] = candidates_count
-            labeling_json["systems_auto"][system_auto][
-                "disturbed_candidates_count"
-            ] = disturbed_candidates_count
+            labeling_json["systems_auto"][system_auto]["nb_mpi_per_node"] = (
+                system_nb_mpi_per_node
+            )
+            labeling_json["systems_auto"][system_auto]["nb_threads_per_mpi"] = (
+                system_nb_threads_per_mpi
+            )
+            labeling_json["systems_auto"][system_auto]["candidates_count"] = (
+                candidates_count
+            )
+            labeling_json["systems_auto"][system_auto]["disturbed_candidates_count"] = (
+                disturbed_candidates_count
+            )
             continue
 
         if curr_iter > 1 and "walltime_first_job_h" not in user_input_json:
@@ -335,12 +334,12 @@ def main(
                 0.5,
             )
 
-        current_input_json["walltime_first_job_h"][
-            system_auto_index
-        ] = system_walltime_first_job_h
-        current_input_json["walltime_second_job_h"][
-            system_auto_index
-        ] = system_walltime_second_job_h
+        current_input_json["walltime_first_job_h"][system_auto_index] = (
+            system_walltime_first_job_h
+        )
+        current_input_json["walltime_second_job_h"][system_auto_index] = (
+            system_walltime_second_job_h
+        )
 
         system_path = current_path / system_auto
         system_path.mkdir(exist_ok=True)
@@ -380,9 +379,9 @@ def main(
 
         if system_auto_list[system_auto_index][0] != system_auto:
             arcann_logger.error(
-                f"System auto list and system auto index do not match. PLEASE REPORT THIS BUG."
+                "System auto list and system auto index do not match. PLEASE REPORT THIS BUG."
             )
-            arcann_logger.error(f"Aborting...")
+            arcann_logger.error("Aborting...")
             return
 
         system_master_job_file[0] = replace_substring_in_string_list(
@@ -522,10 +521,22 @@ def main(
             if batch_number % (machine_max_array_size // system_machine_max_jobs) == 0:
                 block_start += effective_capacity_increment
 
-        #Check if we have one or two input job files:
-        labeling_json["two_steps_labeling"] = (training_path / "user_files" / f"2_{system_auto}_labeling_XXXXX_{machine}.inp").is_file()
+        # Check if we have one or two input job files:
+        labeling_json["two_steps_labeling"] = (
+            training_path
+            / "user_files"
+            / f"2_{system_auto}_labeling_XXXXX_{machine}.inp"
+        ).is_file()
         two_steps = labeling_json["two_steps_labeling"]
-        first_job_input = training_path / "user_files" / f"1_{system_auto}_labeling_XXXXX_{machine}.inp" if two_steps else training_path / "user_files" / f"{system_auto}_labeling_XXXXX_{machine}.inp"
+        first_job_input = (
+            training_path
+            / "user_files"
+            / f"1_{system_auto}_labeling_XXXXX_{machine}.inp"
+            if two_steps
+            else training_path
+            / "user_files"
+            / f"{system_auto}_labeling_XXXXX_{machine}.inp"
+        )
 
         # Labeling input first job
         system_first_job_input = textfile_to_string_list(first_job_input)
@@ -579,9 +590,9 @@ def main(
 
         if atom_coords.shape[0] != candidates_count:
             arcann_logger.error(
-                f"The number of structures in the xyz does not match the number of candidates."
+                "The number of structures in the xyz does not match the number of candidates."
             )
-            arcann_logger.error(f"Aborting...")
+            arcann_logger.error("Aborting...")
             return 1
 
         arcann_logger.info(
@@ -652,7 +663,7 @@ def main(
                 job_file_t,
             )
             del job_file_t
-            if np.any(cell_info) == None:
+            if np.any(cell_info) is None:
                 cell_info = np.array([])
 
             write_xyz_frame(
@@ -667,7 +678,9 @@ def main(
             job_array_params_line = f":{system_auto}:"
             job_array_params_line += f"{padded_labeling_step}:"
             job_array_params_line += f"1_labeling_{padded_labeling_step}:"
-            job_array_params_line += f"2_labeling_{padded_labeling_step}:" if two_steps else ""
+            job_array_params_line += (
+                f"2_labeling_{padded_labeling_step}:" if two_steps else ""
+            )
             job_array_params_line += f"labeling_{padded_labeling_step}-SCF.wfn:"
             job_array_params_line += f"labeling_{padded_labeling_step}.xyz:"
             job_array_params_line += f"{system_nb_nodes}:"
@@ -706,14 +719,14 @@ def main(
                 pbc_info,
                 properties_info,
                 max_f_std_info,
-            ) = parse_xyz_trajectory_file(xyz_file)
+            ) = parse_xyz_trajectory_file(xyz_file_disturbed)
             del xyz_file_disturbed
 
             if atom_coords.shape[0] != candidates_count:
                 arcann_logger.error(
-                    f"The number of structures in the xyz does not match the number of candidates."
+                    "The number of structures in the xyz does not match the number of candidates."
                 )
-                arcann_logger.error(f"Aborting...")
+                arcann_logger.error("Aborting...")
                 return 1
 
             for labeling_step_idx, labeling_step in enumerate(
@@ -796,7 +809,9 @@ def main(
                 job_array_params_line = f":{system_auto}:"
                 job_array_params_line += f"{padded_labeling_step}:"
                 job_array_params_line += f"1_labeling_{padded_labeling_step}:"
-                job_array_params_line += f"2_labeling_{padded_labeling_step}:" if two_steps else ""
+                job_array_params_line += (
+                    f"2_labeling_{padded_labeling_step}:" if two_steps else ""
+                )
                 job_array_params_line += f"labeling_{padded_labeling_step}-SCF.wfn:"
                 job_array_params_line += f"labeling_{padded_labeling_step}.xyz:"
                 job_array_params_line += f"{system_nb_nodes}:"
@@ -822,25 +837,25 @@ def main(
             )
 
         # Update labeling JSON
-        labeling_json["systems_auto"][system_auto][
-            "walltime_first_job_h"
-        ] = system_walltime_first_job_h
-        labeling_json["systems_auto"][system_auto][
-            "walltime_second_job_h"
-        ] = system_walltime_second_job_h
+        labeling_json["systems_auto"][system_auto]["walltime_first_job_h"] = (
+            system_walltime_first_job_h
+        )
+        labeling_json["systems_auto"][system_auto]["walltime_second_job_h"] = (
+            system_walltime_second_job_h
+        )
         labeling_json["systems_auto"][system_auto]["nb_nodes"] = system_nb_nodes
-        labeling_json["systems_auto"][system_auto][
-            "nb_mpi_per_node"
-        ] = system_nb_mpi_per_node
-        labeling_json["systems_auto"][system_auto][
-            "nb_threads_per_mpi"
-        ] = system_nb_threads_per_mpi
-        labeling_json["systems_auto"][system_auto][
-            "candidates_count"
-        ] = candidates_count
-        labeling_json["systems_auto"][system_auto][
-            "disturbed_candidates_count"
-        ] = disturbed_candidates_count
+        labeling_json["systems_auto"][system_auto]["nb_mpi_per_node"] = (
+            system_nb_mpi_per_node
+        )
+        labeling_json["systems_auto"][system_auto]["nb_threads_per_mpi"] = (
+            system_nb_threads_per_mpi
+        )
+        labeling_json["systems_auto"][system_auto]["candidates_count"] = (
+            candidates_count
+        )
+        labeling_json["systems_auto"][system_auto]["disturbed_candidates_count"] = (
+            disturbed_candidates_count
+        )
 
         # System dependent cleaning
         del system_first_job_input, system_master_job_file
@@ -865,9 +880,9 @@ def main(
 
     if total_to_label != len(job_array_params_file[f"{labeling_program}"]) - 1:
         arcann_logger.error(
-            f"The number of structures to label does not match the number of jobs."
+            "The number of structures to label does not match the number of jobs."
         )
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Aborting...")
         return 1
 
     string_list_to_textfile(
@@ -903,7 +918,7 @@ def main(
     )
 
     # End
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     arcann_logger.info(
         f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
     )
@@ -935,7 +950,7 @@ def main(
     )
     del master_job_file
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 
