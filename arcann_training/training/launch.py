@@ -155,6 +155,11 @@ def main(
     # Update the boolean in the training JSON
     if completed_count == main_json["nnp_count"]:
         training_json["is_launched"] = True
+    if nnp_program == "mace":  # because we don't need them for mace
+        training_json["is_freeze_launched"] = True
+        training_json["is_frozen"] = True
+        training_json["is_compress_launched"] = True
+        training_json["is_compressed"] = True
 
     # Dump the JSON (training JSON)
     write_json_file(
