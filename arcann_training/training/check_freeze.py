@@ -53,6 +53,9 @@ def main(
     control_path = training_path / "control"
     main_json = load_json_file((control_path / "config.json"))
     training_json = load_json_file((control_path / f"training_{padded_curr_iter}.json"))
+    nnp_program: str = main_json["nnp_program"]
+
+    arcann_logger.info(f"Using {nnp_program} as NNP software")
 
     # Check if we can continue
     if not training_json["is_freeze_launched"]:
@@ -60,20 +63,22 @@ def main(
         arcann_logger.error("Aborting...")
         return 1
 
-    completed_count = 0
-    for nnp in range(1, main_json["nnp_count"] + 1):
-        local_path = current_path / f"{nnp}"
-        if (local_path / f"graph_{nnp}_{padded_curr_iter}.pb").is_file():
-            completed_count += 1
-        else:
-            arcann_logger.critical(f"DP Freeze - '{nnp}' not finished/failed.")
-        del local_path
-    del nnp
-    arcann_logger.debug(f"completed_count: {completed_count}")
+    completed_count = None
+    if nnp_program == "deepmd":
+        completed_count = 0
+        for nnp in range(1, main_json["nnp_count"] + 1):
+            local_path = current_path / f"{nnp}"
+            if (local_path / f"graph_{nnp}_{padded_curr_iter}.pb").is_file():
+                completed_count += 1
+            else:
+                arcann_logger.critical(f"DP Freeze - '{nnp}' not finished/failed.")
+            del local_path
+        del nnp
+        arcann_logger.debug(f"completed_count: {completed_count}")
 
     arcann_logger.info("-" * 88)
     # Update the boolean in the training JSON
-    if completed_count == main_json["nnp_count"]:
+    if completed_count == main_json["nnp_count"] or nnp_program == "mace":
         training_json["is_frozen"] = True
 
     # Dump the JSON (training JSON)
@@ -85,7 +90,7 @@ def main(
 
     # End
     arcann_logger.info("-" * 88)
-    if completed_count == main_json["nnp_count"]:
+    if completed_count == main_json["nnp_count"] or nnp_program == "mace":
         arcann_logger.info(
             f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
         )

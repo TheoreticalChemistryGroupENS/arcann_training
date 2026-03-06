@@ -55,6 +55,9 @@ def main(
     control_path = training_path / "control"
     main_json = load_json_file((control_path / "config.json"))
     training_json = load_json_file((control_path / f"training_{padded_curr_iter}.json"))
+    nnp_program: str = main_json["nnp_program"]
+
+    arcann_logger.info(f"Using {nnp_program} as NNP software")
 
     # Check if we can continue
     if not training_json["is_frozen"]:
@@ -62,13 +65,18 @@ def main(
         arcann_logger.error("Aborting...")
         return 1
 
-    # Check if pb files are present and delete temp files
+    # Check if pb or model files are present and delete temp files
     for nnp in range(1, main_json["nnp_count"] + 1):
         local_path = Path().resolve() / f"{nnp}"
-        check_file_existence(local_path / f"graph_{nnp}_{padded_curr_iter}.pb")
-        if training_json["is_compressed"]:
+        if nnp_program == "deepmd":
+            check_file_existence(local_path / f"graph_{nnp}_{padded_curr_iter}.pb")
+            if training_json["is_compressed"]:
+                check_file_existence(
+                    local_path / f"graph_{nnp}_{padded_curr_iter}_compressed.pb"
+                )
+        elif nnp_program == "mace":
             check_file_existence(
-                local_path / f"graph_{nnp}_{padded_curr_iter}_compressed.pb"
+                local_path / "MACE_models" / f"model_{nnp}_{padded_curr_iter}.model"
             )
 
     # Prepare the test folder
@@ -84,14 +92,36 @@ def main(
         ]
     )
 
-    # Copy the pb files to the NNP meta folder
+    # Copy the pb or model files to the NNP meta folder
     (training_path / "NNP").mkdir(exist_ok=True)
     check_directory(training_path / "NNP")
 
     local_path = Path().resolve()
 
     for nnp in range(1, main_json["nnp_count"] + 1):
-        if training_json["is_compressed"]:
+        if nnp_program == "deepmd":
+            if training_json["is_compressed"]:
+                subprocess.run(  # noqa: S603
+                    [  # noqa: S607
+                        "rsync",
+                        "-a",
+                        str(
+                            local_path
+                            / f"{nnp}"
+                            / f"graph_{nnp}_{padded_curr_iter}_compressed.pb"
+                        ),
+                        str((training_path / "NNP")),
+                    ]
+                )
+            subprocess.run(  # noqa: S603
+                [  # noqa: S607
+                    "rsync",
+                    "-a",
+                    str(local_path / f"{nnp}" / f"graph_{nnp}_{padded_curr_iter}.pb"),
+                    str((training_path / "NNP")),
+                ]
+            )
+        elif nnp_program == "mace":
             subprocess.run(  # noqa: S603
                 [  # noqa: S607
                     "rsync",
@@ -99,19 +129,12 @@ def main(
                     str(
                         local_path
                         / f"{nnp}"
-                        / f"graph_{nnp}_{padded_curr_iter}_compressed.pb"
+                        / "MACE_models"
+                        / f"model_{nnp}_{padded_curr_iter}.model"
                     ),
                     str((training_path / "NNP")),
                 ]
             )
-        subprocess.run(  # noqa: S603
-            [  # noqa: S607
-                "rsync",
-                "-a",
-                str(local_path / f"{nnp}" / f"graph_{nnp}_{padded_curr_iter}.pb"),
-                str((training_path / "NNP")),
-            ]
-        )
     del nnp
 
     # Next iteration

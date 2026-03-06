@@ -60,6 +60,9 @@ def main(
     training_config = load_json_file(
         (control_path / f"training_{padded_curr_iter}.json")
     )
+    nnp_program: str = main_json["nnp_program"]
+
+    arcann_logger.info(f"Using {nnp_program} as NNP software")
 
     # Check if we can continue
     if not training_config["is_incremented"]:

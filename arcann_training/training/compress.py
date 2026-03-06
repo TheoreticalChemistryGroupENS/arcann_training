@@ -98,6 +98,9 @@ def main(
     control_path = training_path / "control"
     main_json = load_json_file((control_path / "config.json"))
     training_json = load_json_file((control_path / f"training_{padded_curr_iter}.json"))
+    nnp_program: str = main_json["nnp_program"]
+
+    arcann_logger.info(f"Using {nnp_program} as NNP software")
 
     # Load the previous training JSON
     if curr_iter > 0:
@@ -184,100 +187,107 @@ def main(
     training_json["user_machine_keyword_compress"] = user_machine_keyword
 
     # Check if the job file exists
-    job_file_name = f"job_deepmd_compress_{machine_spec['arch_type']}_{machine}.sh"
-    if (current_path.parent / "user_files" / job_file_name).is_file():
-        master_job_file = textfile_to_string_list(
-            current_path.parent / "user_files" / job_file_name
-        )
-    else:
-        arcann_logger.error(
-            f"No JOB file provided for '{current_step.capitalize()} / {current_phase.capitalize()}' for this machine."
-        )
-        arcann_logger.error("Aborting...")
-        return 1
-
-    arcann_logger.debug(
-        f"master_job_file: {master_job_file[0:5]}, {master_job_file[-5:-1]}"
-    )
-    del job_file_name
-
-    # Prep and launch DP Compress
-    completed_count = 0
-    walltime_approx_s = 3900
-    for nnp in range(1, main_json["nnp_count"] + 1):
-        local_path = current_path / f"{nnp}"
-
-        check_file_existence(local_path / "model.ckpt.index")
-
-        job_file = replace_in_slurm_file_general(
-            master_job_file,
-            machine_spec,
-            walltime_approx_s,
-            machine_walltime_format,
-            current_input_json["job_email"],
-        )
-        # Replace the inputs/variables in the job file
-        job_file = replace_substring_in_string_list(
-            job_file, "_R_DEEPMD_VERSION_", f"{training_json['deepmd_model_version']}"
-        )
-        job_file = replace_substring_in_string_list(
-            job_file, "_R_DEEPMD_MODEL_FILE_", f"graph_{nnp}_{padded_curr_iter}.pb"
-        )
-        job_file = replace_substring_in_string_list(
-            job_file,
-            "_R_DEEPMD_COMPRESSED_MODEL_FILE_",
-            f"graph_{nnp}_{padded_curr_iter}_compressed.pb",
-        )
-        job_file = replace_substring_in_string_list(
-            job_file,
-            "_R_DEEPMD_LOG_FILE_",
-            f"graph_{nnp}_{padded_curr_iter}_compress.log",
-        )
-        job_file = replace_substring_in_string_list(
-            job_file,
-            "_R_DEEPMD_OUTPUT_FILE_",
-            f"graph_{nnp}_{padded_curr_iter}_compress.out",
-        )
-
-        string_list_to_textfile(
-            local_path
-            / f"job_deepmd_compress_{machine_spec['arch_type']}_{machine}.sh",
-            job_file,
-            read_only=True,
-        )
-        del job_file
-
-        with (local_path / "checkpoint").open("w") as f:
-            f.write('model_checkpoint_path: "model.ckpt"\n')
-            f.write('all_model_checkpoint_paths: "model.ckpt"\n')
-        del f
-        if (
-            local_path / f"job_deepmd_compress_{machine_spec['arch_type']}_{machine}.sh"
-        ).is_file():
-            change_directory(local_path)
-            try:
-                subprocess.run(  # noqa: S603
-                    [
-                        machine_launch_command,
-                        f"./job_deepmd_compress_{machine_spec['arch_type']}_{machine}.sh",
-                    ]
-                )
-                arcann_logger.info(f"DP Compress - '{nnp}' launched.")
-                completed_count += 1
-            except FileNotFoundError:
-                arcann_logger.critical(
-                    f"DP Compress - '{nnp}' NOT launched - '{machine_launch_command}' not found."
-                )
-            change_directory(local_path.parent)
+    completed_count = None
+    if nnp_program == "deepmd":
+        job_file_name = f"job_deepmd_compress_{machine_spec['arch_type']}_{machine}.sh"
+        if (current_path.parent / "user_files" / job_file_name).is_file():
+            master_job_file = textfile_to_string_list(
+                current_path.parent / "user_files" / job_file_name
+            )
         else:
-            arcann_logger.critical(f"DP Compress - '{nnp}' NOT launched - No job file.")
-        del local_path
+            arcann_logger.error(
+                f"No JOB file provided for '{current_step.capitalize()} / {current_phase.capitalize()}' for this machine."
+            )
+            arcann_logger.error("Aborting...")
+            return 1
 
-    del nnp, master_job_file
+        arcann_logger.debug(
+            f"master_job_file: {master_job_file[0:5]}, {master_job_file[-5:-1]}"
+        )
+        del job_file_name
+
+        # Prep and launch DP Compress
+        completed_count = 0
+        walltime_approx_s = 3900
+        for nnp in range(1, main_json["nnp_count"] + 1):
+            local_path = current_path / f"{nnp}"
+
+            check_file_existence(local_path / "model.ckpt.index")
+
+            job_file = replace_in_slurm_file_general(
+                master_job_file,
+                machine_spec,
+                walltime_approx_s,
+                machine_walltime_format,
+                current_input_json["job_email"],
+            )
+            # Replace the inputs/variables in the job file
+            job_file = replace_substring_in_string_list(
+                job_file,
+                "_R_DEEPMD_VERSION_",
+                f"{training_json['deepmd_model_version']}",
+            )
+            job_file = replace_substring_in_string_list(
+                job_file, "_R_DEEPMD_MODEL_FILE_", f"graph_{nnp}_{padded_curr_iter}.pb"
+            )
+            job_file = replace_substring_in_string_list(
+                job_file,
+                "_R_DEEPMD_COMPRESSED_MODEL_FILE_",
+                f"graph_{nnp}_{padded_curr_iter}_compressed.pb",
+            )
+            job_file = replace_substring_in_string_list(
+                job_file,
+                "_R_DEEPMD_LOG_FILE_",
+                f"graph_{nnp}_{padded_curr_iter}_compress.log",
+            )
+            job_file = replace_substring_in_string_list(
+                job_file,
+                "_R_DEEPMD_OUTPUT_FILE_",
+                f"graph_{nnp}_{padded_curr_iter}_compress.out",
+            )
+
+            string_list_to_textfile(
+                local_path
+                / f"job_deepmd_compress_{machine_spec['arch_type']}_{machine}.sh",
+                job_file,
+                read_only=True,
+            )
+            del job_file
+
+            with (local_path / "checkpoint").open("w") as f:
+                f.write('model_checkpoint_path: "model.ckpt"\n')
+                f.write('all_model_checkpoint_paths: "model.ckpt"\n')
+            del f
+            if (
+                local_path
+                / f"job_deepmd_compress_{machine_spec['arch_type']}_{machine}.sh"
+            ).is_file():
+                change_directory(local_path)
+                try:
+                    subprocess.run(  # noqa: S603
+                        [
+                            machine_launch_command,
+                            f"./job_deepmd_compress_{machine_spec['arch_type']}_{machine}.sh",
+                        ]
+                    )
+                    arcann_logger.info(f"DP Compress - '{nnp}' launched.")
+                    completed_count += 1
+                except FileNotFoundError:
+                    arcann_logger.critical(
+                        f"DP Compress - '{nnp}' NOT launched - '{machine_launch_command}' not found."
+                    )
+                change_directory(local_path.parent)
+            else:
+                arcann_logger.critical(
+                    f"DP Compress - '{nnp}' NOT launched - No job file."
+                )
+            del local_path
+
+        del nnp, master_job_file, user_machine_keyword, walltime_approx_s
 
     arcann_logger.info("-" * 88)
     # Update the boolean in the training JSON
-    if completed_count == main_json["nnp_count"]:
+    if completed_count == main_json["nnp_count"] or nnp_program == "mace":
         training_json["is_compress_launched"] = True
 
     # Dump the JSON files (main, training and current input)
@@ -296,6 +306,13 @@ def main(
     if completed_count == main_json["nnp_count"]:
         arcann_logger.info(
             f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
+        )
+    elif nnp_program == "mace":
+        arcann_logger.info(
+            f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
+        )
+        arcann_logger.info(
+            "BUT BE CARREFUL, you're using a MACE model that doesn't require compression, so no job was launched."
         )
     else:
         arcann_logger.critical(
@@ -316,7 +333,6 @@ def main(
         user_input_json_present,
         user_input_json_filename,
     )
-    del user_machine_keyword, walltime_approx_s
     del main_json, current_input_json, training_json
     del curr_iter, padded_curr_iter
     del (
