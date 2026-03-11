@@ -361,7 +361,7 @@ read_restart _R_RESTART_OUT_
 thermo_style custom step pe
 thermo 1
 
-dump traj{i} all custom _R_PRINT_FREQ_ mace_forces_model{i}.lammpstrj id type fx fy fz
+dump traj{i} all custom _R_PRINT_FREQ_ {self._lmp_input.stem}_mace_forces_model{i}.lammpstrj id type fx fy fz
 dump_modify traj{i} sort id
 
 rerun mace_run_model1.lammpstrj dump x y z

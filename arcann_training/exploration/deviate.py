@@ -326,7 +326,8 @@ def main(
                                 [
                                     rr.get_forces()
                                     for rr in ase.io.read(
-                                        f"mace_forces_model{i}.lammpstrj", index=":"
+                                        f"{system_auto}_mace_forces_model{i}.lammpstrj",
+                                        index=":",
                                     )
                                 ]
                                 for i in range(1, main_json["nnp_count"] + 1)
