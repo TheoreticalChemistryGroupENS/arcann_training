@@ -323,6 +323,17 @@ class LAMMPSInputHandler:
         """
         return self._raw_text
 
+    @property
+    def input_file(self) -> Path:
+        """Get the lammps input Path object.
+
+        Returns
+        -------
+        Path
+            The lammps input Path object.
+        """
+        return self._lmp_input
+
     def has_plumed(self) -> bool:
         """
         Check if the LAMMPS input includes PLUMED commands.

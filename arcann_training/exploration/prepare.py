@@ -48,7 +48,7 @@ from arcann_training.common.xml import (
     write_xml_file,
     xml_to_string_list,
 )
-from arcann_training.exploration.lammps import LAMMPSInputHandler
+from arcann_training.exploration.lammps import LAMMPSInputHandler, LAMMPSPair
 from arcann_training.exploration.utils import (
     create_models_list,
     generate_input_exploration_json,
@@ -349,6 +349,14 @@ def main(
                 training_path / "user_files" / (system_auto + ".in"),
                 main_json["type_map"],
             )
+
+            if (
+                lmp_input_handler.lmp_pair == LAMMPSPair.DEEPMD
+                and nnp_program != "deepmd"
+            ):
+                raise ValueError(
+                    f"DeepMD pair_style used in LAMMPS input, but training not done with DeepMD: {lmp_input_handler.input_file}"
+                )
 
             main_json["pair_style"] = lmp_input_handler.lmp_pair.value
 
