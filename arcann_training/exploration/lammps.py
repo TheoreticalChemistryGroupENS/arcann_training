@@ -172,11 +172,6 @@ class LAMMPSInputHandler:
 
         self._raw_text = self._read_input_file()
 
-        if "write_restart" not in self._raw_text:
-            raise ValueError(
-                f"'write_restart' not found in LAMMPS input, please add it using: 'write_restart _R_RESTART_OUT_' : {self._lmp_input}"
-            )
-
         self._el = elements
         self._models = None
         self._parse_metadata()
@@ -252,6 +247,15 @@ class LAMMPSInputHandler:
         if not match:
             raise ValueError(
                 f"No 'run _R_NUMBER_OF_STEPS_' found in the LAMMPS input file: {self._lmp_input}"
+            )
+
+        match = re.search(
+            r"^\s*(?!#)write_restart\s+_R_RESTART_OUT_", self._raw_text, re.MULTILINE
+        )
+
+        if not match:
+            raise ValueError(
+                f"'write_restart' not found in LAMMPS input, please add it using: 'write_restart _R_RESTART_OUT_' : {self._lmp_input}"
             )
 
         run_index = match.start()
