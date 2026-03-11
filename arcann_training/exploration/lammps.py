@@ -171,6 +171,12 @@ class LAMMPSInputHandler:
             raise FileNotFoundError(f"LAMMPS input not found: {lmp_input}")
 
         self._raw_text = self._read_input_file()
+
+        if "write_restart" not in self._raw_text:
+            raise ValueError(
+                f"'write_restart' not found in LAMMPS input, please add it using: 'write_restart _R_RESTART_OUT_' : {self._lmp_input}"
+            )
+
         self._el = elements
         self._models = None
         self._parse_metadata()
