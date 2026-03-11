@@ -33,6 +33,9 @@ mace = [
 mace-mliap = [
     { name = "cuequivariance-torch" },
 ]
+symmetrix = [
+    { name = "symmetrix" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -48,8 +51,9 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.15" },
     { name = "pyyaml", specifier = ">=3.13" },
     { name = "strenum", marker = "python_full_version == '3.10.*'", specifier = ">=0.4.15" },
+    { name = "symmetrix", marker = "extra == 'symmetrix'", git = "https://github.com/wcwitt/symmetrix.git?subdirectory=symmetrix" },
 ]
-provides-extras = ["mace", "mace-mliap"]
+provides-extras = ["mace", "mace-mliap", "symmetrix"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1958,6 +1962,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/85/ad/430fb60d90e1d112a
 wheels = [
     { url = "https://files.pythonhosted.org/packages/81/69/297302c5f5f59c862faa31e6cb9a4cd74721cd1e052b38e464c5b402df8b/StrEnum-0.4.15-py3-none-any.whl", hash = "sha256:a30cda4af7cc6b5bf52c8055bc4bf4b2b6b14a93b574626da33df53cf7740659", size = 8851, upload-time = "2023-06-29T22:02:56.947Z" },
 ]
+
+[[package]]
+name = "symmetrix"
+version = "0.0.1"
+source = { git = "https://github.com/wcwitt/symmetrix.git?subdirectory=symmetrix#739660acb523bc5f30cd57cee6611161a33e2605" }
 
 [[package]]
 name = "sympy"
