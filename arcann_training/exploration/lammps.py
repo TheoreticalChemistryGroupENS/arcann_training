@@ -225,7 +225,9 @@ class LAMMPSInputHandler:
 
         self._plumed = (
             True
-            if re.search(r"^\s*(?!#)plumed", self._raw_text, re.MULTILINE)
+            if re.search(
+                r"^\s*(?!#)\s*fix\s+\S+\s+\S+\s+plumed\b", self._raw_text, re.MULTILINE
+            )
             else False
         )
 

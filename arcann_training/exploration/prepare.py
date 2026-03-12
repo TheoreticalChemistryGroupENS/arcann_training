@@ -369,6 +369,9 @@ def main(
 
             plumed[0] = lmp_input_handler.has_plumed()
 
+            if lmp_input_handler.has_plumed():
+                arcann_logger.debug(f"PLUMED identified in {system_auto}")
+
             master_system_lammps_in = lmp_input_handler.lines
         # END LAMMPS
 
