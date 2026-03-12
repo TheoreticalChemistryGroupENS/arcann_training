@@ -838,7 +838,10 @@ def create_models_list(
                                 "output": str(
                                     model_path.with_name(model_path.name + md_ext)
                                 ),
-                                "chemical-symbols": main_json["type_map"],
+                                "chemical-symbols": [
+                                    main_json["properties"][element]["symbol"]
+                                    for element in main_json["properties"]
+                                ],
                             },
                         )
                 case _:

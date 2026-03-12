@@ -347,7 +347,10 @@ def main(
         if system_exploration_type == "lammps":
             lmp_input_handler = LAMMPSInputHandler(
                 training_path / "user_files" / (system_auto + ".in"),
-                main_json["type_map"],
+                [
+                    main_json["properties"][element]["symbol"]
+                    for element in main_json["properties"]
+                ],
             )
 
             if (
