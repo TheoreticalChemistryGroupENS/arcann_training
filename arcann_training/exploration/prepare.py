@@ -361,10 +361,12 @@ def main(
                     f"DeepMD pair_style used in LAMMPS input, but training not done with DeepMD: {lmp_input_handler.input_file}"
                 )
 
-            main_json["pair_style"] = lmp_input_handler.lmp_pair.value
+            exploration_json["systems_auto"][system_auto]["pair_style"] = (
+                lmp_input_handler.lmp_pair.value
+            )
 
             arcann_logger.info(
-                f"LAMMPS pair_style identified: {main_json['pair_style']} -- {system_auto}"
+                f"LAMMPS pair_style identified: {lmp_input_handler.lmp_pair.value} -- {system_auto}"
             )
 
             plumed[0] = lmp_input_handler.has_plumed()
@@ -859,6 +861,7 @@ def main(
                     padded_prev_iter,
                     training_path,
                     local_path,
+                    pair_style=lmp_input_handler.lmp_pair,
                 )
                 arcann_logger.debug(f"{models_list}, {models_string}")
 

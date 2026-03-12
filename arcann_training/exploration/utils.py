@@ -749,6 +749,8 @@ def create_models_list(
     padded_prev_iter: str,
     training_path: Path,
     local_path: Path,
+    *,
+    pair_style: str | LAMMPSPair | None = None,
 ) -> Tuple[List[str], str]:
     """
     Generate a list of model file names and create symbolic links to the corresponding model files.
@@ -769,6 +771,8 @@ def create_models_list(
         The path to the training directory.
     local_path : Path
         The path to the local directory.
+    pair_style : str | LAMMPSPair | None
+        LAMMPS pair style used
 
     Returns
     -------
@@ -784,7 +788,6 @@ def create_models_list(
     )
 
     nnp_program = main_json["nnp_program"]
-    pair_style = main_json.get("pair_style", None)  # get when lammps is used
 
     # Determine whether to use compressed models
     compress_str = (
