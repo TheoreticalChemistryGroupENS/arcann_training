@@ -799,7 +799,7 @@ def create_models_list(
     if pair_style is not None and nnp_program == "mace":
         nnp_path = training_path / Path("NNP")
         for nnp in reorder_nnp_list:
-            model_name = "graph_" + str(nnp) + "_" + padded_prev_iter
+            model_name = f"model_{nnp}_{padded_prev_iter}"
             model_path = nnp_path.resolve() / Path(model_name + ".model")
             # * Probably better to move it later to another place so converting is handled separately
             match pair_style:
