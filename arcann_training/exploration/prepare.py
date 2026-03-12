@@ -364,7 +364,7 @@ def main(
             main_json["pair_style"] = lmp_input_handler.lmp_pair.value
 
             arcann_logger.info(
-                f"LAMMPS pair_style identified: {main_json['pair_style']}"
+                f"LAMMPS pair_style identified: {main_json['pair_style']} -- {system_auto}"
             )
 
             plumed[0] = lmp_input_handler.has_plumed()
