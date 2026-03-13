@@ -243,24 +243,24 @@ class LAMMPSInputHandler:
         ValueError
             If no 'run _R_NUMBER_OF_STEPS_' command is found.
         """
-        match = re.search(
+        match_run = re.search(
             r"^\s*(?!#)run\s+_R_NUMBER_OF_STEPS_", self._raw_text, re.MULTILINE
         )
-        if not match:
+        if not match_run:
             raise ValueError(
                 f"No 'run _R_NUMBER_OF_STEPS_' found in the LAMMPS input file: {self._lmp_input}"
             )
 
-        match = re.search(
+        match_rest = re.search(
             r"^\s*(?!#)write_restart\s+_R_RESTART_OUT_", self._raw_text, re.MULTILINE
         )
 
-        if not match:
+        if not match_rest:
             raise ValueError(
                 f"'write_restart' not found in LAMMPS input, please add it using: 'write_restart _R_RESTART_OUT_' : {self._lmp_input}"
             )
 
-        run_index = match.start()
+        run_index = match_run.start()
         self._raw_text = (
             self._raw_text[:run_index]
             + "\n".join(self.cell_info_lammps)
