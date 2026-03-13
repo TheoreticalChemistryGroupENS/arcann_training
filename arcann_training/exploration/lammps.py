@@ -144,8 +144,8 @@ class LAMMPSInputHandler:
     ]
 
     mace_dump_0 = (
-        "dump traj_xyz all custom _R_PRINT_FREQ_ mace_run_model1.lammpstrj id type x y z",
-        "dump traj_frc all custom _R_PRINT_FREQ_ mace_forces_model1.lammpstrj id type fx fy fz",
+        "dump traj_xyz all custom _R_PRINT_FREQ_ _RI_NAME__mace_run_model1.lammpstrj id type x y z",
+        "dump traj_frc all custom _R_PRINT_FREQ_ _RI_NAME__mace_forces_model1.lammpstrj id type fx fy fz",
         "dump_modify traj_xyz sort id",
         "dump_modify traj_frc sort id",
     )
@@ -177,7 +177,9 @@ class LAMMPSInputHandler:
         self._parse_metadata()
         self._prepare_input_text()
 
-        self._raw_text = self.apply_variables({"_R_ATOM_LABELS_": " ".join(elements)})
+        self._raw_text = self.apply_variables(
+            {"_R_ATOM_LABELS_": " ".join(elements), "_RI_NAME_": self._lmp_input.stem}
+        )
 
     def __str__(self):
         return str(self._raw_text)
@@ -387,7 +389,7 @@ thermo 1
 dump traj{i} all custom _R_PRINT_FREQ_ {self._lmp_input.stem}_mace_forces_model{i}.lammpstrj id type fx fy fz
 dump_modify traj{i} sort id
 
-rerun mace_run_model1.lammpstrj dump x y z
+rerun {self._lmp_input.stem}_mace_run_model1.lammpstrj dump x y z
 """
 
     def _get_pair_lmp_string(self, model: str) -> str:
