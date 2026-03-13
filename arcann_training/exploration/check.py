@@ -216,7 +216,7 @@ def main(
                         arcann_logger.critical(
                             f"'{local_path}': missing files. Check manually."
                         )
-                        del lammps_output_file, traj_file, model_deviation_filename
+                        del lammps_output_file, traj_file
                         continue
 
                     # Check if DCD is unreadable
@@ -228,7 +228,7 @@ def main(
                         ] += 1
                         arcann_logger.warning(f"'{traj_file}' present but invalid.")
                         arcann_logger.warning(f"'{local_path}' auto-skipped.")
-                        del lammps_output_file, traj_file, model_deviation_filename
+                        del lammps_output_file, traj_file
                         continue
 
                     # Check if output is valid (or forced)
@@ -259,7 +259,6 @@ def main(
                         lammps_output,
                         lammps_output_file,
                         traj_file,
-                        model_deviation_filename,
                     )
 
                 elif (
