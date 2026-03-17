@@ -334,6 +334,9 @@ def main(
                                 for i in range(1, main_json["nnp_count"] + 1)
                             ]
                         )
+                        mace_rerun_forces = np.linalg.norm(
+                            mace_rerun_forces, axis=-1, keepdims=True
+                        )
                         deviation_per_atom = np.std(
                             mace_rerun_forces, axis=(0, 3)
                         )  # (0, 3) -> (NNP, Forces), return an array with (Step,Atoms) dim
