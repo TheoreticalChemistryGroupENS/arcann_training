@@ -597,7 +597,7 @@ def main(
                             local_path
                             / f"{system_auto}_{it_nnp}_{padded_curr_iter}.dcd"
                         )
-                        candidate_indexes = candidate_indexes / print_every_x_steps
+                        candidate_indexes = candidate_indexes
                     elif (
                         exploration_json["systems_auto"][system_auto][
                             "exploration_type"
@@ -812,7 +812,7 @@ def main(
                         ) = parse_xyz_trajectory_file(local_path / traj_file)
 
                         for _ in candidate_indexes_padded:
-                            print(
+                            arcann_logger.debug(
                                 f"Processing candidate: {system_auto} / {it_nnp} / {it_number} / {_}"
                             )
                             write_xyz_frame(
@@ -878,6 +878,7 @@ def main(
                 / f"candidates_{padded_curr_iter}_{system_auto}.xyz"
             )
             remove_file(candidates_xyz_file)
+            arcann_logger.debug(f"candidates_files: {candidates_files}")
             with candidates_xyz_file.open("w") as f:
                 for candidate_xyz_file in candidates_files:
                     f.write((current_path / candidate_xyz_file).read_text())
