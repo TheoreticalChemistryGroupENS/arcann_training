@@ -145,7 +145,7 @@ class LAMMPSInputHandler:
 
     mace_dump_0 = (
         "dump traj_xyz all custom _R_PRINT_FREQ_ _RI_NAME__mace_run_model1.lammpstrj id type x y z",
-        "dump traj_frc all custom _R_PRINT_FREQ_ _RI_NAME__mace_forces_model1.lammpstrj id type fx fy fz",
+        "dump traj_frc all custom _R_PRINT_FREQ_ _RI_NAME__mace_forces_model1.lammpstrj id type x y z fx fy fz",
         "dump_modify traj_xyz sort id",
         "dump_modify traj_frc sort id",
     )
@@ -386,7 +386,7 @@ read_restart _R_RESTART_OUT_
 thermo_style custom step pe
 thermo 1
 
-dump traj{i} all custom _R_PRINT_FREQ_ {self._lmp_input.stem}_mace_forces_model{i}.lammpstrj id type fx fy fz
+dump traj{i} all custom _R_PRINT_FREQ_ {self._lmp_input.stem}_mace_forces_model{i}.lammpstrj id type x y z fx fy fz
 dump_modify traj{i} sort id
 
 rerun {self._lmp_input.stem}_mace_run_model1.lammpstrj dump x y z
