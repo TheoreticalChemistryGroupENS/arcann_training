@@ -897,7 +897,12 @@ def get_last_frame_number(
     else:
         start_frame = 0
     if model_deviation.shape[1] == 2:
-        if np.any(model_deviation[start_frame:1] >= sigma_high_limit):
+        if np.any(model_deviation[start_frame:, 1] >= sigma_high_limit):
+            last_frame = np.argmax(model_deviation[start_frame:, 1] >= sigma_high_limit)
+        else:
+            last_frame = -1
+    if model_deviation.shape[1] == 4:  # MACE
+        if np.any(model_deviation[start_frame:, 1] >= sigma_high_limit):
             last_frame = np.argmax(model_deviation[start_frame:, 1] >= sigma_high_limit)
         else:
             last_frame = -1
