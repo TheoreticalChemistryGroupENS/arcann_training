@@ -172,14 +172,14 @@ def main(
         skipped_traj_stats = 0
 
         dt_file = (
-            exploration_json["system_auto"][system_auto]["timestep_ps"]
+            exploration_json["systems_auto"][system_auto]["timestep_ps"]
             * exploration_json["systems_auto"][system_auto]["print_every_x_steps"]
         )
 
         if ignore_first_x_ps % dt_file == 0:
-            start_row_number = ignore_first_x_ps / dt_file + 1
+            start_row_number = int(ignore_first_x_ps / dt_file + 1)
         else:
-            start_row_number = np.ceil(ignore_first_x_ps / dt_file)
+            start_row_number = int(np.ceil(ignore_first_x_ps / dt_file))
 
         arcann_logger.debug(
             f"{exploration_json['systems_auto'][system_auto]['print_every_x_steps']},{exploration_json['systems_auto'][system_auto]['timestep_ps']}"
@@ -326,7 +326,8 @@ def main(
                                 [
                                     rr.get_forces()
                                     for rr in ase.io.read(
-                                        f"{system_auto}_mace_forces_model{i}.lammpstrj",
+                                        local_path
+                                        / f"{system_auto}_mace_forces_model{i}.lammpstrj",
                                         index=":",
                                     )
                                 ]
@@ -343,7 +344,11 @@ def main(
                             ]
                         )
                         total_row_number = model_deviation.shape[0]
-                        np.savetxt(model_deviation_filename, model_deviation)
+                        np.savetxt(
+                            local_path / model_deviation_filename,
+                            model_deviation,
+                            header="STEP max_devi_f min_devi_f avg_devi_f",
+                        )
                     else:
                         arcann_logger.error(
                             "Unknown exploration type. Please BUG REPORT!"
