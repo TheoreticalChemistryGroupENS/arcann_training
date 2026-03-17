@@ -970,6 +970,9 @@ def main(
                             lmp_input_handler.apply_variables(input_replace_dict)
                         )
 
+                    # ? Use reset or recreate from scratch?
+                    lmp_input_handler.reset()  # reset input handler so the next iteration is properly handled
+
                     job_array_params_line = (
                         str(system_auto)
                         + "_"

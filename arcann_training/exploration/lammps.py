@@ -181,6 +181,8 @@ class LAMMPSInputHandler:
             {"_R_ATOM_LABELS_": " ".join(elements), "_RI_NAME_": self._lmp_input.stem}
         )
 
+        self._initial_raw_text = "".join(self._raw_text)  # string deepcopy
+
     def __str__(self):
         return str(self._raw_text)
 
@@ -268,6 +270,7 @@ class LAMMPSInputHandler:
             + "\n".join(self.cell_info_lammps)
             + "\n".join(self.mace_dump_0)
             + self._raw_text[run_index:]
+            + "\n"
         )
 
     @property
@@ -359,6 +362,11 @@ class LAMMPSInputHandler:
         """
         return self._plumed
 
+    # TODO: find a way to not need a reset, as a handler should work like this
+    def reset(self) -> None:
+        """Reset handler, so same handler may be used to generate more than one input."""
+        self._raw_text = "".join(self._initial_raw_text)
+
     @catch_errors_decorator
     def set_models(self, models: list[str]) -> None:
         self._models = models
@@ -371,9 +379,10 @@ class LAMMPSInputHandler:
     @catch_errors_decorator
     def _prepare_mace_rerun(self) -> None:
         for i, model in enumerate(self._models[1:], start=2):
-            self._raw_text += f"""\n# ------------------
-# Rerun with model {i}
-# ------------------
+            rr_str = f"Rerun with {to_ordinal(i)} model"
+            self._raw_text += f"""\n# {"-" * len(rr_str)}
+# {rr_str}
+# {"-" * len(rr_str)}
 clear
 
 atom_style atomic
@@ -401,6 +410,14 @@ rerun {self._lmp_input.stem}_mace_run_model1.lammpstrj dump x y z
                 return f"pair_style mliap unified {model} 0\npair_coeff * * {elements}"
             case LAMMPSPair.SYMMETRIX:
                 return f"pair_style symmetrix/mace\npair_coeff * * {model} {elements}"
+
+
+def to_ordinal(n):
+    if 10 <= n % 100 <= 13:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
 
 
 @catch_errors_decorator
