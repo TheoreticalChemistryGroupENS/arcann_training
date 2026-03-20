@@ -25,7 +25,7 @@
         "decay_steps": 5000,
         "decay_steps_fixed": false,
         "numb_steps": 400000,
-        "max_num_epochs": 5000,
+        "max_num_epochs": 500,
         "numb_test": 0
     },
     "exploration":

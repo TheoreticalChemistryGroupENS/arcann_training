@@ -662,6 +662,7 @@ def main(
         elif nnp_program == "mace":
             nnp_input["seed"] = int(f"{nnp}{random_0_1000}{padded_curr_iter}")
             nnp_input["name"] = f"model_{nnp}_{padded_curr_iter}"
+            nnp_input["model_dir"] = "MACE_models"
             mace_input_file = (Path(f"{nnp}") / "training.yaml").resolve()
             write_yaml_file(
                 nnp_input, mace_input_file, enable_logging=False, read_only=True
