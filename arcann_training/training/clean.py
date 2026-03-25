@@ -17,9 +17,9 @@ from pathlib import Path
 # Local imports
 from arcann_training.common.check import validate_step_folder
 from arcann_training.common.filesystem import (
+    remove_all_symlink,
     remove_files_matching_glob,
     remove_tree,
-    remove_all_symlink,
 )
 from arcann_training.common.json import load_json_file
 
@@ -35,7 +35,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -45,7 +45,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -60,19 +60,22 @@ def main(
     training_config = load_json_file(
         (control_path / f"training_{padded_curr_iter}.json")
     )
+    nnp_program: str = main_json["nnp_program"]
+
+    arcann_logger.info(f"Using {nnp_program} as NNP software")
 
     # Check if we can continue
     if not training_config["is_incremented"]:
-        arcann_logger.error(f"Lock found. Please execute 'training increment' first.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Lock found. Please execute 'training increment' first.")
+        arcann_logger.error("Aborting...")
         return 1
-    arcann_logger.critical(f"This is the cleaning step for training step.")
-    arcann_logger.critical(f"It should be run after training increment phase.")
-    arcann_logger.critical(f"This is will delete:")
+    arcann_logger.critical("This is the cleaning step for training step.")
+    arcann_logger.critical("It should be run after training increment phase.")
+    arcann_logger.critical("This is will delete:")
     arcann_logger.critical(
-        f"symbolic links, 'job_*.sh', 'training.out', 'graph*freeze.out', 'graph*compress.out', 'checkpoint.*', 'input_v2_compat.json', 'DeepMD_*'"
+        "symbolic links, 'job_*.sh', 'training.out', 'graph*freeze.out', 'graph*compress.out', 'checkpoint.*', 'input_v2_compat.json', 'DeepMD_*'"
     )
-    arcann_logger.critical(f"'model-compression' folders")
+    arcann_logger.critical("'model-compression' folders")
     arcann_logger.critical(
         f"'*.pb' models files (they are saved in the '{current_path.parent / 'NNP'}' root folder)"
     )
@@ -81,12 +84,12 @@ def main(
     )
     arcann_logger.critical(f"in the folder: '{current_path}' and all subdirectories.")
     continuing = input(
-        f"Do you want to continue? [Enter 'Y' for yes, or any other key to abort]: "
+        "Do you want to continue? [Enter 'Y' for yes, or any other key to abort]: "
     )
     if continuing == "Y":
         del continuing
     else:
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Aborting...")
         return 0
 
     # Delete
@@ -94,22 +97,22 @@ def main(
     remove_all_symlink(current_path)
     arcann_logger.info("Deleting job files...")
     remove_files_matching_glob(current_path, "**/job_*.sh")
-    arcann_logger.info(f"Deleting training unwanted output file..")
+    arcann_logger.info("Deleting training unwanted output file..")
     remove_files_matching_glob(current_path, "**/training.out")
-    arcann_logger.info(f"Deleting freezing unwanted output files...")
+    arcann_logger.info("Deleting freezing unwanted output files...")
     remove_files_matching_glob(current_path, "**/graph*freeze.out")
-    arcann_logger.info(f"Deleting compressing unwanted output file...")
+    arcann_logger.info("Deleting compressing unwanted output file...")
     remove_files_matching_glob(current_path, "**/graph*compress.out")
-    arcann_logger.info(f"Deleting extra model.ckpt...")
+    arcann_logger.info("Deleting extra model.ckpt...")
     remove_files_matching_glob(current_path, "**/model.ckpt-*")
-    arcann_logger.info(f"Deleting models files files...")
+    arcann_logger.info("Deleting models files files...")
     remove_files_matching_glob(current_path, "**/*.pb")
-    arcann_logger.info(f"Deleting extra training files...")
+    arcann_logger.info("Deleting extra training files...")
     remove_files_matching_glob(current_path, "**/checkpoint")
     remove_files_matching_glob(current_path, "**/input_v2_compat.json")
-    arcann_logger.info(f"Deleting job error files...")
+    arcann_logger.info("Deleting job error files...")
     remove_files_matching_glob(current_path, "**/DeepMD_*")
-    arcann_logger.info(f"Deleting the data folder ...")
+    arcann_logger.info("Deleting the data folder ...")
     if (current_path / "data").is_dir():
         remove_tree(current_path / "data")
     for nnp in range(1, main_json["nnp_count"] + 1):
@@ -117,7 +120,7 @@ def main(
         if (local_path / "model-compression").is_dir():
             arcann_logger.info("Deleting the temp model-compression folder...")
             remove_tree(local_path / "model-compression")
-    arcann_logger.info(f"Cleaning done!")
+    arcann_logger.info("Cleaning done!")
 
     # End
     arcann_logger.info(
@@ -130,7 +133,7 @@ def main(
     del main_json, training_config
     del curr_iter, padded_curr_iter
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 
