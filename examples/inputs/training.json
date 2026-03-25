@@ -15,5 +15,6 @@
     "decay_steps": { "value": null, "_comment": "int", "_default": 5000},
     "decay_steps_fixed": { "value": null, "_comment": "boolean", "_default": false},
     "numb_steps": { "value": null, "_comment": "int", "_default": 400000},
+    "max_num_epochs": { "value": null, "_comment": "int", "_default": 5000},
     "numb_test": { "value": null, "_comment": "int", "_default": 0}
 }

@@ -30,7 +30,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -40,7 +40,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -53,27 +53,32 @@ def main(
     control_path = training_path / "control"
     main_json = load_json_file((control_path / "config.json"))
     training_json = load_json_file((control_path / f"training_{padded_curr_iter}.json"))
+    nnp_program: str = main_json["nnp_program"]
+
+    arcann_logger.info(f"Using {nnp_program} as NNP software")
 
     # Check if we can continue
     if not training_json["is_compress_launched"]:
-        arcann_logger.error(f"Lock found. Please execute 'training compress' first.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Lock found. Please execute 'training compress' first.")
+        arcann_logger.error("Aborting...")
         return 1
 
-    completed_count = 0
-    for nnp in range(1, main_json["nnp_count"] + 1):
-        local_path = current_path / f"{nnp}"
-        if (local_path / f"graph_{nnp}_{padded_curr_iter}_compressed.pb").is_file():
-            completed_count += 1
-        else:
-            arcann_logger.critical(f"DP Compress - '{nnp}' not finished/failed.")
-        del local_path
-    del nnp
+    completed_count = None
+    if nnp_program == "deepmd":
+        completed_count = 0
+        for nnp in range(1, main_json["nnp_count"] + 1):
+            local_path = current_path / f"{nnp}"
+            if (local_path / f"graph_{nnp}_{padded_curr_iter}_compressed.pb").is_file():
+                completed_count += 1
+            else:
+                arcann_logger.critical(f"DP Compress - '{nnp}' not finished/failed.")
+            del local_path
+        del nnp
     arcann_logger.debug(f"completed_count: {completed_count}")
 
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     # Update the boolean in the training JSON
-    if completed_count == main_json["nnp_count"]:
+    if completed_count == main_json["nnp_count"] or nnp_program == "mace":
         training_json["is_compressed"] = True
 
     # Dump the JSON files (training)
@@ -84,8 +89,8 @@ def main(
     )
 
     # End
-    arcann_logger.info(f"-" * 88)
-    if completed_count == main_json["nnp_count"]:
+    arcann_logger.info("-" * 88)
+    if completed_count == main_json["nnp_count"] or nnp_program == "mace":
         arcann_logger.info(
             f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
         )
@@ -93,9 +98,9 @@ def main(
         arcann_logger.error(
             f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a failure!"
         )
-        arcann_logger.error(f"Some DP Compress did not finished correctly.")
-        arcann_logger.error(f"Please check manually before relaunching this step.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Some DP Compress did not finished correctly.")
+        arcann_logger.error("Please check manually before relaunching this step.")
+        arcann_logger.error("Aborting...")
     del completed_count
 
     # Cleaning
@@ -104,8 +109,8 @@ def main(
     del main_json, training_json
     del curr_iter, padded_curr_iter
 
-    arcann_logger.debug(f"LOCAL")
-    arcann_logger.debug(f"{locals()}")
+    arcann_logger.debug("LOCAL")
+    arcann_logger.debug("{locals()}")
     return 0
 
 

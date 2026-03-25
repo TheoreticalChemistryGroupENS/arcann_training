@@ -1,0 +1,51 @@
+seed: 9
+
+E0s: 
+  1: 0.0,
+  6: -0.0000000000000001,
+
+model: "MACE"
+
+config_type_weights:
+  Default: 1.0
+
+num_channels: 64
+max_L: 1
+r_max: 6.0
+num_interactions: 2
+correlation: 2
+
+energy_key: "REF_energy"
+forces_key: "REF_forces"
+
+name: "train_001"
+
+model_dir: "model/"
+
+train_file: "training_data.extxyz"
+valid_file: "valid_data.extxyz"
+test_file: "test_data.extxyz"
+
+device: cuda
+default_dtype: "float32"
+save_cpu: no
+
+batch_size: 5
+valid_batch_size: 5
+max_num_epochs: 500
+lr: 1e-2
+
+forces_weight: 100
+energy_weight: 1
+
+swa: False
+ema: True
+ema_decay: 0.99
+amsgrad: True
+restart_latest: True
+
+scheduler_patience: 15
+patience: 20
+eval_interval: 1
+
+enable_cueq: False
