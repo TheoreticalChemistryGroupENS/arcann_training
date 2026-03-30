@@ -137,23 +137,27 @@ def main(
                             str((training_path / "NNP")),
                         ]
                     )
-                subprocess.run(  # noqa: S603
-                    [  # noqa: S607
-                        "rsync",
-                        "-a",
-                        str(
-                            local_path
-                            / f"{nnp}"
-                            / "MACE_models"
-                            / f"model_{nnp}_{padded_curr_iter}.model"
-                        ),
-                        str((training_path / "NNP")),
-                    ]
-                )
             else:
-                arcann_logger.error(
-                    "Run 'training compress' before increment to convert the MACE models!"
+                arcann_logger.warning(
+                    "Incrementing without running 'training compress' to convert the MACE models, will require MACE and or SYMMETRIX installed in the same python environment as ArcaNN, for automatic model conversion."
                 )
+                arcann_logger.warning(
+                    "If that is not possible in your case, run 'training compress'!"
+                )
+
+            subprocess.run(  # noqa: S603
+                [  # noqa: S607
+                    "rsync",
+                    "-a",
+                    str(
+                        local_path
+                        / f"{nnp}"
+                        / "MACE_models"
+                        / f"model_{nnp}_{padded_curr_iter}.model"
+                    ),
+                    str((training_path / "NNP")),
+                ]
+            )
 
     # Next iteration
     next_iter = curr_iter + 1
