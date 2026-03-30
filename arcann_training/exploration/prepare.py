@@ -30,7 +30,11 @@ from arcann_training.common.json import (
     load_json_file,
     write_json_file,
 )
-from arcann_training.common.lammps import read_lammps_data
+from arcann_training.common.lammps import (
+    LAMMPSInputHandler,
+    LAMMPSPair,
+    read_lammps_data,
+)
 from arcann_training.common.list import (
     replace_substring_in_string_list,
     string_list_to_textfile,
@@ -48,7 +52,6 @@ from arcann_training.common.xml import (
     write_xml_file,
     xml_to_string_list,
 )
-from arcann_training.exploration.lammps import LAMMPSInputHandler, LAMMPSPair
 from arcann_training.exploration.utils import (
     create_models_list,
     generate_input_exploration_json,

@@ -24,6 +24,7 @@ from arcann_training.common.json import (
     load_json_file,
     write_json_file,
 )
+from arcann_training.common.lammps import LAMMPSInputHandler, LAMMPSPair
 from arcann_training.common.list import (
     replace_substring_in_string_list,
     string_list_to_textfile,
@@ -188,27 +189,28 @@ def main(
 
     # Check if the job file exists
     completed_count = None
-    if nnp_program == "deepmd":
-        job_file_name = f"job_deepmd_compress_{machine_spec['arch_type']}_{machine}.sh"
-        if (current_path.parent / "user_files" / job_file_name).is_file():
-            master_job_file = textfile_to_string_list(
-                current_path.parent / "user_files" / job_file_name
-            )
-        else:
-            arcann_logger.error(
-                f"No JOB file provided for '{current_step.capitalize()} / {current_phase.capitalize()}' for this machine."
-            )
-            arcann_logger.error("Aborting...")
-            return 1
-
-        arcann_logger.debug(
-            f"master_job_file: {master_job_file[0:5]}, {master_job_file[-5:-1]}"
+    job_file_name = (
+        f"job_{nnp_program}_compress_{machine_spec['arch_type']}_{machine}.sh"
+    )
+    if (current_path.parent / "user_files" / job_file_name).is_file():
+        master_job_file = textfile_to_string_list(
+            current_path.parent / "user_files" / job_file_name
         )
-        del job_file_name
+    else:
+        arcann_logger.error(
+            f"No JOB file provided for '{current_step.capitalize()} / {current_phase.capitalize()}' for this machine."
+        )
+        arcann_logger.error("Aborting...")
+        return 1
 
-        # Prep and launch DP Compress
-        completed_count = 0
-        walltime_approx_s = 3900
+    arcann_logger.debug(
+        f"master_job_file: {master_job_file[0:5]}, {master_job_file[-5:-1]}"
+    )
+
+    # Prep and launch DP Compress
+    completed_count = 0
+    walltime_approx_s = 3900
+    if nnp_program == "deepmd":
         for nnp in range(1, main_json["nnp_count"] + 1):
             local_path = current_path / f"{nnp}"
 
@@ -252,12 +254,11 @@ def main(
                 job_file,
                 read_only=True,
             )
-            del job_file
 
             with (local_path / "checkpoint").open("w") as f:
                 f.write('model_checkpoint_path: "model.ckpt"\n')
                 f.write('all_model_checkpoint_paths: "model.ckpt"\n')
-            del f
+
             if (
                 local_path
                 / f"job_deepmd_compress_{machine_spec['arch_type']}_{machine}.sh"
@@ -281,13 +282,84 @@ def main(
                 arcann_logger.critical(
                     f"DP Compress - '{nnp}' NOT launched - No job file."
                 )
-            del local_path
 
-        del nnp, master_job_file, user_machine_keyword, walltime_approx_s
+    elif nnp_program == "mace":
+        needed_mace_styles: set[LAMMPSPair] = set()
+        for lmp_input in (training_path / "user_files").glob("*.in"):
+            needed_mace_styles.add(
+                LAMMPSInputHandler(
+                    lmp_input,
+                    [
+                        main_json["properties"][element]["symbol"]
+                        for element in main_json["properties"]
+                    ],
+                ).lmp_pair
+            )
+
+        for nnp in range(1, main_json["nnp_count"] + 1):
+            for style in needed_mace_styles:
+                local_path = current_path / f"{nnp}" / "MACE_models"
+
+                job_file = replace_in_slurm_file_general(
+                    master_job_file,
+                    machine_spec,
+                    walltime_approx_s,
+                    machine_walltime_format,
+                    current_input_json["job_email"],
+                )
+                # Replace the inputs/variables in the job file
+                job_file = replace_substring_in_string_list(
+                    job_file,
+                    "_R_MACE_VERSION_",
+                    f"{training_json['mace_model_version']}",
+                )
+                job_file = replace_substring_in_string_list(
+                    job_file,
+                    "_R_MACE_MODEL_FILE_",
+                    f"model_{nnp}_{padded_curr_iter}.model",
+                )
+                job_file = replace_substring_in_string_list(
+                    job_file, "_R_MACE_MODEL_STYLE_", str(style)
+                )
+
+                job_path = (
+                    local_path
+                    / f"job_mace_compress_{machine_spec['arch_type']}_{machine}.sh"
+                )
+
+                string_list_to_textfile(
+                    job_path,
+                    job_file,
+                    read_only=True,
+                )
+
+                if (job_path).is_file():
+                    change_directory(local_path)
+                    try:
+                        subprocess.run(  # noqa: S603
+                            [
+                                machine_launch_command,
+                                f"./job_mace_compress_{machine_spec['arch_type']}_{machine}.sh",
+                            ]
+                        )
+                        arcann_logger.info(f"MACE Compress - '{nnp}' launched.")
+                        completed_count += 1
+                    except FileNotFoundError:
+                        arcann_logger.critical(
+                            f"MACE Compress - '{nnp}' NOT launched - '{machine_launch_command}' not found."
+                        )
+                    change_directory(local_path.parent)
+                else:
+                    arcann_logger.critical(
+                        f"MACE Compress - '{nnp}' NOT launched - No job file."
+                    )
 
     arcann_logger.info("-" * 88)
     # Update the boolean in the training JSON
-    if completed_count == main_json["nnp_count"] or nnp_program == "mace":
+    if completed_count == main_json["nnp_count"] or (
+        nnp_program == "mace"
+        and completed_count == main_json["nnp_count"] * len(needed_mace_styles)
+    ):
         training_json["is_compress_launched"] = True
 
     # Dump the JSON files (main, training and current input)
@@ -303,16 +375,12 @@ def main(
 
     # End
     arcann_logger.info("-" * 88)
-    if completed_count == main_json["nnp_count"]:
+    if completed_count == main_json["nnp_count"] or (
+        nnp_program == "mace"
+        and completed_count == main_json["nnp_count"] * len(needed_mace_styles)
+    ):
         arcann_logger.info(
             f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
-        )
-    elif nnp_program == "mace":
-        arcann_logger.info(
-            f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
-        )
-        arcann_logger.info(
-            "BUT BE CARREFUL, you're using a MACE model that doesn't require compression, so no job was launched."
         )
     else:
         arcann_logger.critical(

@@ -45,7 +45,6 @@ update_system_nb_steps_factor(previous_json: Dict, system_auto_index: int) -> in
 
 # Standard library modules
 import logging
-import subprocess
 from copy import deepcopy
 from pathlib import Path
 from typing import Dict, List, Tuple, Union
@@ -54,8 +53,8 @@ import numpy as np
 
 # Local imports
 from arcann_training.common.json import convert_control_to_input
+from arcann_training.common.lammps import LAMMPSPair, mace_model_converter
 from arcann_training.common.utils import catch_errors_decorator
-from arcann_training.exploration.lammps import LAMMPSPair, mace_model_converter
 
 
 # TODO: Add tests for this function
@@ -741,27 +740,28 @@ def generate_starting_points(
 
 
 # TODO: test all MACE model conversion options in unittest
+# TODO: this function is doing too much, needs to be broken
 @catch_errors_decorator
 def create_models_list(
-    main_json: Dict,
-    previous_json: Dict,
+    main_json: dict,
+    previous_json: dict,
     it_nnp: int,
     padded_prev_iter: str,
     training_path: Path,
     local_path: Path,
     *,
     pair_style: str | LAMMPSPair | None = None,
-) -> Tuple[List[str], str]:
+) -> tuple[list[str], str]:
     """
     Generate a list of model file names and create symbolic links to the corresponding model files.
 
     Parameters
     ----------
-    main_json : Dict
+    main_json : dict
         The main JSON.
-    previous_json : Dict
+    previous_json : dict
         The JSON from the previous iteration.
-    previous_training_json : Dict
+    previous_training_json : dict
         The JSON from the previous training iteration.
     it_nnp : int
         An integer representing the index of the NNP model to start from.
@@ -776,7 +776,7 @@ def create_models_list(
 
     Returns
     -------
-    Tuple[List[str], str]
+    tuple[list[str], str]
         A tuple containing the list of model file names, and a string of space-separated model file names.
     """
     arcann_logger = logging.getLogger("ArcaNN")
@@ -861,7 +861,7 @@ def create_models_list(
     # Create symbolic links to the model files in the local directory
     for model in models_list:
         nnp_path = (training_path / "NNP" / model).resolve()
-        subprocess.call(["ln", "-nsf", str(nnp_path), str(local_path)])
+        (local_path / model).symlink_to(nnp_path, target_is_directory=True)
 
     # Join the model file names into a single string for ease of use
     models_string = " ".join(models_list)

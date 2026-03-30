@@ -122,20 +122,38 @@ def main(
                 ]
             )
         elif nnp_program == "mace":
-            subprocess.run(  # noqa: S603
-                [  # noqa: S607
-                    "rsync",
-                    "-a",
-                    str(
-                        local_path
-                        / f"{nnp}"
-                        / "MACE_models"
-                        / f"model_{nnp}_{padded_curr_iter}.model"
-                    ),
-                    str((training_path / "NNP")),
-                ]
-            )
-    del nnp
+            nnp_path = local_path / f"{nnp}" / "MACE_models"
+            if training_json["is_compressed"]:
+                for conv_mod in [
+                    f
+                    for ext in ("json", "model", "-lammps.pt", "-mliap_lammps.pt")
+                    for f in nnp_path.glob(f"model*.{ext}")
+                ]:
+                    subprocess.run(  # noqa: S603
+                        [  # noqa: S607
+                            "rsync",
+                            "-a",
+                            str(conv_mod),
+                            str((training_path / "NNP")),
+                        ]
+                    )
+                subprocess.run(  # noqa: S603
+                    [  # noqa: S607
+                        "rsync",
+                        "-a",
+                        str(
+                            local_path
+                            / f"{nnp}"
+                            / "MACE_models"
+                            / f"model_{nnp}_{padded_curr_iter}.model"
+                        ),
+                        str((training_path / "NNP")),
+                    ]
+                )
+            else:
+                arcann_logger.error(
+                    "Run 'training compress' before increment to convert the MACE models!"
+                )
 
     # Next iteration
     next_iter = curr_iter + 1
