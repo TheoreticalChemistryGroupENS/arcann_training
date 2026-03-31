@@ -210,6 +210,7 @@ def main(
     # Prep and launch DP Compress
     completed_count = 0
     walltime_approx_s = 3900
+    needed_mace_styles: set[LAMMPSPair] = set()  # TODO: this is bad here
     if nnp_program == "deepmd":
         for nnp in range(1, main_json["nnp_count"] + 1):
             local_path = current_path / f"{nnp}"
@@ -284,7 +285,6 @@ def main(
                 )
 
     elif nnp_program == "mace":
-        needed_mace_styles: set[LAMMPSPair] = set()
         for lmp_input in (training_path / "user_files").glob("*.in"):
             needed_mace_styles.add(
                 LAMMPSInputHandler(
