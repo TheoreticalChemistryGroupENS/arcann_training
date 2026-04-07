@@ -332,11 +332,16 @@ def main(
                     elm["atomic_number"]
                     for elm in elements.values()
                     if elm["symbol"] in system_atoms
-                ] #TODO: because it's the 2nd time we use that, we should put it in the control/config.json
+                ]  # TODO: because it's the 2nd time we use that, we should put it in the control/config.json
                 job_file = replace_substring_in_string_list(
                     job_file,
                     "_R_ATOMIC_NUMBERS_",
                     " ".join([str(num) for num in system_atoms]),
+                )
+                job_file = replace_substring_in_string_list(
+                    job_file,
+                    "_R_CHEMICAL_SYMBOLS_",
+                    " ".join(system_atoms),
                 )
                 job_path = (
                     local_path
