@@ -359,6 +359,17 @@ def main(
                 return 1
         arcann_logger.debug(f"mace_input: {nnp_input}")
 
+        if "foundation_model" in nnp_input:
+            fondation_path = (
+                training_path / "user_files" / f"{nnp_input['foundation_model']}"
+            ).resolve()
+            if not fondation_path.is_file():
+                arcann_logger.error(
+                    f"Foundation model file {nnp_input['foundation_model']} not found in user_files."
+                )
+                arcann_logger.error("Aborting...")
+                return 1
+
     arcann_logger.debug(f"main_json: {main_json}")
 
     # Load the datasets that were previously processed
@@ -576,6 +587,14 @@ def main(
 
     elif nnp_program == "mace":
         dataset.prepare_for_mace_train(data_path=localdata_path)
+        if nnp_input["foundation_model"]:
+            foundation_model_path = (
+                training_path / "user_files" / f"{nnp_input['foundation_model']}"
+            ).resolve()
+            shutil.copy(
+                foundation_model_path, current_path / foundation_model_path.name
+            )
+            del foundation_model_path
 
     if nnp_program == "deepmd":
         # Change some inside output
@@ -707,6 +726,12 @@ def main(
             job_file = replace_substring_in_string_list(
                 job_file, "_R_MACE_OUTPUT_FILE_", "training.out"
             )
+            if nnp_input["foundation_model"]:
+                job_file = replace_substring_in_string_list(
+                    job_file,
+                    "_R_MACE_FONDATION_FILE_",
+                    f"../{nnp_input['foundation_model']}",
+                )
 
         string_list_to_textfile(
             local_path
