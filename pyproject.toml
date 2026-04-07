@@ -14,6 +14,7 @@ dependencies = [
     "ase>=3.27.0",
     "numpy>=1.15",
     "pyyaml>=3.13",
+    "strenum>=0.4.15 ; python_full_version == '3.10.*'",
 ]
 classifiers = [
     "License :: OSI Approved :: GNU Affero General Public License v3",
@@ -24,6 +25,17 @@ classifiers = [
 Repository = "https://github.com/arcann-chem/arcann_training"
 Documentation = "https://arcann-chem.github.io/arcann_training/"
 
+[project.optional-dependencies]
+mace = [
+    "mace-torch>=0.3.14",
+]
+mace-mliap = [
+    "cuequivariance-torch>=0.8.1",
+]
+symmetrix = [
+    "symmetrix",
+]
+
 # [project.scripts]
 # arcann = "arcann_training:main"
 
@@ -32,3 +44,6 @@ dev = [
     "pre-commit>=4.2.0",
     "ruff>=0.11.13",
 ]
+
+[tool.uv.sources]
+symmetrix = { git = "https://github.com/wcwitt/symmetrix.git", subdirectory = "symmetrix" }

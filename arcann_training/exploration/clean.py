@@ -11,20 +11,20 @@ Last modified: 2024/05/15
 
 # Standard library modules
 import logging
+import subprocess
 import sys
 from pathlib import Path
-import subprocess
 
 # Local imports
 from arcann_training.common.check import validate_step_folder
 from arcann_training.common.filesystem import (
     change_directory,
+    remove_all_symlink,
     remove_file,
     remove_files_matching_glob,
-    remove_all_symlink,
 )
-from arcann_training.common.list import string_list_to_textfile
 from arcann_training.common.json import load_json_file
+from arcann_training.common.list import string_list_to_textfile
 
 
 def main(
@@ -38,7 +38,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -48,7 +48,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -70,30 +70,30 @@ def main(
 
     # Check if we can continue and ask the user
     if not exploration_config["is_extracted"]:
-        arcann_logger.error(f"Lock found. Please execute 'exploration extract' first.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Lock found. Please execute 'exploration extract' first.")
+        arcann_logger.error("Aborting...")
         return 1
-    arcann_logger.warning(f"This is the cleaning step for exploration step.")
-    arcann_logger.warning(f"It should be run after exploration extract phase.")
-    arcann_logger.warning(f"This is will delete:")
+    arcann_logger.warning("This is the cleaning step for exploration step.")
+    arcann_logger.warning("It should be run after exploration extract phase.")
+    arcann_logger.warning("This is will delete:")
     arcann_logger.warning(
-        f"symbolic links, 'job_*.sh', 'job-array_*.sh', 'job-array-params*.lst', '*.in', '*.lmp', 'plumed_*.dat'"
+        "symbolic links, 'job_*.sh', 'job-array_*.sh', 'job-array-params*.lst', '*.in', '*.lmp', 'plumed_*.dat'"
     )
     arcann_logger.warning(
-        f"'LAMMPS_*', 'i-PI_DeepMD*', '*.DP-i-PI.client_*.log', '*.DP-i-PI.client_*.err', 'plumed_*.dat'"
+        "'LAMMPS_*', 'i-PI_DeepMD*', '*.DP-i-PI.client_*.log', '*.DP-i-PI.client_*.err', 'plumed_*.dat'"
     )
-    arcann_logger.warning(f"'emle_pid.txt', 'emle_port.txt', 'mdinfo', 'old.*'")
-    arcann_logger.warning(f"in the folder: '{current_path}' and all subdirectories.")
+    arcann_logger.warning("'emle_pid.txt', 'emle_port.txt', 'mdinfo', 'old.*'")
+    arcann_logger.warning("in the folder: '{current_path}' and all subdirectories.")
     arcann_logger.warning(
-        f"It will also create a tar.bz2 file with all starting structures from the previous exploration"
+        "It will also create a tar.bz2 file with all starting structures from the previous exploration"
     )
     continuing = input(
-        f"Do you want to continue? [Enter 'Y' for yes, or any other key to abort]: "
+        "Do you want to continue? [Enter 'Y' for yes, or any other key to abort]: "
     )
     if continuing == "Y":
         del continuing
     else:
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Aborting...")
         return 0
 
     # TODO Check for i-pi what to delete
@@ -122,21 +122,21 @@ def main(
     remove_files_matching_glob(current_path, "**/old.*")
 
     if prev_iter > 0:
-        arcann_logger.info(f"Compressing into a bzip2 tar archive...")
+        arcann_logger.info("Compressing into a bzip2 tar archive...")
         change_directory(training_path / "starting_structures")
-        starting_structures_xyz = list(Path(".").glob(f"{padded_prev_iter}_*.xyz"))
-        starting_structures_lmp = list(Path(".").glob(f"{padded_prev_iter}_*.lmp"))
+        starting_structures_xyz = list(Path().glob(f"{padded_prev_iter}_*.xyz"))
+        starting_structures_lmp = list(Path().glob(f"{padded_prev_iter}_*.lmp"))
         starting_structures = starting_structures_xyz + starting_structures_lmp
         if starting_structures:
             starting_structures = [str(_) for _ in starting_structures]
             archive_name = f"starting_structures_{padded_prev_iter}.tar.bz2"
             if starting_structures:
-                if (Path(".") / archive_name).is_file():
+                if (Path() / archive_name).is_file():
                     arcann_logger.info(
                         f"{archive_name} already present, adding .bak extension"
                     )
-                    (Path(".") / f"{archive_name}.bak").write_bytes(
-                        (Path(".") / archive_name).read_bytes()
+                    (Path() / f"{archive_name}.bak").write_bytes(
+                        (Path() / archive_name).read_bytes()
                     )
                 string_list_to_textfile(
                     training_path
@@ -172,7 +172,7 @@ def main(
                 )
             change_directory(current_path)
 
-    arcann_logger.info(f"Cleaning done!")
+    arcann_logger.info("Cleaning done!")
 
     # End
     arcann_logger.info(
@@ -185,7 +185,7 @@ def main(
     del main_config, exploration_config
     del curr_iter, padded_curr_iter
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 

@@ -15,22 +15,23 @@ import sys
 from pathlib import Path
 
 # Non-standard library imports
+import ase.io
 import numpy as np
 
 # Local imports
+from arcann_training.common.check import validate_step_folder
 from arcann_training.common.json import (
+    backup_and_overwrite_json_file,
+    load_default_json_file,
     load_json_file,
     write_json_file,
-    load_default_json_file,
-    backup_and_overwrite_json_file,
-)
-from arcann_training.common.check import validate_step_folder
-from arcann_training.exploration.utils import (
-    get_last_frame_number,
-    generate_input_exploration_deviation_json,
-    get_system_deviation,
 )
 from arcann_training.common.xyz import parse_xyz_trajectory_file
+from arcann_training.exploration.utils import (
+    generate_input_exploration_deviation_json,
+    get_last_frame_number,
+    get_system_deviation,
+)
 
 
 def main(
@@ -44,7 +45,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -54,7 +55,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -84,9 +85,9 @@ def main(
     if (current_path / "used_input.json").is_file():
         current_input_json = load_json_file((current_path / "used_input.json"))
     else:
-        arcann_logger.warning(f"No used_input.json found. Starting with empty one.")
+        arcann_logger.warning("No used_input.json found. Starting with empty one.")
         arcann_logger.warning(
-            f"You should avoid this by not deleting the used_input.json file."
+            "You should avoid this by not deleting the used_input.json file."
         )
         current_input_json = {}
     arcann_logger.debug(f"current_input_json: {current_input_json}")
@@ -97,6 +98,11 @@ def main(
     exploration_json = load_json_file(
         (control_path / f"exploration_{padded_curr_iter}.json")
     )
+
+    nnp_program: str = main_json["nnp_program"]
+
+    arcann_logger.info(f"Using {nnp_program} as NNP software")
+    arcann_logger.info("-" * 88)
 
     # Load the previous exploration JSON and training JSON
     if curr_iter > 0:
@@ -117,12 +123,12 @@ def main(
 
     # Check if we can continue
     if not exploration_json["is_checked"]:
-        arcann_logger.error(f"Lock found. Execute first: exploration check.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Lock found. Execute first: exploration check.")
+        arcann_logger.error("Aborting...")
         return 1
     if "is_rechecked" in exploration_json and not exploration_json["is_rechecked"]:
-        arcann_logger.critical(f"Lock found. Execute first: exploration recheck.")
-        arcann_logger.critical(f"Aborting...")
+        arcann_logger.critical("Lock found. Execute first: exploration recheck.")
+        arcann_logger.critical("Aborting...")
         return 1
 
     # Generate/update the merged input JSON
@@ -164,7 +170,16 @@ def main(
 
         skipped_traj_user = 0
         skipped_traj_stats = 0
-        start_row_number = 0
+
+        dt_file = (
+            exploration_json["systems_auto"][system_auto]["timestep_ps"]
+            * exploration_json["systems_auto"][system_auto]["print_every_x_steps"]
+        )
+
+        if ignore_first_x_ps % dt_file == 0:
+            start_row_number = int(ignore_first_x_ps / dt_file + 1)
+        else:
+            start_row_number = int(np.ceil(ignore_first_x_ps / dt_file))
 
         arcann_logger.debug(
             f"{exploration_json['systems_auto'][system_auto]['print_every_x_steps']},{exploration_json['systems_auto'][system_auto]['timestep_ps']}"
@@ -188,11 +203,11 @@ def main(
             // exploration_json["systems_auto"][system_auto]["print_every_x_steps"]
         ):
             start_row_number = 0
-            arcann_logger.warning(f"Your 'ignore_first_x_ps' value is too high.")
+            arcann_logger.warning("Your 'ignore_first_x_ps' value is too high.")
             arcann_logger.warning(
                 f"Please reduce it to a value lower than {start_row_number * exploration_json['systems_auto'][system_auto]['print_every_x_steps'] * exploration_json['systems_auto'][system_auto]['timestep_ps']}."
             )
-            arcann_logger.warning(f"Temporarily setting it to 0.")
+            arcann_logger.warning("Temporarily setting it to 0.")
 
         for it_nnp in range(1, main_json["nnp_count"] + 1):
             for it_number in range(
@@ -202,7 +217,7 @@ def main(
 
                 # Get the local path and the name of model_deviation file
                 local_path = (
-                    Path(".").resolve()
+                    Path().resolve()
                     / str(system_auto)
                     / str(it_nnp)
                     / str(it_number).zfill(5)
@@ -213,12 +228,12 @@ def main(
                 xyz_qm_filename = f"{system_auto}_{it_nnp}_{padded_curr_iter}_QM.xyz"
 
                 # Create the JSON data for Query-by-Committee
-                QbC_stats = load_json_file(local_path / "QbC_stats.json", False, False)
-                QbC_indexes = load_json_file(
+                qbc_stats = load_json_file(local_path / "QbC_stats.json", False, False)
+                qbc_indexes = load_json_file(
                     local_path / "QbC_indexes.json", False, False
                 )
-                QbC_stats = {
-                    **QbC_stats,
+                qbc_stats = {
+                    **qbc_stats,
                     "sigma_low": sigma_low,
                     "sigma_high": sigma_high,
                     "sigma_high_limit": sigma_high_limit,
@@ -280,7 +295,7 @@ def main(
                             "exploration_type"
                         ]
                         == "i-PI"
-                    ):
+                    ) and nnp_program == "deepmd":
                         model_deviation = np.genfromtxt(
                             str(local_path / model_deviation_filename)
                         )
@@ -298,6 +313,45 @@ def main(
                             == "i-PI"
                         ):
                             total_row_number = model_deviation.shape[0] + 1
+                    elif (
+                        exploration_json["systems_auto"][system_auto][
+                            "exploration_type"
+                        ]
+                        == "lammps"
+                        and nnp_program == "mace"
+                    ):
+                        # Dimension NNP x Step x N x 3
+                        mace_rerun_forces = np.array(
+                            [
+                                [
+                                    rr.get_forces()
+                                    for rr in ase.io.read(
+                                        local_path
+                                        / f"{system_auto}_mace_forces_model{i}.lammpstrj",
+                                        index=":",
+                                    )
+                                ]
+                                for i in range(1, main_json["nnp_count"] + 1)
+                            ]
+                        )
+                        mace_rerun_forces = np.linalg.norm(
+                            mace_rerun_forces, axis=-1, keepdims=True
+                        )
+                        deviation_per_atom = np.std(
+                            mace_rerun_forces, axis=(0, 3)
+                        )  # (0, 3) -> (NNP, Forces), return an array with (Step,Atoms) dim
+                        model_deviation = np.array(
+                            [
+                                (i, np.max(x), np.min(x), np.mean(x))
+                                for i, x in enumerate(deviation_per_atom)
+                            ]
+                        )
+                        total_row_number = model_deviation.shape[0]
+                        np.savetxt(
+                            local_path / model_deviation_filename,
+                            model_deviation,
+                            header="STEP max_devi_f min_devi_f avg_devi_f",
+                        )
                     else:
                         arcann_logger.error(
                             "Unknown exploration type. Please BUG REPORT!"
@@ -306,7 +360,7 @@ def main(
                         return 1
 
                     if nb_steps_expected > (total_row_number - start_row_number):
-                        QbC_stats["total_count"] = nb_steps_expected
+                        qbc_stats["total_count"] = nb_steps_expected
                         arcann_logger.critical(
                             f"Exploration '{system_auto}' / '{it_nnp}' / '{it_number}'."
                         )
@@ -321,7 +375,7 @@ def main(
                                 "but it has been forced, so it should be ok."
                             )
                     elif nb_steps_expected == (total_row_number - start_row_number):
-                        QbC_stats["total_count"] = total_row_number - start_row_number
+                        qbc_stats["total_count"] = total_row_number - start_row_number
                     else:
                         arcann_logger.error("Unknown error. Please BUG REPORT!")
                         arcann_logger.error("Aborting...")
@@ -352,27 +406,38 @@ def main(
                         ]
                         == "i-PI"
                     ):
+                        max_forces_index = (
+                            4 if nnp_program == "deepmd" else 1
+                        )  # MACE is 1
 
                         # This part is when sigma_high_limit was never crossed
                         if end_row_number < 0:
                             mean_deviation_max_f = np.mean(
-                                model_deviation[start_row_number:, 4]
+                                model_deviation[start_row_number:, max_forces_index]
                             )
                             median_deviation_max_f = np.median(
-                                model_deviation[start_row_number:, 4]
+                                model_deviation[start_row_number:, max_forces_index]
                             )
                             stdeviation_deviation_max_f = np.std(
-                                model_deviation[start_row_number:, 4]
+                                model_deviation[start_row_number:, max_forces_index]
                             )
                             good = model_deviation[start_row_number:, :][
-                                model_deviation[start_row_number:, 4] <= sigma_low
+                                model_deviation[start_row_number:, max_forces_index]
+                                <= sigma_low
                             ]
                             rejected = model_deviation[start_row_number:, :][
-                                model_deviation[start_row_number:, 4] >= sigma_high
+                                model_deviation[start_row_number:, max_forces_index]
+                                >= sigma_high
                             ]
                             candidates = model_deviation[start_row_number:, :][
-                                (model_deviation[start_row_number:, 4] > sigma_low)
-                                & (model_deviation[start_row_number:, 4] < sigma_high)
+                                (
+                                    model_deviation[start_row_number:, max_forces_index]
+                                    > sigma_low
+                                )
+                                & (
+                                    model_deviation[start_row_number:, max_forces_index]
+                                    < sigma_high
+                                )
                             ]
 
                         # This part is when sigma_high_limit was crossed during ignore_first_x_ps (SKIP everything for stats)
@@ -389,33 +454,49 @@ def main(
                         # This part is when sigma_high_limit was crossed (Gets stats before)
                         else:
                             mean_deviation_max_f = np.mean(
-                                model_deviation[start_row_number:end_row_number, 4]
+                                model_deviation[
+                                    start_row_number:end_row_number, max_forces_index
+                                ]
                             )
                             median_deviation_max_f = np.median(
-                                model_deviation[start_row_number:end_row_number, 4]
+                                model_deviation[
+                                    start_row_number:end_row_number, max_forces_index
+                                ]
                             )
                             stdeviation_deviation_max_f = np.std(
-                                model_deviation[start_row_number:end_row_number, 4]
+                                model_deviation[
+                                    start_row_number:end_row_number, max_forces_index
+                                ]
                             )
                             good = model_deviation[start_row_number:end_row_number, :][
-                                model_deviation[start_row_number:end_row_number, 4]
+                                model_deviation[
+                                    start_row_number:end_row_number, max_forces_index
+                                ]
                                 <= sigma_low
                             ]
                             rejected = model_deviation[
                                 start_row_number:end_row_number, :
                             ][
-                                model_deviation[start_row_number:end_row_number, 4]
+                                model_deviation[
+                                    start_row_number:end_row_number, max_forces_index
+                                ]
                                 >= sigma_high
                             ]
                             candidates = model_deviation[
                                 start_row_number:end_row_number, :
                             ][
                                 (
-                                    model_deviation[start_row_number:end_row_number, 4]
+                                    model_deviation[
+                                        start_row_number:end_row_number,
+                                        max_forces_index,
+                                    ]
                                     > sigma_low
                                 )
                                 & (
-                                    model_deviation[start_row_number:end_row_number, 4]
+                                    model_deviation[
+                                        start_row_number:end_row_number,
+                                        max_forces_index,
+                                    ]
                                     < sigma_high
                                 )
                             ]
@@ -430,7 +511,6 @@ def main(
                         ]
                         == "sander_emle"
                     ):
-
                         # This part is when sigma_high_limit was never crossed
                         if end_row_number < 0:
                             mean_deviation_max_f = np.mean(
@@ -513,8 +593,8 @@ def main(
                         ]
                         == "sander_emle"
                     ):
-                        QbC_indexes = {
-                            **QbC_indexes,
+                        qbc_indexes = {
+                            **qbc_indexes,
                             "good_indexes": (
                                 good[:, 0].astype(int).tolist() if good.size > 0 else []
                             ),
@@ -539,8 +619,8 @@ def main(
                         ]
                         == "i-PI"
                     ):
-                        QbC_indexes = {
-                            **QbC_indexes,
+                        qbc_indexes = {
+                            **qbc_indexes,
                             "good_indexes": (
                                 good[:, 0].astype(int).tolist() if good.size > 0 else []
                             ),
@@ -568,8 +648,8 @@ def main(
                         ]
                         == "sander_emle"
                     ):
-                        QbC_stats = {
-                            **QbC_stats,
+                        qbc_stats = {
+                            **qbc_stats,
                             "mean_deviation_max_f": mean_deviation_max_f,
                             "median_deviation_max_f": median_deviation_max_f,
                             "stdeviation_deviation_max_f": stdeviation_deviation_max_f,
@@ -597,8 +677,8 @@ def main(
                         ]
                         == "i-PI"
                     ):
-                        QbC_stats = {
-                            **QbC_stats,
+                        qbc_stats = {
+                            **qbc_stats,
                             "mean_deviation_max_f": mean_deviation_max_f,
                             "median_deviation_max_f": median_deviation_max_f,
                             "stdeviation_deviation_max_f": stdeviation_deviation_max_f,
@@ -627,17 +707,17 @@ def main(
 
                     # If the traj is smaller than expected (forced case) add the missing as rejected
                     if (
-                        QbC_stats["good_count"]
-                        + QbC_stats["rejected_count"]
-                        + QbC_stats["candidates_count"]
+                        qbc_stats["good_count"]
+                        + qbc_stats["rejected_count"]
+                        + qbc_stats["candidates_count"]
                     ) < nb_steps_expected:
-                        QbC_stats["rejected_count"] = (
-                            QbC_stats["rejected_count"]
+                        qbc_stats["rejected_count"] = (
+                            qbc_stats["rejected_count"]
                             + nb_steps_expected
                             - (
-                                QbC_stats["good_count"]
-                                + QbC_stats["rejected_count"]
-                                + QbC_stats["candidates_count"]
+                                qbc_stats["good_count"]
+                                + qbc_stats["rejected_count"]
+                                + qbc_stats["candidates_count"]
                             )
                         )
 
@@ -649,7 +729,7 @@ def main(
                             exploration_json["systems_auto"][system_auto][
                                 "mean_deviation_max_f"
                             ]
-                            + QbC_stats["mean_deviation_max_f"]
+                            + qbc_stats["mean_deviation_max_f"]
                         )
                         exploration_json["systems_auto"][system_auto][
                             "median_deviation_max_f"
@@ -657,7 +737,7 @@ def main(
                             exploration_json["systems_auto"][system_auto][
                                 "median_deviation_max_f"
                             ]
-                            + QbC_stats["median_deviation_max_f"]
+                            + qbc_stats["median_deviation_max_f"]
                         )
                         exploration_json["systems_auto"][system_auto][
                             "stdeviation_deviation_max_f"
@@ -665,7 +745,7 @@ def main(
                             exploration_json["systems_auto"][system_auto][
                                 "stdeviation_deviation_max_f"
                             ]
-                            + QbC_stats["stdeviation_deviation_max_f"]
+                            + qbc_stats["stdeviation_deviation_max_f"]
                         )
                     del end_row_number
 
@@ -673,15 +753,15 @@ def main(
                     # If the trajectory was used skiped, count everything as a failure
                     skipped_traj_user = skipped_traj_user + 1
                     # Fill JSON files
-                    QbC_indexes = {
-                        **QbC_indexes,
+                    qbc_indexes = {
+                        **qbc_indexes,
                         "good_indexes": [],
                         "rejected_indexes": [],
                         "candidate_indexes": [],
                     }
 
-                    QbC_stats = {
-                        **QbC_stats,
+                    qbc_stats = {
+                        **qbc_stats,
                         "total_count": nb_steps_expected,
                         "mean_deviation_max_f": 999.0,
                         "median_deviation_max_f": 999.0,
@@ -693,24 +773,24 @@ def main(
 
                 exploration_json["systems_auto"][system_auto]["total_count"] = (
                     exploration_json["systems_auto"][system_auto]["total_count"]
-                    + QbC_stats["total_count"]
+                    + qbc_stats["total_count"]
                 )
                 exploration_json["systems_auto"][system_auto]["candidates_count"] = (
                     exploration_json["systems_auto"][system_auto]["candidates_count"]
-                    + QbC_stats["candidates_count"]
+                    + qbc_stats["candidates_count"]
                 )
                 exploration_json["systems_auto"][system_auto]["rejected_count"] = (
                     exploration_json["systems_auto"][system_auto]["rejected_count"]
-                    + QbC_stats["rejected_count"]
+                    + qbc_stats["rejected_count"]
                 )
 
-                write_json_file(QbC_stats, local_path / "QbC_stats.json", False)
-                write_json_file(QbC_indexes, local_path / "QbC_indexes.json", False)
+                write_json_file(qbc_stats, local_path / "QbC_stats.json", False)
+                write_json_file(qbc_indexes, local_path / "QbC_indexes.json", False)
                 del (
                     local_path,
                     model_deviation_filename,
-                    QbC_stats,
-                    QbC_indexes,
+                    qbc_stats,
+                    qbc_indexes,
                     nb_steps_expected,
                 )
 
@@ -805,7 +885,7 @@ def main(
             ):
                 # Get the local path and the name of model_deviation file
                 local_path = (
-                    Path(".").resolve()
+                    Path().resolve()
                     / str(system_auto)
                     / str(it_nnp)
                     / str(it_number).zfill(5)
@@ -817,8 +897,8 @@ def main(
                 xyz_qm_filename = f"{system_auto}_{it_nnp}_{padded_curr_iter}_QM.xyz"
 
                 # Create the JSON data for Query-by-Committee
-                QbC_stats = load_json_file(local_path / "QbC_stats.json", True, False)
-                QbC_indexes = load_json_file(
+                qbc_stats = load_json_file(local_path / "QbC_stats.json", True, False)
+                qbc_indexes = load_json_file(
                     local_path / "QbC_indexes.json", True, False
                 )
 
@@ -834,24 +914,24 @@ def main(
                         selection_factor = 1
                     else:
                         selection_factor = (
-                            QbC_stats["candidates_count"]
+                            qbc_stats["candidates_count"]
                             / exploration_json["systems_auto"][system_auto][
                                 "candidates_count"
                             ]
                         )
 
                     # Get the local max_candidates
-                    QbC_stats["selection_factor"] = selection_factor
+                    qbc_stats["selection_factor"] = selection_factor
                     max_candidates_local = int(
                         np.ceil(max_candidates * selection_factor)
                     )
 
                     if selection_factor == 1:
-                        QbC_stats["max_candidates_local"] = -1
+                        qbc_stats["max_candidates_local"] = -1
                     else:
-                        QbC_stats["max_candidates_local"] = max_candidates_local
+                        qbc_stats["max_candidates_local"] = max_candidates_local
 
-                    candidate_indexes = np.array(QbC_indexes["candidate_indexes"])
+                    candidate_indexes = np.array(qbc_indexes["candidate_indexes"])
 
                     # Selection of candidates (as linearly as possible, keeping the first and the last ones)
                     if len(candidate_indexes) > max_candidates_local:
@@ -868,8 +948,8 @@ def main(
                         candidate_indexes, selected_indexes
                     )
 
-                    QbC_indexes = {
-                        **QbC_indexes,
+                    qbc_indexes = {
+                        **qbc_indexes,
                         "selected_indexes": (
                             selected_indexes.astype(int).tolist()
                             if selected_indexes.size > 0
@@ -881,8 +961,8 @@ def main(
                             else []
                         ),
                     }
-                    QbC_stats = {
-                        **QbC_stats,
+                    qbc_stats = {
+                        **qbc_stats,
                         "selected_count": (
                             len(selected_indexes.astype(int).tolist())
                             if selected_indexes.size > 0
@@ -938,30 +1018,36 @@ def main(
                             ):
                                 temp_min = model_deviation[selected_idx]
                             else:
-                                temp_min = model_deviation[:, 4][
-                                    np.where(model_deviation[:, 0] == selected_idx)
+                                max_forces_index = (
+                                    4 if nnp_program == "deepmd" else 1
+                                )  # MACE is 1
+                                temp_min = model_deviation[:, max_forces_index][
+                                    np.where(
+                                        model_deviation[:, 0].astype("int")
+                                        == selected_idx
+                                    )
                                 ]
                             if temp_min < min_val:
                                 min_val = temp_min
                                 min_index = selected_idx
-                        QbC_stats["minimum_index"] = int(min_index)
+                        qbc_stats["minimum_index"] = int(min_index)
                     # Last of good
-                    elif len(QbC_indexes["good_indexes"]) > 0:
-                        QbC_stats["minimum_index"] = int(
-                            QbC_indexes["good_indexes"][-1]
+                    elif len(qbc_indexes["good_indexes"]) > 0:
+                        qbc_stats["minimum_index"] = int(
+                            qbc_indexes["good_indexes"][-1]
                         )
                     # Nothing
                     else:
-                        QbC_stats["minimum_index"] = -1
+                        qbc_stats["minimum_index"] = -1
 
                 else:
-                    QbC_indexes = {
-                        **QbC_indexes,
+                    qbc_indexes = {
+                        **qbc_indexes,
                         "selected_indexes": [],
                         "discarded_indexes": [],
                     }
-                    QbC_stats = {
-                        **QbC_stats,
+                    qbc_stats = {
+                        **qbc_stats,
                         "selection_factor": 0,
                         "max_candidates_local": 0,
                         "selected_count": 0,
@@ -969,26 +1055,26 @@ def main(
                         "minimum_index": -1,
                     }
 
-                exploration_json["systems_auto"][system_auto][
-                    "selected_count"
-                ] += QbC_stats["selected_count"]
-                exploration_json["systems_auto"][system_auto][
-                    "discarded_count"
-                ] += QbC_stats["discarded_count"]
+                exploration_json["systems_auto"][system_auto]["selected_count"] += (
+                    qbc_stats["selected_count"]
+                )
+                exploration_json["systems_auto"][system_auto]["discarded_count"] += (
+                    qbc_stats["discarded_count"]
+                )
 
                 exploration_json["total_simulation_time_ps"] += (
                     exploration_json["systems_auto"][system_auto]["nb_steps"]
                     * exploration_json["systems_auto"][system_auto]["timestep_ps"]
                 )
-                exploration_json["total_count"] += QbC_stats["total_count"]
-                exploration_json["candidates_count"] += QbC_stats["candidates_count"]
-                exploration_json["rejected_count"] += QbC_stats["rejected_count"]
-                exploration_json["selected_count"] += QbC_stats["selected_count"]
-                exploration_json["discarded_count"] += QbC_stats["discarded_count"]
+                exploration_json["total_count"] += qbc_stats["total_count"]
+                exploration_json["candidates_count"] += qbc_stats["candidates_count"]
+                exploration_json["rejected_count"] += qbc_stats["rejected_count"]
+                exploration_json["selected_count"] += qbc_stats["selected_count"]
+                exploration_json["discarded_count"] += qbc_stats["discarded_count"]
 
-                write_json_file(QbC_stats, local_path / "QbC_stats.json", False)
-                write_json_file(QbC_indexes, local_path / "QbC_indexes.json", False)
-                del local_path, model_deviation_filename, QbC_stats, QbC_indexes
+                write_json_file(qbc_stats, local_path / "QbC_stats.json", False)
+                write_json_file(qbc_indexes, local_path / "QbC_indexes.json", False)
+                del local_path, model_deviation_filename, qbc_stats, qbc_indexes
             del it_number
         del it_nnp
 
@@ -996,7 +1082,7 @@ def main(
     del system_auto_index, system_auto
 
     # Print the stats
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     arcann_logger.info(
         f"Total simulation time: {exploration_json['total_simulation_time_ps']:.2f} ps"
     )
@@ -1010,10 +1096,16 @@ def main(
     arcann_logger.info(
         f"Total number of selected: {exploration_json['selected_count']}, {exploration_json['selected_count'] / exploration_json['candidates_count'] * 100:.2f}% of candidates."
     )
-    arcann_logger.info(
-        f"Total number of discarded: {exploration_json['discarded_count']}, {exploration_json['discarded_count'] / exploration_json['candidates_count'] * 100:.2f}% of candidates."
-    )
-    arcann_logger.info(f"-" * 88)
+    if exploration_json["candidates_count"] == 0: #TODO: i think that should be put earlier in the script
+        arcann_logger.warning("No candidates found! Please check your exploration settings. You can consider increasing 'sigma_low' and 'sigma_high' values, or reducing 'ignore_first_x_ps' value. (or training a better model)")
+    else:
+        arcann_logger.info(
+            f"Total number of selected: {exploration_json['selected_count']}, {exploration_json['selected_count'] / exploration_json['candidates_count'] * 100:.2f}% of candidates."
+        )
+        arcann_logger.info(
+            f"Total number of discarded: {exploration_json['discarded_count']}, {exploration_json['discarded_count'] / exploration_json['candidates_count'] * 100:.2f}% of candidates."
+        )
+    arcann_logger.info("-" * 88)
 
     # Update the booleans in the exploration JSON
     exploration_json["is_deviated"] = True
@@ -1027,7 +1119,7 @@ def main(
     )
 
     # End
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     arcann_logger.info(
         f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
     )
@@ -1039,7 +1131,7 @@ def main(
     del exploration_json
     del training_path, current_path
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 

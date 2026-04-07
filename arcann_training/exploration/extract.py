@@ -11,38 +11,39 @@ Last modified: 2024/07/14
 
 # Standard library modules
 import logging
-import sys
-from pathlib import Path
-from copy import deepcopy
 import subprocess
+import sys
+from copy import deepcopy
+from pathlib import Path
 
 # Non-standard library imports
 import numpy as np
 
-# Local imports
-from arcann_training.common.json import (
-    load_json_file,
-    write_json_file,
-    get_key_in_dict,
-    load_default_json_file,
-    backup_and_overwrite_json_file,
-)
+from arcann_training.common.check import check_atomsk, check_vmd, validate_step_folder
 from arcann_training.common.filesystem import (
     check_file_existence,
     remove_file,
     remove_files_matching_glob,
+)
+
+# Local imports
+from arcann_training.common.json import (
+    backup_and_overwrite_json_file,
+    get_key_in_dict,
+    load_default_json_file,
+    load_json_file,
+    write_json_file,
 )
 from arcann_training.common.list import (
     replace_substring_in_string_list,
     string_list_to_textfile,
     textfile_to_string_list,
 )
-from arcann_training.common.check import validate_step_folder, check_atomsk, check_vmd
+from arcann_training.common.xyz import parse_xyz_trajectory_file, write_xyz_frame
 from arcann_training.exploration.utils import (
     generate_input_exploration_disturbed_json,
     get_system_disturb,
 )
-from arcann_training.common.xyz import parse_xyz_trajectory_file, write_xyz_frame
 
 
 def main(
@@ -56,7 +57,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -66,7 +67,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -96,9 +97,9 @@ def main(
     if (current_path / "used_input.json").is_file():
         current_input_json = load_json_file((current_path / "used_input.json"))
     else:
-        arcann_logger.warning(f"No used_input.json found. Starting with empty one.")
+        arcann_logger.warning("No used_input.json found. Starting with empty one.")
         arcann_logger.warning(
-            f"You should avoid this by not deleting the used_input.json file."
+            "You should avoid this by not deleting the used_input.json file."
         )
         current_input_json = {}
     arcann_logger.debug(f"current_input_json: {current_input_json}")
@@ -171,8 +172,8 @@ def main(
 
     # Check if we can continue
     if not exploration_json["is_deviated"]:
-        arcann_logger.error(f"Lock found. Execute first: exploration deviation.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Lock found. Execute first: exploration deviation.")
+        arcann_logger.error("Aborting...")
         return 1
 
     # Update the current input JSON
@@ -266,16 +267,16 @@ def main(
                 arcann_logger.debug(f"{system_auto} / {it_nnp} / {it_number}")
                 # Get the local path
                 local_path = (
-                    Path(".").resolve()
+                    Path().resolve()
                     / str(system_auto)
                     / str(it_nnp)
                     / str(it_number).zfill(5)
                 )
-                QbC_stats = load_json_file(local_path / "QbC_stats.json", True, False)
-                QbC_indexes = load_json_file(
+                qbc_stats = load_json_file(local_path / "QbC_stats.json", True, False)
+                qbc_indexes = load_json_file(
                     local_path / "QbC_indexes.json", True, False
                 )
-                arcann_logger.debug(QbC_stats)
+                arcann_logger.debug(qbc_stats)
 
                 if (local_path / "cell.txt").is_file():
                     cell_array = np.genfromtxt(local_path / "cell.txt")
@@ -292,7 +293,7 @@ def main(
                 arcann_logger.debug(f"is_cell_constant: {is_cell_constant}")
 
                 # Selection of the structure for the next iteration starting point
-                if QbC_stats["minimum_index"] != -1:
+                if qbc_stats["minimum_index"] != -1:
                     if (
                         exploration_json["systems_auto"][system_auto][
                             "exploration_type"
@@ -304,7 +305,7 @@ def main(
                             / f"{system_auto}_{it_nnp}_{padded_curr_iter}.dcd"
                         )
                         min_index = int(
-                            QbC_stats["minimum_index"] / print_every_x_steps
+                            qbc_stats["minimum_index"] / print_every_x_steps
                         )
                     elif (
                         exploration_json["systems_auto"][system_auto][
@@ -316,7 +317,7 @@ def main(
                             local_path
                             / f"{system_auto}_{it_nnp}_{padded_curr_iter}.dcd"
                         )
-                        min_index = int(QbC_stats["minimum_index"])
+                        min_index = int(qbc_stats["minimum_index"])
                     elif (
                         exploration_json["systems_auto"][system_auto][
                             "exploration_type"
@@ -327,7 +328,7 @@ def main(
                             local_path
                             / f"{system_auto}_{it_nnp}_{padded_curr_iter}_QM.xyz"
                         )
-                        min_index = int(QbC_stats["minimum_index"])
+                        min_index = int(qbc_stats["minimum_index"])
 
                     (local_path / "min.vmd").write_text(f"{min_index}")
                     padded_min_index = str(min_index).zfill(5)
@@ -342,7 +343,6 @@ def main(
                         ]
                         == "i-PI"
                     ):
-
                         min_file_name = f"{padded_curr_iter}_{system_auto}_{it_nnp}_{str(it_number).zfill(5)}"
                         vmd_tcl = deepcopy(master_vmd_tcl)
                         vmd_tcl = replace_substring_in_string_list(
@@ -568,7 +568,6 @@ def main(
                         ]
                         == "sander_emle"
                     ):
-
                         remove_file((local_path / "min.vmd"))
                         # This part should read the nc file and convert it
                         # But for now, it is deactivated
@@ -585,8 +584,8 @@ def main(
                             ] = []
 
                 # Selection of labeling XYZ
-                if QbC_stats["selected_count"] > 0:
-                    candidate_indexes = np.array(QbC_indexes["selected_indexes"])
+                if qbc_stats["selected_count"] > 0:
+                    candidate_indexes = np.array(qbc_indexes["selected_indexes"])
 
                     if (
                         exploration_json["systems_auto"][system_auto][
@@ -598,7 +597,7 @@ def main(
                             local_path
                             / f"{system_auto}_{it_nnp}_{padded_curr_iter}.dcd"
                         )
-                        candidate_indexes = candidate_indexes / print_every_x_steps
+                        candidate_indexes = candidate_indexes
                     elif (
                         exploration_json["systems_auto"][system_auto][
                             "exploration_type"
@@ -694,7 +693,7 @@ def main(
                         candidates_files.extend(
                             [
                                 str(
-                                    Path(".")
+                                    Path()
                                     / str(system_auto)
                                     / str(it_nnp)
                                     / str(it_number).zfill(5)
@@ -723,7 +722,7 @@ def main(
                                             atomsk_bin,
                                             "-ow",
                                             str(
-                                                Path(".")
+                                                Path()
                                                 / str(system_auto)
                                                 / str(it_nnp)
                                                 / str(it_number).zfill(5)
@@ -742,7 +741,7 @@ def main(
                                             atomsk_bin,
                                             "-ow",
                                             str(
-                                                Path(".")
+                                                Path()
                                                 / str(system_auto)
                                                 / str(it_nnp)
                                                 / str(it_number).zfill(5)
@@ -766,7 +765,7 @@ def main(
                             candidates_disturbed_files.extend(
                                 [
                                     str(
-                                        Path(".")
+                                        Path()
                                         / str(system_auto)
                                         / str(it_nnp)
                                         / str(it_number).zfill(5)
@@ -798,7 +797,6 @@ def main(
                         ]
                         == "sander_emle"
                     ):
-
                         candidate_indexes_padded = [
                             _.zfill(5) for _ in candidate_indexes
                         ]
@@ -814,7 +812,7 @@ def main(
                         ) = parse_xyz_trajectory_file(local_path / traj_file)
 
                         for _ in candidate_indexes_padded:
-                            print(
+                            arcann_logger.debug(
                                 f"Processing candidate: {system_auto} / {it_nnp} / {it_number} / {_}"
                             )
                             write_xyz_frame(
@@ -828,7 +826,7 @@ def main(
                             )
                             candidates_files.append(
                                 str(
-                                    Path(".")
+                                    Path()
                                     / str(system_auto)
                                     / str(it_nnp)
                                     / str(it_number).zfill(5)
@@ -867,8 +865,8 @@ def main(
                 cellc,
                 is_cell_constant,
                 local_path,
-                QbC_stats,
-                QbC_indexes,
+                qbc_stats,
+                qbc_indexes,
             )
 
         del it_nnp, it_number
@@ -880,7 +878,8 @@ def main(
                 / f"candidates_{padded_curr_iter}_{system_auto}.xyz"
             )
             remove_file(candidates_xyz_file)
-            with open(candidates_xyz_file, "w") as f:
+            arcann_logger.debug(f"candidates_files: {candidates_files}")
+            with candidates_xyz_file.open("w") as f:
                 for candidate_xyz_file in candidates_files:
                     f.write((current_path / candidate_xyz_file).read_text())
                     remove_file((current_path / candidate_xyz_file))
@@ -895,7 +894,7 @@ def main(
                 / f"candidates_{padded_curr_iter}_{system_auto}_disturbed.xyz"
             )
             remove_file(candidates_disturbed_xyz_file)
-            with open(candidates_disturbed_xyz_file, "w") as f:
+            with candidates_disturbed_xyz_file.open("w") as f:
                 for candidate_disturbed_file in candidates_disturbed_files:
                     f.write((current_path / candidate_disturbed_file).read_text())
                     remove_file((current_path / candidate_disturbed_file))
@@ -916,7 +915,7 @@ def main(
     del system_auto_index, system_auto, master_vmd_tcl
     del starting_structures_path
 
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     # Update the booleans in the exploration JSON
     exploration_json["is_extracted"] = True
 
@@ -929,7 +928,7 @@ def main(
     )
 
     # End
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     arcann_logger.info(
         f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
     )
@@ -953,7 +952,7 @@ def main(
     del curr_iter, padded_curr_iter, prev_iter, padded_prev_iter
     del atomsk_bin, vmd_bin
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 

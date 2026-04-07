@@ -17,6 +17,7 @@ from pathlib import Path
 # Local imports
 from arcann_training.common.check import validate_step_folder
 from arcann_training.common.json import load_json_file, write_json_file
+from arcann_training.common.lammps import LAMMPSInputHandler, LAMMPSPair
 
 
 def main(
@@ -63,9 +64,9 @@ def main(
         arcann_logger.error("Aborting...")
         return 1
 
-    completed_count = None
+    completed_count = 0
+    needed_mace_styles: set[LAMMPSPair] = set()  # TODO: this is bad here
     if nnp_program == "deepmd":
-        completed_count = 0
         for nnp in range(1, main_json["nnp_count"] + 1):
             local_path = current_path / f"{nnp}"
             if (local_path / f"graph_{nnp}_{padded_curr_iter}_compressed.pb").is_file():
@@ -74,12 +75,38 @@ def main(
                 arcann_logger.critical(f"DP Compress - '{nnp}' not finished/failed.")
             del local_path
         del nnp
-    arcann_logger.debug(f"completed_count: {completed_count}")
+    elif nnp_program == "mace":
 
-    arcann_logger.info("-" * 88)
-    # Update the boolean in the training JSON
-    if completed_count == main_json["nnp_count"] or nnp_program == "mace":
-        training_json["is_compressed"] = True
+        for lmp_input in (training_path / "user_files").glob("*.in"):
+            needed_mace_styles.add(
+                LAMMPSInputHandler(
+                    lmp_input,
+                    [
+                        main_json["properties"][element]["symbol"]
+                        for element in main_json["properties"]
+                    ],
+                ).lmp_pair
+            )
+
+        style_ext = {
+            LAMMPSPair.SYMMETRIX: ".json",
+            LAMMPSPair.MACE: "-lammps.pt",
+            LAMMPSPair.MLIAP: "-mliap_lammps.pt",
+        }
+
+        for nnp in range(1, main_json["nnp_count"] + 1):
+            local_path = current_path / f"{nnp}" / "MACE_models"
+            for style in needed_mace_styles:
+                if (
+                    local_path / f"model_{nnp}_{padded_curr_iter}{style_ext[style]}"
+                ).is_file():
+                    completed_count += 1
+                else:
+                    arcann_logger.critical(
+                        f"DP Compress - '{nnp}-{str(style)}' not finished/failed."
+                    )
+
+    arcann_logger.debug(f"completed_count: {completed_count}")
 
     # Dump the JSON files (training)
     write_json_file(
@@ -90,7 +117,10 @@ def main(
 
     # End
     arcann_logger.info("-" * 88)
-    if completed_count == main_json["nnp_count"] or nnp_program == "mace":
+    if completed_count == main_json["nnp_count"] or (
+        nnp_program == "mace"
+        and completed_count == main_json["nnp_count"] * len(needed_mace_styles)
+    ):
         arcann_logger.info(
             f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
         )

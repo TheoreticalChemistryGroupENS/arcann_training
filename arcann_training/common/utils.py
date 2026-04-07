@@ -16,14 +16,15 @@ catch_errors_decorator(func: Callable[..., Any]) -> Callable[..., Any]
     Decorator to wrap a function and catch exceptions during execution.
 convert_seconds_to_hh_mm_ss(seconds: float) -> str
     Converts a time duration in seconds to the format HH:MM:SS.
-natural_sort_key(s: str) -> List[Union[int, str]]
+natural_sort_key(s: str) -> list[int | str]]
     Provides a natural sorting key for alphanumeric strings.
 """
 
 # Standard library modules
 import logging
 import re
-from typing import Any, Callable, List, Union
+from functools import wraps
+from typing import Any, Callable
 
 
 # Unittested
@@ -48,6 +49,7 @@ def catch_errors_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
     """
     logger = logging.getLogger("ArcaNN")
 
+    @wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)
@@ -90,7 +92,7 @@ def convert_seconds_to_hh_mm_ss(seconds: float) -> str:
 
 # TODO: Add tests for this function
 @catch_errors_decorator
-def natural_sort_key(s: str) -> List[Union[int, str]]:
+def natural_sort_key(s: str) -> list[int | str]:
     """
     Provides a natural sorting key for alphanumeric strings.
 
@@ -101,7 +103,7 @@ def natural_sort_key(s: str) -> List[Union[int, str]]:
 
     Returns
     -------
-    List[Union[int, str]]
+    list[int | str]
         The sorting key.
 
     Raises
