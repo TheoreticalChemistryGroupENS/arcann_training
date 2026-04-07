@@ -189,35 +189,24 @@ def main(
                         local_path / f"{system_auto}_{it_nnp}_{padded_curr_iter}.log"
                     )
 
+                    check_list = [traj_file, lammps_output_file]
                     if nnp_program == "deepmd":
                         model_deviation_filename = (
                             local_path
                             / f"model_devi_{system_auto}_{it_nnp}_{padded_curr_iter}.out"
                         )
-                        nnp_files_present = model_deviation_filename.is_file()
+                        check_list.append(model_deviation_filename)
                     elif nnp_program == "mace":
-                        nnp_files_present = all(
-                            [
-                                (
-                                    local_path / f"mace_forces_model{i}.lammpstrj"
-                                ).is_file()
-                                for i in range(1, main_json["nnp_count"] + 1)
-                            ]
-                        )
-
-                    # Log if files are missing.
-                    if not all(
-                        [
-                            traj_file.is_file(),
-                            lammps_output_file.is_file(),
-                            nnp_files_present,
+                        check_list += [
+                            local_path / f"{system_auto}_mace_forces_model{i}.lammpstrj"
+                            for i in range(1, main_json["nnp_count"] + 1)
                         ]
-                    ):
+                    # Log if files are missing.
+                    missing = [f.name for f in check_list if not f.is_file()]
+                    if missing:
                         arcann_logger.critical(
-                            f"'{local_path}': missing files. Check manually."
+                            f"'{local_path}': missing files: {missing}. Check manually."
                         )
-                        del lammps_output_file, traj_file
-                        continue
 
                     # Check if DCD is unreadable
                     if not check_dcd_is_valid(traj_file, vmd_bin):
