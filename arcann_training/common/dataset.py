@@ -768,10 +768,6 @@ class Dataset:
                 dataset.to_set000()
             for dataset in self.validation_dataset.values():
                 dataset.to_set000()
-        else:
-            raise ValueError(
-                "The provided conversion is not valid. Please use to_extxyz=True or to_set000=True."
-            )
 
     def prepare_for_mace_train(self, data_path: Path):
         """Data should be converted into the extxyz format and put together in a single file"""
