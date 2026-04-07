@@ -502,17 +502,19 @@ class Dataset:
         for datadir in self.dataset_dir.iterdir():
             if datadir.is_dir() and datadir.name not in dataset_names:
                 step, system_name, iteration = None, None, None
-                if (
-                    datadir.name.startswith("extra_")
-                    and extra_dataset
-                    and not only_init
-                ):
-                    # case of extra datasets
-                    step = "extra"
+                if datadir.name.startswith("extra_"):
+                    if extra_dataset and not only_init:
+                        # case of extra datasets
+                        step = "extra"
+                    else:
+                        continue
 
-                elif datadir.name.startswith("init_") and (init_dataset or only_init):
-                    # case of initial datasets
-                    step = "initial"
+                elif datadir.name.startswith("init_"):
+                    if init_dataset or only_init:
+                        # case of initial datasets
+                        step = "initial"
+                    else:
+                        continue
 
                 elif not only_init:
                     # case of system datasets
