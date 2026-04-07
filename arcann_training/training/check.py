@@ -64,6 +64,7 @@ def main(
     control_path = training_path / "control"
     main_json = load_json_file((control_path / "config.json"))
     training_json = load_json_file((control_path / f"training_{padded_curr_iter}.json"))
+    arcann_logger.debug(f"training_json: {training_json}")
     nnp_program: str = main_json["nnp_program"]
 
     arcann_logger.info(f"Using {nnp_program} as NNP software")
