@@ -76,7 +76,6 @@ def main(
             del local_path
         del nnp
     elif nnp_program == "mace":
-        local_path = current_path / f"{nnp}" / "MACE_models"
 
         for lmp_input in (training_path / "user_files").glob("*.in"):
             needed_mace_styles.add(
@@ -96,6 +95,7 @@ def main(
         }
 
         for nnp in range(1, main_json["nnp_count"] + 1):
+            local_path = current_path / f"{nnp}" / "MACE_models"
             for style in needed_mace_styles:
                 if (
                     local_path / f"model_{nnp}_{padded_curr_iter}{style_ext[style]}"

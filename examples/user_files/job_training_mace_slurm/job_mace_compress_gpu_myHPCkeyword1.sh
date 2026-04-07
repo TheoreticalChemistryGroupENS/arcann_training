@@ -63,7 +63,7 @@ if [ "${MACE_MODEL_STYLE}" == "symmetrix" ]; then
     echo "# [$(date)] Converting model to CPU for symmetrix"
     mace_convert_device "${MACE_MODEL_FILE}" --target_device cpu --output_file "${MACE_MODEL_FILE}.cpu"
     echo "# [$(date)] Converting mace model to symmetrix"
-    symmetrix_extract_mace --model "${MACE_MODEL_FILE}.cpu" --chemical-symbols _R_CHEMICAL_SYMBOLS_ --output "${MACE_MODEL_FILE}.json"
+    symmetrix_extract_mace --model "${MACE_MODEL_FILE}.cpu" --atomic-numbers _R_ATOMIC_NUMBERS_ --output "${MACE_MODEL_FILE}.json"
 elif [ "${MACE_MODEL_STYLE}" == "mace" ]; then
     echo "# [$(date)] Converting mace model to LAMMPS libtorch"
     mace_create_lammps_model "${MACE_MODEL_FILE}" --format libtorch

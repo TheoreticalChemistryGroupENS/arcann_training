@@ -321,7 +321,23 @@ def main(
                 job_file = replace_substring_in_string_list(
                     job_file, "_R_MACE_MODEL_STYLE_", str(style)
                 )
-
+                system_atoms = [
+                    main_json["properties"][element]["symbol"]
+                    for element in main_json["properties"]
+                ]
+                elements = load_json_file(
+                    deepmd_iterative_path / "assets" / "elements.json"
+                )
+                system_atoms = [
+                    elm["atomic_number"]
+                    for elm in elements.values()
+                    if elm["symbol"] in system_atoms
+                ] #TODO: because it's the 2nd time we use that, we should put it in the control/config.json
+                job_file = replace_substring_in_string_list(
+                    job_file,
+                    "_R_ATOMIC_NUMBERS_",
+                    " ".join([str(num) for num in system_atoms]),
+                )
                 job_path = (
                     local_path
                     / f"job_mace_compress_{machine_spec['arch_type']}_{machine}.sh"
