@@ -11,8 +11,11 @@ Last modified: 2025/12/16
 
 # Standard library modules
 import logging
+import subprocess
 import sys
 from pathlib import Path
+
+import numpy as np
 
 # Local imports
 from arcann_training.common.dataset import Dataset, ExtXYZEnsemble, Set000Ensemble
@@ -214,10 +217,116 @@ def main(
         extra_dataset=True,
         init_dataset=True,
     )
-    dataset.convert_dataset(
-        to_extxyz=(main_json["data_format"] == "extxyz"),
-        to_set000=(main_json["data_format"] == "set000"),
+    arcann_logger.debug(
+        f"Loaded training dataset: {dataset.training_dataset}, {dataset.validation_dataset}"
     )
+    if not dataset.validation_dataset:
+        # there is no validation set, we'll create it
+        subprocess.run(
+            ["cp", "-a", str(training_path / "data"), str(training_path / "old_data")],
+            check=True,
+        )
+        (training_path / "converted_data").mkdir(exist_ok=True)
+
+        trainings, validations = {}, {}
+        for ensemble in dataset.training_dataset.values():
+            ensemble.load()
+            arcann_logger.debug(f"Loading ensemble: {ensemble.path}")
+
+            # create the data ensemble in the new directory, one for training and one for validation
+            common_kwargs = {
+                "step": ensemble.step,
+                "system_name": ensemble.system_name
+                if ensemble.system_name is not None
+                else None,
+                "iteration": int(ensemble.iteration)
+                if ensemble.iteration is not None
+                else None,
+                "data_format": dataset.data_format,
+                "properties": dataset.config_file["properties"],
+            }
+            if ensemble.system_name:
+                training_dir = training_path / "converted_data" / ensemble.path.name
+                validation_dir = (
+                    training_path
+                    / "converted_data"
+                    / f"{ensemble.system_name}_valid_{str(ensemble.iteration).zfill(3)}"
+                )
+            else:
+                training_dir = training_path / "converted_data" / ensemble.path.name
+                names = ensemble.path.name.split("_")
+                validation_dir = (
+                    training_path
+                    / "converted_data"
+                    / f"{names[0]}_valid_{'_'.join(names[1:])}"
+                )
+            training_dir.mkdir(exist_ok=True)
+            validation_dir.mkdir(exist_ok=True)
+            training_data_ensemble = dataset.data_ensemble(
+                path=training_dir, training_type="training", **common_kwargs
+            )
+            validation_data_ensemble = dataset.data_ensemble(
+                path=validation_dir, training_type="validation", **common_kwargs
+            )
+
+            # populate these data ensembles with the data from the original
+            nb_of_frames = ensemble.coord.shape[0]
+            indices = np.random.permutation(nb_of_frames)
+            split_idx = int(nb_of_frames * (1 - dataset.split))
+            train_idx = indices[:split_idx]
+            val_idx = indices[split_idx:]
+            arrays = {
+                "energy": ensemble.energy,
+                "coord": ensemble.coord,
+                "box": ensemble.box,
+                "force": ensemble.force,
+                "virial": ensemble.virial,
+                "wannier": ensemble.wannier,
+            }
+            train_arrays = {
+                name: arr[train_idx] if arr is not None else None
+                for name, arr in arrays.items()
+            }
+            training_data_ensemble.load_from_raw_arrays(
+                type=ensemble.type,
+                **train_arrays,
+                wannier_not_cvg=ensemble.wannier_not_cvg,
+                is_periodic=ensemble.is_periodic,
+            )
+            trainings[training_data_ensemble.path.name] = training_data_ensemble
+            val_arrays = {
+                name: arr[val_idx] if arr is not None else None
+                for name, arr in arrays.items()
+            }
+            validation_data_ensemble.load_from_raw_arrays(
+                type=ensemble.type,
+                **val_arrays,
+                wannier_not_cvg=ensemble.wannier_not_cvg,
+                is_periodic=ensemble.is_periodic,
+            )
+            validations[validation_data_ensemble.path.name] = validation_data_ensemble
+
+            # do the actual convertion:
+            if main_json["data_format"] == "extxyz":
+                training_data_ensemble.to_extxyz(save=True)
+                validation_data_ensemble.to_extxyz(save=True)
+            else:
+                training_data_ensemble.to_set000()
+                validation_data_ensemble.to_set000()
+
+        dataset.training_dataset |= trainings
+        dataset.validation_dataset |= validations
+        subprocess.run(["rm", "-rf", str(training_path / "data")], check=True)
+        subprocess.run(
+            ["mv", str(training_path / "converted_data"), str(training_path / "data")],
+            check=True,
+        )
+
+    else:
+        dataset.convert_dataset(
+            to_extxyz=(main_json["data_format"] == "extxyz"),
+            to_set000=(main_json["data_format"] == "set000"),
+        )
     dataset.update_control_file()
 
     arcann_logger.debug(

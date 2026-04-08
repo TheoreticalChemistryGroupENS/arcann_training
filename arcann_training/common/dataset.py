@@ -219,7 +219,8 @@ class Set000Ensemble(DataEnsemble):
         Convert the attributes data into a list of ASE Atoms objects and optionally
         save this trajectory in the extxyz format.
         """
-        self.load()
+        if self.coord is None:
+            self.load()
         elements = [self.properties[int(tp) + 1]["symbol"] for tp in self.type]
         frames = []
         for i in range(self.size):
@@ -361,7 +362,8 @@ class ExtXYZEnsemble(DataEnsemble):
 
     def to_set000(self):
         """Convert the data of the ensemble in the set.000 format by writing the corresponding files from the attributes."""
-        self.load()
+        if self.coord is None:
+            self.load()
 
         np.savetxt(self.path / "type.raw", self.type, fmt="%s")
         (self.path / "set.000").mkdir(parents=True, exist_ok=True)
@@ -624,8 +626,8 @@ class Dataset:
 
         common_kwargs = {
             "step": step,
-            "system_name": system_name,
-            "iteration": int(iteration),
+            "system_name": system_name if iteration is not None else None,
+            "iteration": int(iteration) if iteration is not None else None,
             "data_format": self.data_format,
             "properties": self.config_file["properties"],
         }
@@ -682,6 +684,7 @@ class Dataset:
         # TODO at some point, we should add this new data ensemble that we creating to the dict so that they are
         # saved to the control file as system dataset and read at the next iteration without having to check if
         # they are new of not
+        return training_data_ensemble, validation_data_ensemble
 
     def update_control_file(self):
         # Write the LOADED new data ensembles to the control file and save it
@@ -760,8 +763,14 @@ class Dataset:
         """Convert the data ensembles of the dataset from extxyz to set.000 format or vice versa"""
         if to_extxyz and self.data_format == "set.000":
             for dataset in self.training_dataset.values():
+                arcann_logger.debug(
+                    f"Converting dataset {dataset.path.name} to extxyz format"
+                )
                 dataset.to_extxyz(save=True)
             for dataset in self.validation_dataset.values():
+                arcann_logger.debug(
+                    f"Converting dataset {dataset.path.name} to extxyz format"
+                )
                 dataset.to_extxyz(save=True)
         elif to_set000 and self.data_format == "extxyz":
             for dataset in self.training_dataset.values():
