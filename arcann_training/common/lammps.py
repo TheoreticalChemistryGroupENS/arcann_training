@@ -372,13 +372,13 @@ class LAMMPSInputHandler:
             )
 
         run_index = match_run.start()
-        self._raw_text = (
-            self._raw_text[:run_index]
-            + "\n".join(self.cell_info_lammps)
-            + "\n".join(self.mace_dump_0)
-            + self._raw_text[run_index:]
-            + "\n"
-        )
+        self._raw_text = self._raw_text[:run_index] + "\n".join(self.cell_info_lammps)
+
+        match self.lmp_pair:
+            case LAMMPSPair.MACE | LAMMPSPair.MLIAP | LAMMPSPair.SYMMETRIX:
+                self._raw_text += "\n".join(self.mace_dump_0)
+
+        self._raw_text = self._raw_text + self._raw_text[run_index:] + "\n"
 
     @property
     def lines(self, keepends=False) -> list[str]:

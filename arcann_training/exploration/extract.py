@@ -597,7 +597,7 @@ def main(
                             local_path
                             / f"{system_auto}_{it_nnp}_{padded_curr_iter}.dcd"
                         )
-                        candidate_indexes = candidate_indexes
+                        candidate_indexes = candidate_indexes / print_every_x_steps
                     elif (
                         exploration_json["systems_auto"][system_auto][
                             "exploration_type"

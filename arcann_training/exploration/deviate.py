@@ -340,9 +340,22 @@ def main(
                         deviation_per_atom = np.std(
                             mace_rerun_forces, axis=(0, 3)
                         )  # (0, 3) -> (NNP, Forces), return an array with (Step,Atoms) dim
+
+                        print_every_x_steps = exploration_json["systems_auto"][
+                            system_auto
+                        ]["print_every_x_steps"]
+                        timestep_ps = exploration_json["systems_auto"][system_auto][
+                            "timestep_ps"
+                        ]
+
                         model_deviation = np.array(
                             [
-                                (i, np.max(x), np.min(x), np.mean(x))
+                                (
+                                    i * print_every_x_steps,
+                                    np.max(x),
+                                    np.min(x),
+                                    np.mean(x),
+                                )
                                 for i, x in enumerate(deviation_per_atom)
                             ]
                         )
@@ -1096,8 +1109,12 @@ def main(
     arcann_logger.info(
         f"Total number of selected: {exploration_json['selected_count']}, {exploration_json['selected_count'] / exploration_json['candidates_count'] * 100:.2f}% of candidates."
     )
-    if exploration_json["candidates_count"] == 0: #TODO: i think that should be put earlier in the script
-        arcann_logger.warning("No candidates found! Please check your exploration settings. You can consider increasing 'sigma_low' and 'sigma_high' values, or reducing 'ignore_first_x_ps' value. (or training a better model)")
+    if (
+        exploration_json["candidates_count"] == 0
+    ):  # TODO: i think that should be put earlier in the script
+        arcann_logger.warning(
+            "No candidates found! Please check your exploration settings. You can consider increasing 'sigma_low' and 'sigma_high' values, or reducing 'ignore_first_x_ps' value. (or training a better model)"
+        )
     else:
         arcann_logger.info(
             f"Total number of selected: {exploration_json['selected_count']}, {exploration_json['selected_count'] / exploration_json['candidates_count'] * 100:.2f}% of candidates."
