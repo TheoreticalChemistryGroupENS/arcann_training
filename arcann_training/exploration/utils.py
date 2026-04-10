@@ -861,7 +861,9 @@ def create_models_list(
     # Create symbolic links to the model files in the local directory
     for model in models_list:
         nnp_path = (training_path / "NNP" / model).resolve()
-        (local_path / model).symlink_to(nnp_path, target_is_directory=True)
+        if (local_path / model).exists():
+            (local_path / model).unlink()
+        (local_path / model).symlink_to(nnp_path)
 
     # Join the model file names into a single string for ease of use
     models_string = " ".join(models_list)

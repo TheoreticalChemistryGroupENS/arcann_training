@@ -40,6 +40,7 @@
 #----------------------------------------------
 
 MACE_MODEL_VERSION="_R_MACE_VERSION_"
+MACE_FONDATION_FILE="_R_MACE_FONDATION_FILE_" 
 MACE_IN_FILE="_R_MACE_INPUT_FILE_"
 MACE_LOG_FILE="_R_MACE_LOG_FILE_"
 MACE_OUT_FILE="_R_MACE_OUTPUT_FILE_"
@@ -57,10 +58,17 @@ cd "${SLURM_SUBMIT_DIR}" || { echo "Could not go to ${SLURM_SUBMIT_DIR}. Abortin
 # Check
 [ -f "${MACE_IN_FILE}" ] || { echo "${MACE_IN_FILE} does not exist. Aborting..."; exit 1; }
 
-# This part copy the data from the MACE_DATA_DIR to the job folder (because they are one up and they should be in the same folder)
+# This part copies the data from the MACE_DATA_DIR to the job folder (because they are one up and they should be in the same folder)
 [ -d ${MACE_DATA_DIR} ] || { echo "${MACE_DATA_DIR} does not exist. Aborting..."; exit 1; }
 mkdir -p "${SLURM_SUBMIT_DIR}"/data || { echo "Could not create ${SLURM_SUBMIT_DIR}/data. Aborting..."; exit 1; }
 { cp -r ${MACE_DATA_DIR}/* "${SLURM_SUBMIT_DIR}"/data && echo "${MACE_DATA_DIR} copied successfully"; } || { echo "Could not copy ${MACE_DATA_DIR}. Aborting..."; exit 1; }
+
+# This part copies the MACE_FONDATION_FILE to the job folder if it exists
+if [ -f ${MACE_FONDATION_FILE} ]; then
+    { ln -s "$(realpath "${MACE_FONDATION_FILE}")" "${SLURM_SUBMIT_DIR}" && echo "${MACE_FONDATION_FILE} linked successfully"; } || { echo "Could not link ${MACE_FONDATION_FILE}. Aborting..."; exit 1; }
+else
+    echo "${MACE_FONDATION_FILE} does not exist. Skipping copy."
+fi
 
 # Example to use the DeepMD_MODEL_VERSION variable
 if [ ${MACE_MODEL_VERSION} == "0.3.14" ]; then
