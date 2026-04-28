@@ -587,7 +587,7 @@ def main(
 
     elif nnp_program == "mace":
         dataset.prepare_for_mace_train(data_path=localdata_path)
-        if nnp_input["foundation_model"]:
+        if nnp_input.get("foundation_model"):
             foundation_model_path = (
                 training_path / "user_files" / f"{nnp_input['foundation_model']}"
             ).resolve()
@@ -726,7 +726,7 @@ def main(
             job_file = replace_substring_in_string_list(
                 job_file, "_R_MACE_OUTPUT_FILE_", "training.out"
             )
-            if nnp_input["foundation_model"]:
+            if nnp_input.get("foundation_model"):
                 job_file = replace_substring_in_string_list(
                     job_file,
                     "_R_MACE_FONDATION_FILE_",
