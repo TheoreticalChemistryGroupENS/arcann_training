@@ -20,6 +20,7 @@ from pathlib import Path
 
 # Non-standard library imports
 import numpy as np
+from packaging import version
 
 # Local imports
 from arcann_training.common.check import validate_step_folder
@@ -66,6 +67,7 @@ def main(
     # Get the current path and set the training path as the parent of the current path
     current_path = Path().resolve()
     training_path = current_path.parent
+    user_files_path = training_path / "user_files"
 
     # Log the step and phase of the program
     arcann_logger.info(
@@ -192,58 +194,45 @@ def main(
         labeling_json = {}
 
     if "deepmd_model_version" not in user_input_json and nnp_program == "deepmd":
-        dptrain_list = []
-        for file in (current_path.parent / "user_files").iterdir():
-            if file.suffix != ".json":
-                continue
-            if "dptrain" not in file.stem:
-                continue
-            dptrain_list.append(file)
-        arcann_logger.debug(f"dptrain_list: {dptrain_list}")
-        del file
+        found_versions = [
+            f.stem.split("_")[-1] for f in user_files_path.glob("dptrain_*.json")
+        ]
+        arcann_logger.debug(f"Found dptrain versions: {found_versions}")
 
-        if not dptrain_list:
+        if not found_versions:
             arcann_logger.error(
-                f"No dptrain_DEEPMDVERSION.json files found in {(current_path.parent / 'user_files')}"
+                f"No dptrain_DEEPMDVERSION.json files found in {user_files_path}"
             )
             arcann_logger.error("Aborting...")
             return 1
 
-        dptrain_max_version = 0
-        for dptrain in dptrain_list:
-            dptrain_max_version = max(
-                dptrain_max_version, float(dptrain.stem.split("_")[-1])
-            )
-        del dptrain
+        dp_max_version = max(found_versions, key=version.parse)
+        arcann_logger.debug(f"dptrain_max_version: {dp_max_version}")
 
-        arcann_logger.debug(f"dptrain_max_version: {dptrain_max_version}")
-        current_input_json["deepmd_model_version"] = dptrain_max_version
-        del dptrain_list, dptrain_max_version
-
+        current_input_json["deepmd_model_version"] = dp_max_version
         arcann_logger.info(
             f"Using DeePMD version: {current_input_json['deepmd_model_version']}"
         )
 
     elif "mace_model_version" not in user_input_json and nnp_program == "mace":
-        macetrain_list = list(
-            (current_path.parent / "user_files").glob("*.yml")
-        ) + list((current_path.parent / "user_files").glob("*.yaml"))
-        arcann_logger.debug(f"macetrain_list: {macetrain_list}")
+        found_versions = [
+            f.stem.split("_")[-1]
+            for f in user_files_path.glob("mace_*.yml")
+            + user_files_path.glob("mace_*.yaml")
+        ]
+        arcann_logger.debug(f"Found mace versions: {found_versions}")
 
-        if not macetrain_list:
+        if not found_versions:
             arcann_logger.error(
-                f"No macetrain_MACEVERSION.yaml files found in {(current_path.parent / 'user_files')}"
+                f"No mace_MACEVERSION.yaml or mace_MACEVERSION.yml files found in {user_files_path}"
             )
             arcann_logger.error("Aborting...")
             return 1
 
-        mace_max_version = "0"
-        for mace in macetrain_list:
-            mace_max_version = max(mace_max_version, mace.stem.split("_")[-1])
-
+        mace_max_version = max(found_versions, key=version.parse)
         arcann_logger.debug(f"mace_max_version: {mace_max_version}")
-        current_input_json["mace_model_version"] = mace_max_version
 
+        current_input_json["mace_model_version"] = mace_max_version
         arcann_logger.info(
             f"Using MACE version: {current_input_json['mace_model_version']}"
         )
@@ -259,10 +248,8 @@ def main(
 
     # Check if the job file exists
     job_file_name = f"job_{nnp_program}_train_{machine_spec['arch_type']}_{machine}.sh"
-    if (current_path.parent / "user_files" / job_file_name).is_file():
-        master_job_file = textfile_to_string_list(
-            current_path.parent / "user_files" / job_file_name
-        )
+    if (user_files_path / job_file_name).is_file():
+        master_job_file = textfile_to_string_list(user_files_path / job_file_name)
     else:
         arcann_logger.error(
             f"No JOB file provided for '{current_step.capitalize()} / {current_phase.capitalize()}' for this machine."
@@ -284,9 +271,7 @@ def main(
 
         # Check if the default input json file exists
         dp_train_input_path = (
-            training_path
-            / "user_files"
-            / f"dptrain_{training_json['deepmd_model_version']}.json"
+            user_files_path / f"dptrain_{training_json['deepmd_model_version']}.json"
         ).resolve()
 
         nnp_input = load_json_file(dp_train_input_path)
@@ -312,16 +297,12 @@ def main(
         validate_mace_config(training_json)
 
         mace_input_path = (
-            training_path
-            / "user_files"
-            / f"mace_{training_json['mace_model_version']}.yml"
+            user_files_path / f"mace_{training_json['mace_model_version']}.yml"
         ).resolve()
 
         if not mace_input_path.exists():
             mace_input_path = (
-                training_path
-                / "user_files"
-                / f"mace_{training_json['mace_model_version']}.yaml"
+                user_files_path / f"mace_{training_json['mace_model_version']}.yaml"
             ).resolve()
 
         nnp_input = load_yaml_file(mace_input_path)
@@ -361,7 +342,7 @@ def main(
 
         if "foundation_model" in nnp_input:
             fondation_path = (
-                training_path / "user_files" / f"{nnp_input['foundation_model']}"
+                user_files_path / f"{nnp_input['foundation_model']}"
             ).resolve()
             if not fondation_path.is_file():
                 arcann_logger.error(
@@ -589,7 +570,7 @@ def main(
         dataset.prepare_for_mace_train(data_path=localdata_path)
         if nnp_input.get("foundation_model"):
             foundation_model_path = (
-                training_path / "user_files" / f"{nnp_input['foundation_model']}"
+                user_files_path / f"{nnp_input['foundation_model']}"
             ).resolve()
             shutil.copy(
                 foundation_model_path, current_path / foundation_model_path.name
