@@ -816,7 +816,7 @@ def main(
         ) - (skipped_traj_user + skipped_traj_stats)
         if exploitable_traj == 0:
             arcann_logger.critical(
-                "All trajectories were skipped (either by you or discarded by ArcaNN)."
+                f"All trajectories for {system_auto} were skipped (either by you or discarded by ArcaNN)."
             )
             arcann_logger.critical(
                 "You should either change the 'ignore_first_x_ps' value to a lower value to ensure some structure for this exploration."
@@ -824,8 +824,8 @@ def main(
             arcann_logger.critical(
                 "For the next run (or if you redo one), you should reduce 'timestep_ps' and 'print_interval_mult'."
             )
-            arcann_logger.critical("Aborting...")
-            return 1
+            # arcann_logger.critical("Aborting...")
+            # return 1 ##on my opinion, we should not abort if a system doesnt give any points
         else:
             if (
                 exploitable_traj

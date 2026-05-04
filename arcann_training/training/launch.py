@@ -139,15 +139,17 @@ def main(
                         f"./job_{nnp_program}_train_{machine_spec['arch_type']}_{machine}.sh",
                     ]
                 )
-                arcann_logger.info(f"DP Train - '{nnp}' launched.")
+                arcann_logger.info(f"{nnp_program} Train - '{nnp}' launched.")
                 completed_count += 1
             except FileNotFoundError:
                 arcann_logger.critical(
-                    f"DP Train - '{nnp}' NOT launched - '{machine_launch_command}' not found."
+                    f"{nnp_program} Train - '{nnp}' NOT launched - '{machine_launch_command}' not found."
                 )
             change_directory(local_path.parent)
         else:
-            arcann_logger.critical(f"DP Train - '{nnp}' NOT launched - No job file.")
+            arcann_logger.critical(
+                f"{nnp_program} Train - '{nnp}' NOT launched - No job file."
+            )
         del local_path
     del nnp
 
@@ -155,11 +157,6 @@ def main(
     # Update the boolean in the training JSON
     if completed_count == main_json["nnp_count"]:
         training_json["is_launched"] = True
-    if nnp_program == "mace":  # because we don't need them for mace
-        training_json["is_freeze_launched"] = True
-        training_json["is_frozen"] = True
-        training_json["is_compress_launched"] = True
-        training_json["is_compressed"] = True
 
     # Dump the JSON (training JSON)
     write_json_file(

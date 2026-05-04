@@ -333,10 +333,10 @@ def validate_deepmd_config(training_config) -> None:
         If the configuration is not valid with respect to machine/arch_name/arch and DeePMD.
     """
     # Check DeePMD version
-    if (
-        float(training_config["deepmd_model_version"]) < 2.0
-        or float(training_config["deepmd_model_version"]) > 3.0
-    ):
+    current = version.parse(training_config["deepmd_model_version"])
+    min_v = version.parse("2.0")
+    max_v = version.parse("3.0")
+    if current < min_v or current >= max_v:
         error_msg = f"Only 2.x and 3.0 versions of deepmd are suppported: '{training_config['deepmd_model_version']}'."
         raise ValueError(error_msg)
 
