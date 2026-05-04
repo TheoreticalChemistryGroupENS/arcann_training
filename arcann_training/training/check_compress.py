@@ -107,6 +107,12 @@ def main(
 
     arcann_logger.debug(f"completed_count: {completed_count}")
 
+    if completed_count == main_json["nnp_count"] or (
+        nnp_program == "mace"
+        and completed_count == main_json["nnp_count"] * len(needed_mace_styles)
+    ):
+        training_json["is_compressed"] = True
+
     # Dump the JSON files (training)
     write_json_file(
         training_json,
@@ -116,10 +122,7 @@ def main(
 
     # End
     arcann_logger.info("-" * 88)
-    if completed_count == main_json["nnp_count"] or (
-        nnp_program == "mace"
-        and completed_count == main_json["nnp_count"] * len(needed_mace_styles)
-    ):
+    if training_json["is_compressed"]:
         arcann_logger.info(
             f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
         )
