@@ -217,8 +217,8 @@ def main(
     elif "mace_model_version" not in user_input_json and nnp_program == "mace":
         found_versions = [
             f.stem.split("_")[-1]
-            for f in user_files_path.glob("mace_*.yml")
-            + user_files_path.glob("mace_*.yaml")
+            for f in list(user_files_path.glob("mace_*.yml"))
+            + list(user_files_path.glob("mace_*.yaml"))
         ]
         arcann_logger.debug(f"Found mace versions: {found_versions}")
 

@@ -32,7 +32,9 @@ from typing import Literal
 try:
     from enum import StrEnum
 except ImportError:
-    from strenum import StrEnum  # type: ignore
+    from strenum import LowercaseStrEnum  # type: ignore
+
+    StrEnum = LowercaseStrEnum
 
 # Third-party modules
 import numpy as np
@@ -255,6 +257,7 @@ class LAMMPSInputHandler:
         "dump traj_frc all custom _R_PRINT_FREQ_ _RI_NAME__mace_forces_model1.lammpstrj id type x y z fx fy fz",
         "dump_modify traj_xyz sort id",
         "dump_modify traj_frc sort id",
+        "",
     )
 
     def __init__(self, lmp_input: str | Path, elements: list[str]):
