@@ -229,7 +229,7 @@ class Set000Ensemble(DataEnsemble):
                 cell=self.box[i].reshape(3, 3),
                 pbc=self.is_periodic,
             )
-            frame.info["REF_energy"] = np.array([float(self.energy[i])])
+            frame.info["REF_energy"] = float(self.energy[i])
             frame.arrays["REF_forces"] = self.force[i].reshape(-1, 3)
             if self.virial is not None:
                 frame.info["REF_virials"] = self.virial[i].reshape(3, 3)
