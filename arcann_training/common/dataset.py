@@ -174,7 +174,7 @@ class Set000Ensemble(DataEnsemble):
         self.type = np.loadtxt(self.path / "type.raw", dtype=int)
         self.box = np.load(self.path / "set.000" / "box.npy")
         self.coord = np.load(self.path / "set.000" / "coord.npy")
-        self.energy = np.load(self.path / "set.000" / "energy.npy")
+        self.energy = np.load(self.path / "set.000" / "energy.npy").flatten()
         self.force = np.load(self.path / "set.000" / "force.npy")
         self.virial = (
             np.load(self.path / "set.000" / "virial.npy")
