@@ -174,7 +174,7 @@ class Set000Ensemble(DataEnsemble):
         self.type = np.loadtxt(self.path / "type.raw", dtype=int)
         self.box = np.load(self.path / "set.000" / "box.npy")
         self.coord = np.load(self.path / "set.000" / "coord.npy")
-        self.energy = np.load(self.path / "set.000" / "energy.npy")
+        self.energy = np.load(self.path / "set.000" / "energy.npy").flatten()
         self.force = np.load(self.path / "set.000" / "force.npy")
         self.virial = (
             np.load(self.path / "set.000" / "virial.npy")
@@ -229,7 +229,7 @@ class Set000Ensemble(DataEnsemble):
                 cell=self.box[i].reshape(3, 3),
                 pbc=self.is_periodic,
             )
-            frame.info["REF_energy"] = np.array([float(self.energy[i])])
+            frame.info["REF_energy"] = float(self.energy[i])
             frame.arrays["REF_forces"] = self.force[i].reshape(-1, 3)
             if self.virial is not None:
                 frame.info["REF_virials"] = self.virial[i].reshape(3, 3)
