@@ -32,8 +32,10 @@ mace = [
 ]
 mace-mliap = [
     { name = "cuequivariance-torch" },
+    { name = "mace-torch" },
 ]
 symmetrix = [
+    { name = "mace-torch" },
     { name = "symmetrix" },
 ]
 
@@ -45,6 +47,8 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "arcann-training", extras = ["mace"], marker = "extra == 'mace-mliap'" },
+    { name = "arcann-training", extras = ["mace"], marker = "extra == 'symmetrix'" },
     { name = "ase", specifier = ">=3.27.0" },
     { name = "cuequivariance-torch", marker = "extra == 'mace-mliap'", specifier = ">=0.8.1" },
     { name = "mace-torch", marker = "extra == 'mace'", specifier = ">=0.3.14" },
