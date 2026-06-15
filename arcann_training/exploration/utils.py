@@ -45,17 +45,16 @@ update_system_nb_steps_factor(previous_json: Dict, system_auto_index: int) -> in
 
 # Standard library modules
 import logging
-from pathlib import Path
 from copy import deepcopy
+from pathlib import Path
 from typing import Dict, List, Tuple, Union
-import subprocess
 
-# Third-party modules
 import numpy as np
 
 # Local imports
-from arcann_training.common.utils import catch_errors_decorator
 from arcann_training.common.json import convert_control_to_input
+from arcann_training.common.lammps import LAMMPSPair, mace_model_converter
+from arcann_training.common.utils import catch_errors_decorator
 
 
 # TODO: Add tests for this function
@@ -99,7 +98,6 @@ def generate_input_exploration_json(
     ValueError
         If the length of the value list is not equal to the system count.
     """
-
     system_count = len(main_json.get("systems_auto", []))
 
     previous_input_json = convert_control_to_input(previous_json, main_json)
@@ -120,7 +118,7 @@ def generate_input_exploration_json(
         default_used = False
         if key in user_input_json:
             if (
-                user_input_json[key] == "default" or user_input_json[key] == None
+                user_input_json[key] == "default" or user_input_json[key] is None
             ) and key in default_input_json:
                 value = default_input_json[key]
                 default_used = True
@@ -230,7 +228,9 @@ def generate_input_exploration_json(
 
 # TODO: Add tests for this function
 @catch_errors_decorator
-def get_system_exploration(merged_input_json: Dict, system_auto_index: int) -> Tuple[
+def get_system_exploration(
+    merged_input_json: Dict, system_auto_index: int
+) -> Tuple[
     str,
     Union[float, int],
     Union[float, int],
@@ -277,20 +277,21 @@ def get_system_exploration(merged_input_json: Dict, system_auto_index: int) -> T
         - disturbed_start : bool
             Whether to start exploration from a disturbed minimum.
     """
-    system_values = []
-    for key in [
-        "exploration_type",
-        "traj_count",
-        "timestep_ps",
-        "temperature_K",
-        "exp_time_ps",
-        "max_exp_time_ps",
-        "job_walltime_h",
-        "print_interval_mult",
-        "previous_start",
-        "disturbed_start",
-    ]:
-        system_values.append(merged_input_json[key][system_auto_index])
+    system_values = [
+        merged_input_json[key][system_auto_index]
+        for key in (
+            "exploration_type",
+            "traj_count",
+            "timestep_ps",
+            "temperature_K",
+            "exp_time_ps",
+            "max_exp_time_ps",
+            "job_walltime_h",
+            "print_interval_mult",
+            "previous_start",
+            "disturbed_start",
+        )
+    ]
 
     return tuple(system_values)
 
@@ -336,7 +337,6 @@ def generate_input_exploration_deviation_json(
     ValueError
         If the length of the value list is not equal to the system count.
     """
-
     system_count = len(main_json.get("systems_auto", []))
 
     previous_input_json = convert_control_to_input(previous_json, main_json)
@@ -352,7 +352,7 @@ def generate_input_exploration_deviation_json(
         default_used = False
         if key in user_input_json:
             if (
-                user_input_json[key] == "default" or user_input_json[key] == None
+                user_input_json[key] == "default" or user_input_json[key] is None
             ) and key in default_input_json:
                 value = default_input_json[key]
                 default_used = True
@@ -398,7 +398,9 @@ def generate_input_exploration_deviation_json(
 
 # TODO: Add tests for this function
 @catch_errors_decorator
-def get_system_deviation(merged_input_json: Dict, system_auto_index: int) -> Tuple[
+def get_system_deviation(
+    merged_input_json: Dict, system_auto_index: int
+) -> Tuple[
     Union[float, int],
     Union[float, int],
     Union[float, int],
@@ -425,15 +427,17 @@ def get_system_deviation(merged_input_json: Dict, system_auto_index: int) -> Tup
         - Sigma high limit : float
         - Ignore first x ps : float
     """
-    system_values = []
-    for key in [
-        "max_candidates",
-        "sigma_low",
-        "sigma_high",
-        "sigma_high_limit",
-        "ignore_first_x_ps",
-    ]:
-        system_values.append(merged_input_json[key][system_auto_index])
+    system_values = [
+        merged_input_json[key][system_auto_index]
+        for key in (
+            "max_candidates",
+            "sigma_low",
+            "sigma_high",
+            "sigma_high_limit",
+            "ignore_first_x_ps",
+        )
+    ]
+
     return tuple(system_values)
 
 
@@ -478,7 +482,6 @@ def generate_input_exploration_disturbed_json(
     ValueError
         If the length of the value list is not equal to the system count.
     """
-
     system_count = len(main_json.get("systems_auto", []))
 
     previous_input_json = convert_control_to_input(previous_json, main_json)
@@ -493,7 +496,7 @@ def generate_input_exploration_disturbed_json(
         default_used = False
         if key in user_input_json:
             if (
-                user_input_json[key] == "default" or user_input_json[key] == None
+                user_input_json[key] == "default" or user_input_json[key] is None
             ) and key in default_input_json:
                 value = default_input_json[key]
                 default_used = True
@@ -573,7 +576,9 @@ def generate_input_exploration_disturbed_json(
 
 # TODO: Add tests for this function
 @catch_errors_decorator
-def get_system_disturb(merged_input_json: Dict, system_auto_index: int) -> Tuple[
+def get_system_disturb(
+    merged_input_json: Dict, system_auto_index: int
+) -> Tuple[
     Union[float, int],
     Union[float, int],
     List[int],
@@ -596,14 +601,16 @@ def get_system_disturb(merged_input_json: Dict, system_auto_index: int) -> Tuple
         - disturbed_candidate_value : float
         - disturbed_candidate_indexes : float
     """
-    system_values = []
-    for key in [
-        "disturbed_start_value",
-        "disturbed_start_indexes",
-        "disturbed_candidate_value",
-        "disturbed_candidate_indexes",
-    ]:
-        system_values.append(merged_input_json[key][system_auto_index])
+    system_values = [
+        merged_input_json[key][system_auto_index]
+        for key in (
+            "disturbed_start_value",
+            "disturbed_start_indexes",
+            "disturbed_candidate_value",
+            "disturbed_candidate_indexes",
+        )
+    ]
+
     return tuple(system_values)
 
 
@@ -732,25 +739,30 @@ def generate_starting_points(
         return starting_points, starting_points_bckp, True, False
 
 
-# Unittested
+# TODO: test all MACE model conversion options in unittest
+# TODO: this function is doing too much, needs to be broken
 @catch_errors_decorator
 def create_models_list(
-    main_json: Dict,
-    previous_json: Dict,
+    main_json: dict,
+    previous_json: dict,
     it_nnp: int,
     padded_prev_iter: str,
     training_path: Path,
     local_path: Path,
-) -> Tuple[List[str], str]:
+    *,
+    pair_style: str | LAMMPSPair | None = None,
+) -> tuple[list[str], str]:
     """
     Generate a list of model file names and create symbolic links to the corresponding model files.
 
     Parameters
     ----------
-    main_json : Dict
+    main_json : dict
         The main JSON.
-    previous_json : Dict
+    previous_json : dict
         The JSON from the previous iteration.
+    previous_training_json : dict
+        The JSON from the previous training iteration.
     it_nnp : int
         An integer representing the index of the NNP model to start from.
     padded_prev_iter : str
@@ -759,12 +771,15 @@ def create_models_list(
         The path to the training directory.
     local_path : Path
         The path to the local directory.
+    pair_style : str | LAMMPSPair | None
+        LAMMPS pair style used
 
     Returns
     -------
-    Tuple[List[str], str]
+    tuple[list[str], str]
         A tuple containing the list of model file names, and a string of space-separated model file names.
     """
+    arcann_logger = logging.getLogger("ArcaNN")
 
     # Generate list of NNP model indices and reorder based on current model to propagate
     list_nnp = [zzz for zzz in range(1, main_json["nnp_count"] + 1)]
@@ -772,30 +787,83 @@ def create_models_list(
         list_nnp[list_nnp.index(it_nnp) :] + list_nnp[: list_nnp.index(it_nnp)]
     )
 
+    nnp_program = main_json["nnp_program"]
+
     # Determine whether to use compressed models
-    compress_str = "_compressed" if previous_json["is_compressed"] else ""
+    compress_str = (
+        "_compressed"
+        if previous_json["is_compressed"] and nnp_program == "deepmd"
+        else ""
+    )
+
+    models_list = []
 
     # Generate list of model file names
-    models_list = [
-        "graph_" + str(f) + "_" + padded_prev_iter + compress_str + ".pb"
-        for f in reorder_nnp_list
-    ]
+    if pair_style is not None and nnp_program == "mace":
+        nnp_path = training_path / Path("NNP")
+        for nnp in reorder_nnp_list:
+            model_name = f"model_{nnp}_{padded_prev_iter}"
+            model_path = nnp_path.resolve() / Path(model_name + ".model")
+            # * Probably better to move it later to another place so converting is handled separately
+            match pair_style:
+                case LAMMPSPair.MACE:
+                    md_ext = "-lammps.pt"
+                    if not model_path.with_name(model_path.name + md_ext).is_file():
+                        arcann_logger.info(
+                            f"Converting model to MACE-libtorch: {str(model_path)}"
+                        )
+                        mace_model_converter(
+                            model_path,
+                            to=LAMMPSPair.MACE,
+                            cmd_args={"dtype": previous_json["mace_dtype"]},
+                        )
+                case LAMMPSPair.MLIAP:
+                    md_ext = "-mliap_lammps.pt"
+                    if not model_path.with_name(model_path.name + md_ext).is_file():
+                        arcann_logger.info(
+                            f"Converting model to MACE-MLIAP: {str(model_path)}"
+                        )
+                        mace_model_converter(
+                            model_path,
+                            to=LAMMPSPair.MLIAP,
+                            cmd_args={"dtype": previous_json["mace_dtype"]},
+                        )
+                case LAMMPSPair.SYMMETRIX:
+                    md_ext = ".json"
+                    if not model_path.with_name(model_path.name + md_ext).is_file():
+                        arcann_logger.info(
+                            f"Converting model to MACE-SYMMETRIX: {str(model_path)}"
+                        )
+                        mace_model_converter(
+                            model_path,
+                            to=LAMMPSPair.SYMMETRIX,
+                            cmd_args={
+                                "output": str(
+                                    model_path.with_name(model_path.name + md_ext)
+                                ),
+                                "chemical-symbols": [
+                                    main_json["properties"][element]["symbol"]
+                                    for element in main_json["properties"]
+                                ],
+                            },
+                        )
+                case _:
+                    raise ValueError(
+                        "If this was raised open an Issue on GitHub (https://github.com/arcann-chem/arcann_training)"
+                    )
+            models_list.append(model_path.name + md_ext)
+    else:
+        models_list = [
+            "graph_" + str(f) + "_" + padded_prev_iter + compress_str + ".pb"
+            for f in reorder_nnp_list
+        ]
 
     # Create symbolic links to the model files in the local directory
-    for it_sub_nnp in range(1, main_json["nnp_count"] + 1):
-        nnp_apath = (
-            training_path
-            / "NNP"
-            / (
-                "graph_"
-                + str(it_sub_nnp)
-                + "_"
-                + padded_prev_iter
-                + compress_str
-                + ".pb"
-            )
-        ).resolve()
-        subprocess.call(["ln", "-nsf", str(nnp_apath), str(local_path)])
+    for model in models_list:
+        nnp_path = (training_path / "NNP" / model).resolve()
+        if (local_path / model).exists():
+            (local_path / model).unlink()
+        (local_path / model).symlink_to(nnp_path)
 
     # Join the model file names into a single string for ease of use
     models_string = " ".join(models_list)
@@ -831,7 +899,12 @@ def get_last_frame_number(
     else:
         start_frame = 0
     if model_deviation.shape[1] == 2:
-        if np.any(model_deviation[start_frame:1] >= sigma_high_limit):
+        if np.any(model_deviation[start_frame:, 1] >= sigma_high_limit):
+            last_frame = np.argmax(model_deviation[start_frame:, 1] >= sigma_high_limit)
+        else:
+            last_frame = -1
+    if model_deviation.shape[1] == 4:  # MACE
+        if np.any(model_deviation[start_frame:, 1] >= sigma_high_limit):
             last_frame = np.argmax(model_deviation[start_frame:, 1] >= sigma_high_limit)
         else:
             last_frame = -1

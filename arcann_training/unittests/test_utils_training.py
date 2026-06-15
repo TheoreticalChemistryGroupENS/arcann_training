@@ -37,12 +37,12 @@ import numpy as np
 
 # Local imports
 from arcann_training.training.utils import (
-    calculate_decay_steps,
     calculate_decay_rate,
+    calculate_decay_steps,
     calculate_learning_rate,
     check_initial_datasets,
-    validate_deepmd_config,
     generate_training_json,
+    validate_deepmd_config,
 )
 
 
@@ -77,24 +77,20 @@ class TestCalculateDecaySteps(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             calculate_decay_steps(0)
         error_msg = str(cm.exception)
-        expected_error_msg = (
-            f"The argument 'num_structures' must be a positive integer."
-        )
+        expected_error_msg = "The argument 'num_structures' must be a positive integer."
         self.assertEqual(error_msg, expected_error_msg)
 
         with self.assertRaises(ValueError) as cm:
             calculate_decay_steps(-100)
         error_msg = str(cm.exception)
-        expected_error_msg = (
-            f"The argument 'num_structures' must be a positive integer."
-        )
+        expected_error_msg = "The argument 'num_structures' must be a positive integer."
         self.assertEqual(error_msg, expected_error_msg)
 
         with self.assertRaises(ValueError) as cm:
             calculate_decay_steps(100, min_decay_steps=-500)
         error_msg = str(cm.exception)
         expected_error_msg = (
-            f"The argument 'min_decay_steps' must be a positive integer."
+            "The argument 'min_decay_steps' must be a positive integer."
         )
         self.assertEqual(error_msg, expected_error_msg)
 
@@ -139,22 +135,22 @@ class TestCalculateDecayRate(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             calculate_decay_rate(100, -0.01, 0.001, 5000)
         error_msg = str(cm.exception)
-        expected_error_msg = f"The argument 'start_lr' must be a positive number."
+        expected_error_msg = "The argument 'start_lr' must be a positive number."
         self.assertEqual(error_msg, expected_error_msg)
         with self.assertRaises(ValueError) as cm:
             calculate_decay_rate(100, 0, 0.001, 5000)
         error_msg = str(cm.exception)
-        expected_error_msg = f"The argument 'start_lr' must be a positive number."
+        expected_error_msg = "The argument 'start_lr' must be a positive number."
         self.assertEqual(error_msg, expected_error_msg)
         with self.assertRaises(ValueError) as cm:
             calculate_decay_rate(100, 0.01, 0.001, 0)
         error_msg = str(cm.exception)
-        expected_error_msg = f"The argument 'decay_steps' must be a positive integer."
+        expected_error_msg = "The argument 'decay_steps' must be a positive integer."
         self.assertEqual(error_msg, expected_error_msg)
         with self.assertRaises(ValueError) as cm:
             calculate_decay_rate(100, 0.01, 0.001, 0.0003)
         error_msg = str(cm.exception)
-        expected_error_msg = f"The argument 'decay_steps' must be a positive integer."
+        expected_error_msg = "The argument 'decay_steps' must be a positive integer."
         self.assertEqual(error_msg, expected_error_msg)
 
     def test_calculate_decay_rate_output_type(self):
@@ -202,27 +198,27 @@ class TestCalculateLearningRate(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             calculate_learning_rate(-100, 0.01, 0.1, 5000)
         error_msg = str(cm.exception)
-        expected_error_msg = f"All arguments must be positive."
+        expected_error_msg = "All arguments must be positive."
         self.assertEqual(error_msg, expected_error_msg)
         with self.assertRaises(ValueError) as cm:
             calculate_learning_rate(100, -0.01, 0.1, 5000)
         error_msg = str(cm.exception)
-        expected_error_msg = f"All arguments must be positive."
+        expected_error_msg = "All arguments must be positive."
         self.assertEqual(error_msg, expected_error_msg)
         with self.assertRaises(ValueError) as cm:
             calculate_learning_rate(100, 0.01, -0.1, 5000)
         error_msg = str(cm.exception)
-        expected_error_msg = f"All arguments must be positive."
+        expected_error_msg = "All arguments must be positive."
         self.assertEqual(error_msg, expected_error_msg)
         with self.assertRaises(ValueError) as cm:
             calculate_learning_rate(1000, 0.01, 0.1, -5000)
         error_msg = str(cm.exception)
-        expected_error_msg = f"All arguments must be positive."
+        expected_error_msg = "All arguments must be positive."
         self.assertEqual(error_msg, expected_error_msg)
         with self.assertRaises(ValueError) as cm:
             calculate_learning_rate(100, 0.01, 0.1, 3213332.2)
         error_msg = str(cm.exception)
-        expected_error_msg = f"The argument 'decay_steps' must be a positive integer."
+        expected_error_msg = "The argument 'decay_steps' must be a positive integer."
         self.assertEqual(error_msg, expected_error_msg)
 
     def test_calculate_learning_rate_output_type(self):
@@ -277,12 +273,12 @@ class TestCheckInitialDatasets(unittest.TestCase):
             Path(self.temp_dir.name) / "data" / "dataset1" / "set.000" / "box.npy",
             np.zeros(50),
         )
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError):
             check_initial_datasets(Path(self.temp_dir.name))
 
     def test_check_initial_datasets_missing_json(self):
         (Path(self.temp_dir.name) / "control" / "initial_datasets.json").unlink()
-        with self.assertRaises(FileNotFoundError) as cm:
+        with self.assertRaises(FileNotFoundError):
             check_initial_datasets(Path(self.temp_dir.name))
 
     def test_check_initial_datasets_missing_dataset(self):
@@ -291,7 +287,7 @@ class TestCheckInitialDatasets(unittest.TestCase):
         ).unlink()
         (Path(self.temp_dir.name) / "data" / "dataset2" / "set.000").rmdir()
         (Path(self.temp_dir.name) / "data" / "dataset2").rmdir()
-        with self.assertRaises(FileNotFoundError) as cm:
+        with self.assertRaises(FileNotFoundError):
             check_initial_datasets(Path(self.temp_dir.name))
 
 
@@ -312,7 +308,7 @@ class TestDeepMDConfigValidation(unittest.TestCase):
         Tests if the function correctly validates a valid configuration.
         """
         config = {
-            "deepmd_model_version": 2.1,
+            "deepmd_model_version": "2.1",
             "arch_name": "a100",
         }
         self.assertIsNone(validate_deepmd_config(config))
@@ -322,7 +318,7 @@ class TestDeepMDConfigValidation(unittest.TestCase):
         Tests if the function raises a ValueError for an invalid model version.
         """
         config = {
-            "deepmd_model_version": 1.5,
+            "deepmd_model_version": "1.5",
         }
         with self.assertRaises(ValueError):
             validate_deepmd_config(config)

@@ -11,9 +11,9 @@ Last modified: 2024/05/15
 
 # Standard library modules
 import logging
+import subprocess
 import sys
 from pathlib import Path
-import subprocess
 
 # Local imports
 from arcann_training.common.check import validate_step_folder
@@ -35,7 +35,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -45,7 +45,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -66,6 +66,11 @@ def main(
     exploration_json = load_json_file(
         (control_path / f"exploration_{padded_curr_iter}.json")
     )
+
+    nnp_program: str = main_json["nnp_program"]
+
+    arcann_logger.info(f"Using {nnp_program} as NNP software")
+    arcann_logger.info("-" * 88)
 
     user_machine_keyword = current_input_json["user_machine_keyword_exp"]
     arcann_logger.debug(f"user_machine_keyword: {user_machine_keyword}")
@@ -107,37 +112,38 @@ def main(
 
     # Check if we can continue
     if exploration_json["is_launched"]:
-        arcann_logger.critical(f"Already launched...")
+        arcann_logger.critical("Already launched...")
         continuing = input(
-            f"Do you want to continue?\n['Y' for yes, anything else to abort]\n"
+            "Do you want to continue?\n['Y' for yes, anything else to abort]\n"
         )
         if continuing == "Y":
             del continuing
         else:
-            arcann_logger.error(f"Aborting...")
+            arcann_logger.error("Aborting...")
             return 1
     if not exploration_json["is_locked"]:
-        arcann_logger.error(f"Lock found. Execute first: exploration preparation.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Lock found. Execute first: exploration preparation.")
+        arcann_logger.error("Aborting...")
         return 1
 
     # Launch the jobs
-    exploration_types = []
-    for system_auto in exploration_json["systems_auto"]:
-        exploration_types.append(
-            exploration_json["systems_auto"][system_auto]["exploration_type"]
-        )
+    exploration_types = [
+        exploration_json["systems_auto"][system_auto]["exploration_type"]
+        for system_auto in exploration_json["systems_auto"]
+    ]
     exploration_types = list(set(exploration_types))
 
     completed_count = 0
     for exploration_type in exploration_types:
-        job_name = f"job-array_{exploration_type}-deepmd_explore_{machine_spec['arch_type']}_{machine}.sh"
+        job_name = f"job-array_{exploration_type}-{nnp_program}_explore_{machine_spec['arch_type']}_{machine}.sh"
         if (current_path / job_name).is_file():
             subprocess.run([machine_launch_command, f"./{job_name}"])
-            arcann_logger.info(f"Exploration - Array LAMMPS launched.")
+            arcann_logger.info(
+                f"Exploration - Array {exploration_type.upper()} launched."
+            )
             completed_count += 1
 
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     if completed_count == len(exploration_types):
         exploration_json["is_launched"] = True
@@ -148,7 +154,7 @@ def main(
     )
 
     # End
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     if completed_count == len(exploration_types):
         arcann_logger.info(
@@ -158,9 +164,9 @@ def main(
         arcann_logger.critical(
             f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is semi-success!"
         )
-        arcann_logger.critical(f"Some jobs did not launch correctly.")
+        arcann_logger.critical("Some jobs did not launch correctly.")
         arcann_logger.critical(
-            f"Please launch manually before continuing to the next step."
+            "Please launch manually before continuing to the next step."
         )
         arcann_logger.critical(
             f"Replace the key 'is_launched' to 'True' in the 'exploration_{padded_curr_iter}.json'."
@@ -182,7 +188,7 @@ def main(
         machine_max_array_size,
     )
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 

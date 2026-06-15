@@ -1,7 +1,7 @@
 """
 #----------------------------------------------------------------------------------------------------#
 #   ArcaNN: Automatic training of Reactive Chemical Architecture with Neural Networks                #
-#   Copyright 2022-2024 ArcaNN developers group <https://github.com/arcann-chem>                     #
+#   Copyright 2022-2025 ArcaNN developers group <https://github.com/arcann-chem>                     #
 #                                                                                                    #
 #   SPDX-License-Identifier: AGPL-3.0-only                                                           #
 #----------------------------------------------------------------------------------------------------#
@@ -11,26 +11,17 @@ Last modified: 2024/08/06
 
 # Standard library modules
 import logging
-import sys
-from pathlib import Path
-from copy import deepcopy
 import random
 import subprocess
+import sys
+from copy import deepcopy
+from pathlib import Path
 
-
-# Non-standard library imports
 import numpy as np
 import yaml
 
 # Local imports
-from arcann_training.common.check import validate_step_folder, check_atomsk
-from arcann_training.exploration.utils import (
-    generate_starting_points,
-    create_models_list,
-    update_system_nb_steps_factor,
-    get_system_exploration,
-    generate_input_exploration_json,
-)
+from arcann_training.common.check import check_atomsk, validate_step_folder
 from arcann_training.common.ipi import get_temperature_from_ipi_xml
 from arcann_training.common.json import (
     backup_and_overwrite_json_file,
@@ -39,12 +30,16 @@ from arcann_training.common.json import (
     load_json_file,
     write_json_file,
 )
+from arcann_training.common.lammps import (
+    LAMMPSInputHandler,
+    LAMMPSPair,
+    read_lammps_data,
+)
 from arcann_training.common.list import (
     replace_substring_in_string_list,
     string_list_to_textfile,
     textfile_to_string_list,
 )
-from arcann_training.common.lammps import read_lammps_data
 from arcann_training.common.machine import (
     get_machine_keyword,
     get_machine_spec_for_step,
@@ -52,10 +47,17 @@ from arcann_training.common.machine import (
 from arcann_training.common.plumed import analyze_plumed_file_for_movres
 from arcann_training.common.slurm import replace_in_slurm_file_general
 from arcann_training.common.xml import (
-    string_list_to_xml,
-    xml_to_string_list,
     read_xml_file,
+    string_list_to_xml,
     write_xml_file,
+    xml_to_string_list,
+)
+from arcann_training.exploration.utils import (
+    create_models_list,
+    generate_input_exploration_json,
+    generate_starting_points,
+    get_system_exploration,
+    update_system_nb_steps_factor,
 )
 
 
@@ -70,7 +72,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -80,7 +82,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -122,6 +124,11 @@ def main(
     control_path = training_path / "control"
     main_json = load_json_file((control_path / "config.json"))
 
+    nnp_program: str = main_json["nnp_program"]
+
+    arcann_logger.info(f"Using {nnp_program} as NNP software")
+    arcann_logger.info("-" * 88)
+
     # Load the previous exploration and training JSON
     if curr_iter > 0:
         prev_iter = curr_iter - 1
@@ -136,8 +143,8 @@ def main(
         else:
             previous_exploration_json = {}
     else:
-        previous_training_json = {}
-        previous_exploration_json = {}
+        arcann_logger.error("Run training first before the first exploration phase!")
+        sys.exit(1)
 
     arcann_logger.debug(f"previous_training_json: {previous_training_json}")
     arcann_logger.debug(f"previous_exploration_json: {previous_exploration_json}")
@@ -221,7 +228,9 @@ def main(
         **exploration_json,
         "atomsk_path": atomsk_bin,
         "user_machine_keyword_exp": user_machine_keyword,
-        "deepmd_model_version": previous_training_json["deepmd_model_version"],
+        f"{nnp_program}_model_version": previous_training_json[
+            f"{nnp_program}_model_version"
+        ],
         "nnp_count": main_json["nnp_count"],
     }
 
@@ -245,11 +254,9 @@ def main(
         walltime_approx_s[exploration_type] = []
 
         job_file_name = (
-            f"job_{exploration_type}-deepmd_explore_{arch_type}_{machine}.sh"
+            f"job_{exploration_type}-{nnp_program}_explore_{arch_type}_{machine}.sh"
         )
-        job_array_file_name = (
-            f"job-array_{exploration_type}-deepmd_explore_{arch_type}_{machine}.sh"
-        )
+        job_array_file_name = f"job-array_{exploration_type}-{nnp_program}_explore_{arch_type}_{machine}.sh"
 
         if (current_path.parent / "user_files" / job_file_name).is_file():
             master_job_file[exploration_type] = textfile_to_string_list(
@@ -259,7 +266,7 @@ def main(
             arcann_logger.error(
                 f"No JOB file provided for '{current_step.capitalize()} / {current_phase.capitalize()}' for this machine."
             )
-            arcann_logger.error(f"Aborting...")
+            arcann_logger.error("Aborting...")
             return 1
 
         if (current_path.parent / "user_files" / job_array_file_name).is_file():
@@ -270,7 +277,7 @@ def main(
             arcann_logger.warning(
                 f"No ARRAY JOB file provided for '{current_step.capitalize()} / {current_phase.capitalize()}' for this machine."
             )
-            arcann_logger.error(f"Aborting...")
+            arcann_logger.error("Aborting...")
             return 1
 
         arcann_logger.debug(
@@ -293,7 +300,7 @@ def main(
 
     job_array_params_file = {}
     job_array_params_file["lammps"] = [
-        "PATH/_R_DEEPMD_VERSION_/_R_MODEL_FILES_/_R_LAMMPS_IN_FILE_/_R_DATA_FILE_/_R_RERUN_FILE_/_R_PLUMED_FILES_/"
+        f"PATH/_R_{nnp_program.upper()}_VERSION_/_R_MODEL_FILES_/_R_LAMMPS_IN_FILE_/_R_DATA_FILE_/_R_RERUN_FILE_/_R_PLUMED_FILES_/"
     ]
     job_array_params_file["i-PI"] = [
         "PATH/_R_DEEPMD_VERSION_/_R_MODEL_FILES_/_R_INPUT_FILE_/_R_DATA_FILE_/_R_RERUN_FILE_/_R_PLUMED_FILES_/"
@@ -312,7 +319,7 @@ def main(
             system_exploration_type,
             system_traj_count,
             system_timestep_ps,
-            system_temperature_K,
+            system_temperature_K,  # noqa: N806
             system_exp_time_ps,
             system_max_exp_time_ps,
             system_job_walltime_h,
@@ -321,45 +328,56 @@ def main(
             system_disturbed_start,
         ) = get_system_exploration(current_input_json, system_auto_index)
         arcann_logger.debug(
-            f"{system_exploration_type, system_traj_count, system_timestep_ps,system_temperature_K,system_exp_time_ps,system_max_exp_time_ps,system_job_walltime_h,system_print_mult,system_previous_start,system_disturbed_start}"
+            f"{system_exploration_type, system_traj_count, system_timestep_ps, system_temperature_K, system_exp_time_ps, system_max_exp_time_ps, system_job_walltime_h, system_print_mult, system_previous_start, system_disturbed_start}"
         )
 
-        plumed = [False, False, False]
+        if nnp_program == "mace" and system_exploration_type != "lammps":
+            arcann_logger.error(
+                f"ArcaNN does not support MACE and {system_exploration_type.upper()}!"
+            )
+            sys.exit(1)
+
+        plumed = [
+            False,
+            False,
+            False,
+        ]  # [bool: flag informing if plumed input files have been found, bool: flag informing if MOVINGRESTRAINTS in input, bool | int: step of moving restraints, otherwise, False]
 
         input_replace_dict = {}
 
         # Get the input file (.in or .xml) for the current system and check if plumed is being used
         # LAMMPS
         if system_exploration_type == "lammps":
-            master_system_lammps_in = textfile_to_string_list(
-                training_path / "user_files" / (system_auto + ".in")
+            lmp_input_handler = LAMMPSInputHandler(
+                training_path / "user_files" / (system_auto + ".in"),
+                [
+                    main_json["properties"][element]["symbol"]
+                    for element in main_json["properties"]
+                ],
             )
 
-            # Add cell info to the LAMMPS input file
-            index_run = next(
-                (
-                    i
-                    for i, item in enumerate(master_system_lammps_in)
-                    if item.startswith("run _R_NUMBER_OF_STEPS_")
-                ),
-                -1,
-            )
-            if index_run == -1:
-                arcann_logger.error(
-                    f"No 'run _R_NUMBER_OF_STEPS_' found in the LAMMPS input file: '{training_path / 'user_files' / (system_auto + '.in')}'."
+            if (
+                lmp_input_handler.lmp_pair == LAMMPSPair.DEEPMD
+                and nnp_program != "deepmd"
+            ):
+                raise ValueError(
+                    f"DeepMD pair_style used in LAMMPS input, but training not done with DeepMD: {lmp_input_handler.input_file}"
                 )
-                arcann_logger.error(f"Aborting...")
-                return 1
-            master_system_lammps_in = (
-                master_system_lammps_in[:index_run]
-                + cell_info_lammps
-                + master_system_lammps_in[index_run:]
-            )
-            del index_run
 
-            # Check if the LAMMPS input file contains any "plumed" lines
-            if any("plumed" in zzz for zzz in master_system_lammps_in):
-                plumed[0] = True
+            exploration_json["systems_auto"][system_auto]["pair_style"] = (
+                lmp_input_handler.lmp_pair.value
+            )
+
+            arcann_logger.info(
+                f"LAMMPS pair_style identified: {lmp_input_handler.lmp_pair.value} -- {system_auto}"
+            )
+
+            plumed[0] = lmp_input_handler.has_plumed()
+
+            if lmp_input_handler.has_plumed():
+                arcann_logger.debug(f"PLUMED identified in {system_auto}")
+
+            master_system_lammps_in = lmp_input_handler.lines
         # END LAMMPS
 
         # SANDER-EMLE
@@ -368,7 +386,7 @@ def main(
                 training_path / "user_files" / (system_auto + ".in")
             )
             with (training_path / "user_files" / (system_auto + ".yaml")).open() as f:
-                master_system_sander_emle_yaml = yaml.load(f, Loader=yaml.FullLoader)
+                master_system_sander_emle_yaml = yaml.safe_load(f)
             # Check if the SANDER input ful contains any "plumed" lines
             if any("plumed" in zzz for zzz in master_system_sander_emle_in):
                 plumed[0] = True
@@ -408,9 +426,9 @@ def main(
             # If no plumed files are found, print an error message and exit
             if len(plumed_files) == 0:
                 arcann_logger.error(
-                    f"Plumed in (LAMMPS/i-PI/SANDER-EMLE) input but no plumed files found"
+                    "Plumed in (LAMMPS/i-PI/SANDER-EMLE) input but no plumed files found"
                 )
-                arcann_logger.error(f"Aborting...")
+                arcann_logger.error("Aborting...")
                 sys.exit(1)
 
             # Read the contents of each plumed file into a dictionary
@@ -454,7 +472,7 @@ def main(
 
             if not starting_point_list:
                 arcann_logger.error(f"No starting points found for '{system_auto}'.")
-                arcann_logger.error(f"Aborting...")
+                arcann_logger.error("Aborting...")
                 return 1
 
         input_replace_dict["_R_TIMESTEP_"] = f"{system_timestep_ps}"
@@ -566,7 +584,7 @@ def main(
             system_print_every_x_steps = system_nb_steps * system_print_mult
             if int(system_print_every_x_steps) < 1:
                 arcann_logger.warning(
-                    f"Print frequency is less than 1 step. Setting it to 1 step."
+                    "Print frequency is less than 1 step. Setting it to 1 step."
                 )
                 system_print_every_x_steps = 1
             input_replace_dict["_R_PRINT_FREQ_"] = f"{int(system_print_every_x_steps)}"
@@ -575,7 +593,6 @@ def main(
 
         # SANDER-EMLE
         elif system_exploration_type == "sander_emle":
-
             input_replace_dict["_R_TEMPERATURE_"] = f"{system_temperature_K}"
 
             # First exploration
@@ -681,7 +698,7 @@ def main(
             system_print_every_x_steps = system_nb_steps * system_print_mult
             if int(system_print_every_x_steps) < 1:
                 arcann_logger.warning(
-                    f"Print frequency is less than 1 step. Setting it to 1 step."
+                    "Print frequency is less than 1 step. Setting it to 1 step."
                 )
                 system_print_every_x_steps = 1
             input_replace_dict["_R_PRINT_FREQ_"] = f"{int(system_print_every_x_steps)}"
@@ -689,7 +706,7 @@ def main(
 
         # i-PI // UNTESTED
         elif system_exploration_type == "i-PI":
-            system_temperature_K = float(
+            system_temperature_K = float(  # noqa: N806
                 get_temperature_from_ipi_xml(master_system_ipi_xml)
             )
             if system_temperature_K == -1:
@@ -820,7 +837,7 @@ def main(
             system_print_every_x_steps = system_nb_steps * system_print_mult
             if int(system_print_every_x_steps) < 1:
                 arcann_logger.warning(
-                    f"Print frequency is less than 1 step. Setting it to 1 step."
+                    "Print frequency is less than 1 step. Setting it to 1 step."
                 )
                 system_print_every_x_steps = 1
             input_replace_dict["_R_PRINT_FREQ_"] = f"{int(system_print_every_x_steps)}"
@@ -832,7 +849,7 @@ def main(
                 nb_sim += 1
 
                 local_path = (
-                    Path(".").resolve()
+                    Path().resolve()
                     / str(system_auto)
                     / str(nnp_index)
                     / (str(traj_index).zfill(5))
@@ -847,11 +864,13 @@ def main(
                     padded_prev_iter,
                     training_path,
                     local_path,
+                    pair_style=lmp_input_handler.lmp_pair,
                 )
                 arcann_logger.debug(f"{models_list}, {models_string}")
 
                 # LAMMPS
                 if system_exploration_type == "lammps":
+                    lmp_input_handler.set_models(models_list)
                     system_lammps_in = deepcopy(master_system_lammps_in)
                     input_replace_dict["_R_SEED_VEL_"] = (
                         f"{nnp_index}{random.randrange(0, 1000)}{traj_index}{padded_curr_iter}"
@@ -898,7 +917,7 @@ def main(
                             arcann_logger.error(
                                 f"Starting point '{system_lammps_data_fn}' not found."
                             )
-                            arcann_logger.error(f"Aborting...")
+                            arcann_logger.error("Aborting...")
                             return 1
                         input_replace_dict["_R_DATA_FILE_"] = system_lammps_data_fn
                         # Get again the system_cell and nb_atom
@@ -947,17 +966,15 @@ def main(
                         "print_every_x_steps"
                     ] = int(system_print_every_x_steps)
 
-                    #  Write INPUT file
-                    for key, value in input_replace_dict.items():
-                        system_lammps_in = replace_substring_in_string_list(
-                            system_lammps_in, key, value
+                    with (
+                        local_path / f"{system_auto}_{nnp_index}_{padded_curr_iter}.in"
+                    ).open("w+") as input:
+                        input.write(
+                            lmp_input_handler.apply_variables(input_replace_dict)
                         )
-                    del key, value
-                    string_list_to_textfile(
-                        local_path / f"{system_auto}_{nnp_index}_{padded_curr_iter}.in",
-                        system_lammps_in,
-                        read_only=True,
-                    )
+
+                    # ? Use reset or recreate from scratch?
+                    lmp_input_handler.reset()  # reset input handler so the next iteration is properly handled
 
                     job_array_params_line = (
                         str(system_auto)
@@ -968,7 +985,7 @@ def main(
                         + "/"
                     )
                     job_array_params_line += (
-                        f"{exploration_json['deepmd_model_version']}" + "/"
+                        f"{exploration_json[f'{nnp_program}_model_version']}" + "/"
                     )
                     job_array_params_line += (
                         str(models_string.replace(" ", '" "')) + "/"
@@ -990,8 +1007,8 @@ def main(
                     # Replace the inputs/variables in the job file
                     job_file = replace_substring_in_string_list(
                         job_file,
-                        "_R_DEEPMD_VERSION_",
-                        f"{exploration_json['deepmd_model_version']}",
+                        f"_R_{nnp_program.upper()}_VERSION_",
+                        f"{exploration_json[f'{nnp_program}_model_version']}",
                     )
                     job_file = replace_substring_in_string_list(
                         job_file,
@@ -1020,23 +1037,10 @@ def main(
                         job_file, ' "_R_RERUN_FILE_"', ""
                     )
                     if plumed[0] == 1:
-                        for n, it_plumed_input in enumerate(plumed_input):
-                            if n == 0:
-                                job_file = replace_substring_in_string_list(
-                                    job_file, "_R_PLUMED_FILES_", it_plumed_input
-                                )
-                                job_array_params_line += it_plumed_input
-                            else:
-                                job_file = replace_substring_in_string_list(
-                                    job_file,
-                                    prev_plumed,
-                                    prev_plumed + '" "' + it_plumed_input,
-                                )
-                                job_array_params_line = job_array_params_line.replace(
-                                    prev_plumed, prev_plumed + '" "' + it_plumed_input
-                                )
-                            prev_plumed = it_plumed_input
-                        del n, it_plumed_input, prev_plumed
+                        job_file = replace_substring_in_string_list(
+                            job_file, "_R_PLUMED_FILES_", '" "'.join(plumed_input)
+                        )
+                        job_array_params_line += '" "'.join(plumed_input)
                     else:
                         job_file = replace_substring_in_string_list(
                             job_file, ' "_R_PLUMED_FILES_"', ""
@@ -1050,7 +1054,7 @@ def main(
 
                     string_list_to_textfile(
                         local_path
-                        / f"job_{system_exploration_type}-deepmd_explore_{arch_type}_{machine}.sh",
+                        / f"job_{system_exploration_type}-{nnp_program}_explore_{arch_type}_{machine}.sh",
                         job_file,
                         read_only=True,
                     )
@@ -1080,10 +1084,9 @@ def main(
 
                     # Get data files (starting points) if iteration is > 1
                     if curr_iter > 1:
-
                         # TODO: Implement the starting points for SANDER-EMLE
                         arcann_logger.warning(
-                            f"Starting points are not implemented for SANDER-EMLE. Using the same starting point as the first exploration."
+                            "Starting points are not implemented for SANDER-EMLE. Using the same starting point as the first exploration."
                         )
                         system_previous_start = False
                         # if len(starting_point_list) == 0:
@@ -1289,23 +1292,10 @@ def main(
                         job_file, "_R_EMLE_MODEL_FILE_", f"{system_auto}.mat"
                     )
                     if plumed[0] == 1:
-                        for n, it_plumed_input in enumerate(plumed_input):
-                            if n == 0:
-                                job_file = replace_substring_in_string_list(
-                                    job_file, "_R_PLUMED_FILES_", it_plumed_input
-                                )
-                                job_array_params_line += it_plumed_input
-                            else:
-                                job_file = replace_substring_in_string_list(
-                                    job_file,
-                                    prev_plumed,
-                                    prev_plumed + '" "' + it_plumed_input,
-                                )
-                                job_array_params_line = job_array_params_line.replace(
-                                    prev_plumed, prev_plumed + '" "' + it_plumed_input
-                                )
-                            prev_plumed = it_plumed_input
-                        del n, it_plumed_input, prev_plumed
+                        job_file = replace_substring_in_string_list(
+                            job_file, "_R_PLUMED_FILES_", '" "'.join(plumed_input)
+                        )
+                        job_array_params_line += '" "'.join(plumed_input)
                     else:
                         job_file = replace_substring_in_string_list(
                             job_file, ' "_R_PLUMED_FILES_"', ""
@@ -1341,7 +1331,7 @@ def main(
                     )
                     # Get data files (starting points) and number of steps
                     if curr_iter > 1:
-                        if len(starting_points) == 0:
+                        if len(starting_point_list) == 0:
                             starting_point_list = deepcopy(starting_point_list_bckp)
                         system_ipi_xyz_fn = starting_point_list[
                             random.randrange(0, len(starting_point_list))
@@ -1460,19 +1450,10 @@ def main(
                     )
 
                     if plumed[0] == 1:
-                        for n, it_plumed_input in enumerate(plumed_input):
-                            if n == 0:
-                                job_file = replace_substring_in_string_list(
-                                    job_file, "_R_PLUMED_FILES_", it_plumed_input
-                                )
-                            else:
-                                job_file = replace_substring_in_string_list(
-                                    job_file,
-                                    prev_plumed,
-                                    prev_plumed + '" "' + it_plumed_input,
-                                )
-                            prev_plumed = it_plumed_input
-                        del n, it_plumed_input, prev_plumed
+                        job_file = replace_substring_in_string_list(
+                            job_file, "_R_PLUMED_FILES_", '" "'.join(plumed_input)
+                        )
+                        job_array_params_line += '" "'.join(plumed_input)
                     else:
                         job_file = replace_substring_in_string_list(
                             job_file, ' "_R_PLUMED_FILES_"', ""
@@ -1488,8 +1469,8 @@ def main(
                     del job_file
                     # END OF INDIVIDUAL JOB FILE
                 else:
-                    arcann_logger.error(f"Exploration is unknown/not set.")
-                    arcann_logger.error(f"Aborting...")
+                    arcann_logger.error("Exploration is unknown/not set.")
+                    arcann_logger.error("Aborting...")
                     sys.exit(1)
 
             del traj_index, models_list, models_string, local_path
@@ -1497,28 +1478,28 @@ def main(
         del nnp_index
 
         exploration_json["systems_auto"][system_auto]["nb_atm"] = system_nb_atm
-        exploration_json["systems_auto"][system_auto][
-            "exploration_type"
-        ] = system_exploration_type
+        exploration_json["systems_auto"][system_auto]["exploration_type"] = (
+            system_exploration_type
+        )
         exploration_json["systems_auto"][system_auto]["traj_count"] = system_traj_count
-        exploration_json["systems_auto"][system_auto][
-            "temperature_K"
-        ] = system_temperature_K
-        exploration_json["systems_auto"][system_auto][
-            "timestep_ps"
-        ] = system_timestep_ps
-        exploration_json["systems_auto"][system_auto][
-            "previous_start"
-        ] = system_previous_start
-        exploration_json["systems_auto"][system_auto][
-            "disturbed_start"
-        ] = system_disturbed_start
-        exploration_json["systems_auto"][system_auto][
-            "print_interval_mult"
-        ] = system_print_mult
-        exploration_json["systems_auto"][system_auto][
-            "max_exp_time_ps"
-        ] = system_max_exp_time_ps
+        exploration_json["systems_auto"][system_auto]["temperature_K"] = (
+            system_temperature_K
+        )
+        exploration_json["systems_auto"][system_auto]["timestep_ps"] = (
+            system_timestep_ps
+        )
+        exploration_json["systems_auto"][system_auto]["previous_start"] = (
+            system_previous_start
+        )
+        exploration_json["systems_auto"][system_auto]["disturbed_start"] = (
+            system_disturbed_start
+        )
+        exploration_json["systems_auto"][system_auto]["print_interval_mult"] = (
+            system_print_mult
+        )
+        exploration_json["systems_auto"][system_auto]["max_exp_time_ps"] = (
+            system_max_exp_time_ps
+        )
 
         main_json["systems_auto"][system_auto]["cell"] = system_cell
         main_json["systems_auto"][system_auto]["nb_atm"] = system_nb_atm
@@ -1595,13 +1576,13 @@ def main(
 
             string_list_to_textfile(
                 current_path
-                / f"job-array_{exploration_type}-deepmd_explore_{arch_type}_{machine}.sh",
+                / f"job-array_{exploration_type}-{nnp_program}_explore_{arch_type}_{machine}.sh",
                 job_array_file,
                 read_only=True,
             )
             string_list_to_textfile(
                 current_path
-                / f"job-array-params_{exploration_type}-deepmd_explore_{arch_type}_{machine}.lst",
+                / f"job-array-params_{exploration_type}-{nnp_program}_explore_{arch_type}_{machine}.lst",
                 job_array_params_file[exploration_type],
                 read_only=True,
             )
@@ -1611,7 +1592,7 @@ def main(
     exploration_json["nb_sim"] = nb_sim
 
     # Dump the JSON files (main, exploration and merged input)
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     write_json_file(main_json, (control_path / "config.json"), read_only=True)
     write_json_file(
         exploration_json,
@@ -1623,7 +1604,7 @@ def main(
     )
 
     # End
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     arcann_logger.info(
         f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
     )
@@ -1654,7 +1635,7 @@ def main(
         machine_job_scheduler,
     )
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 

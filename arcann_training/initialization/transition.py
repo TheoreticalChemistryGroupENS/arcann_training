@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 # Local imports
-from arcann_training.common.dataset import Dataset
+from arcann_training.common.dataset import Dataset, ExtXYZEnsemble, Set000Ensemble
 from arcann_training.common.filesystem import check_directory
 from arcann_training.common.json import (
     backup_and_overwrite_json_file,
@@ -168,14 +168,8 @@ def main(
             f"NNP program: {nnp_program} not recognized. ArcaNN supports 'deepmd' or 'mace'."
         )
 
-    # Create the initial training directory
-    (training_path / f"{padded_curr_iter}-training").mkdir(exist_ok=True)
-    check_directory((training_path / f"{padded_curr_iter}-training"))
-
     # Create the control directory
     control_path = training_path / "control"
-    control_path.mkdir(exist_ok=True)
-    check_directory(control_path)
     arcann_logger.debug(f"control_path: {control_path}")
 
     # DEBUG: Print the JSON files
@@ -185,7 +179,7 @@ def main(
 
     try:
         dataset = Dataset(
-            training_dir=training_path, 
+            training_dir=training_path,
             config_file=main_json,
         )
     except Exception as e:
@@ -193,11 +187,42 @@ def main(
         arcann_logger.error("Aborting...")
         return 1
 
-    # Populate the dataset with initial data
-    dataset.load_dataset(only_init=True)
+    # !!!! these will be horrible code but it's just for the sake of transitionning between one kind of dataset management to another !!!!
+    is_extxyz, is_set000 = False, False
+    for ens in (training_path / "data").iterdir():
+        if ens.is_dir():
+            if any(ens.glob("*.extxyz")):
+                is_extxyz = True
+            elif (ens / "set.000").is_dir():
+                is_set000 = True
+
+    if is_extxyz and is_set000:
+        arcann_logger.error(
+            "Both extxyz files and set.000 folders found in the data directory. Please keep only one format."
+        )
+        arcann_logger.error("Aborting...")
+        return 1
+
+    elif is_extxyz and main_json["data_format"] != "extxyz":
+        dataset.data_format = "extxyz"
+        dataset.data_ensemble = ExtXYZEnsemble
+    elif is_set000 and main_json["data_format"] != "set.000":
+        dataset.data_format = "set.000"
+        dataset.data_ensemble = Set000Ensemble
+    # Populate the dataset with existing data
+    dataset.load_dataset(
+        extra_dataset=True,
+        init_dataset=True,
+    )
+    dataset.convert_dataset(
+        to_extxyz=(main_json["data_format"] == "extxyz"),
+        to_set000=(main_json["data_format"] == "set000"),
+    )
     dataset.update_control_file()
 
-    arcann_logger.debug(f"initial_dataset_paths: {dataset.training_paths + dataset.validation_paths}")
+    arcann_logger.debug(
+        f"initial_dataset_paths: {dataset.training_paths + dataset.validation_paths}"
+    )
     arcann_logger.debug(f"dataset_json: {dataset.control_file['initial_datasets']}")
 
     # Dump the JSON files (main, initial datasets and merged input)
@@ -234,7 +259,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 4:
         main(
             "initialization",
-            "start",
+            "transition",
             Path(sys.argv[1]),
             fake_machine=sys.argv[2],
             user_input_json_filename=sys.argv[3],

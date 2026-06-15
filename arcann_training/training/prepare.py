@@ -6,30 +6,33 @@
 #   SPDX-License-Identifier: AGPL-3.0-only                                                           #
 #----------------------------------------------------------------------------------------------------#
 Created: 2022/01/01
-Last modified: 2024/07/14
+Last modified: 2026/02/06
 """
 
 # Standard library modules
 import logging
-import sys
-from pathlib import Path
-from copy import deepcopy
+import os
 import random
-import subprocess
+import shutil
+import sys
+from copy import deepcopy
+from pathlib import Path
 
 # Non-standard library imports
 import numpy as np
+from packaging import version
 
 # Local imports
 from arcann_training.common.check import validate_step_folder
+from arcann_training.common.dataset import Dataset
 from arcann_training.common.filesystem import check_directory
 from arcann_training.common.json import (
     backup_and_overwrite_json_file,
     get_key_in_dict,
     load_default_json_file,
     load_json_file,
-    write_json_file,
     replace_values_by_key_name,
+    write_json_file,
 )
 from arcann_training.common.list import (
     replace_substring_in_string_list,
@@ -41,12 +44,13 @@ from arcann_training.common.machine import (
     get_machine_spec_for_step,
 )
 from arcann_training.common.slurm import replace_in_slurm_file_general
+from arcann_training.common.yaml import load_yaml_file, write_yaml_file
 from arcann_training.training.utils import (
     calculate_decay_rate,
     calculate_decay_steps,
-    check_initial_datasets,
-    validate_deepmd_config,
     generate_training_json,
+    validate_deepmd_config,
+    validate_mace_config,
 )
 
 
@@ -61,8 +65,9 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
+    user_files_path = training_path / "user_files"
 
     # Log the step and phase of the program
     arcann_logger.info(
@@ -71,7 +76,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -111,6 +116,11 @@ def main(
     # Get control path and load the main JSON
     control_path = training_path / "control"
     main_json = load_json_file((control_path / "config.json"))
+
+    nnp_program: str = main_json["nnp_program"]
+
+    arcann_logger.info(f"Using {nnp_program} as NNP software")
+    arcann_logger.info("-" * 88)
 
     # Load the previous training JSON
     if curr_iter > 0:
@@ -175,65 +185,76 @@ def main(
             (control_path / f"labeling_{padded_curr_iter}.json")
         )
         if not labeling_json["is_extracted"]:
-            arcann_logger.error(f"Lock found. Please execute 'labeling extract' first.")
-            arcann_logger.error(f"Aborting...")
+            arcann_logger.error("Lock found. Please execute 'labeling extract' first.")
+            arcann_logger.error("Aborting...")
             return 1
         # exploration_json = load_json_file((control_path / f"exploration_{padded_curr_iter}.json"))
     else:
         # exploration_json = {}
         labeling_json = {}
 
-    if "deepmd_model_version" not in user_input_json:
-        dptrain_list = []
-        for file in (current_path.parent / "user_files").iterdir():
-            if file.suffix != ".json":
-                continue
-            if "dptrain" not in file.stem:
-                continue
-            dptrain_list.append(file)
-        arcann_logger.debug(f"dptrain_list: {dptrain_list}")
-        del file
+    if "deepmd_model_version" not in user_input_json and nnp_program == "deepmd":
+        found_versions = [
+            f.stem.split("_")[-1] for f in user_files_path.glob("dptrain_*.json")
+        ]
+        arcann_logger.debug(f"Found dptrain versions: {found_versions}")
 
-        if not dptrain_list:
+        if not found_versions:
             arcann_logger.error(
-                f"No dptrain_DEEPMDVERSION.json files found in {(current_path.parent / 'user_files')}"
+                f"No dptrain_DEEPMDVERSION.json files found in {user_files_path}"
             )
-            arcann_logger.error(f"Aborting...")
+            arcann_logger.error("Aborting...")
             return 1
 
-        dptrain_max_version = 0
-        for dptrain in dptrain_list:
-            dptrain_max_version = max(
-                dptrain_max_version, float(dptrain.stem.split("_")[-1])
-            )
-        del dptrain
+        dp_max_version = max(found_versions, key=version.parse)
+        arcann_logger.debug(f"dptrain_max_version: {dp_max_version}")
 
-        arcann_logger.debug(f"dptrain_max_version: {dptrain_max_version}")
-        current_input_json["deepmd_model_version"] = dptrain_max_version
-        del dptrain_list, dptrain_max_version
+        current_input_json["deepmd_model_version"] = dp_max_version
+        arcann_logger.info(
+            f"Using DeePMD version: {current_input_json['deepmd_model_version']}"
+        )
+
+    elif "mace_model_version" not in user_input_json and nnp_program == "mace":
+        found_versions = [
+            f.stem.split("_")[-1]
+            for f in list(user_files_path.glob("mace_*.yml"))
+            + list(user_files_path.glob("mace_*.yaml"))
+        ]
+        arcann_logger.debug(f"Found mace versions: {found_versions}")
+
+        if not found_versions:
+            arcann_logger.error(
+                f"No mace_MACEVERSION.yaml or mace_MACEVERSION.yml files found in {user_files_path}"
+            )
+            arcann_logger.error("Aborting...")
+            return 1
+
+        mace_max_version = max(found_versions, key=version.parse)
+        arcann_logger.debug(f"mace_max_version: {mace_max_version}")
+
+        current_input_json["mace_model_version"] = mace_max_version
+        arcann_logger.info(
+            f"Using MACE version: {current_input_json['mace_model_version']}"
+        )
 
     # Generate/update both the training JSON and the merged input JSON
     # Priority: user/current > previous > default
     training_json, current_input_json = generate_training_json(
         current_input_json, previous_training_json, default_input_json
     )
-    arcann_logger.info(
-        f"Using DeePMD version: {current_input_json['deepmd_model_version']}"
-    )
+
     arcann_logger.debug(f"training_json: {training_json}")
     arcann_logger.debug(f"current_input_json: {current_input_json}")
 
     # Check if the job file exists
-    job_file_name = f"job_deepmd_train_{machine_spec['arch_type']}_{machine}.sh"
-    if (current_path.parent / "user_files" / job_file_name).is_file():
-        master_job_file = textfile_to_string_list(
-            current_path.parent / "user_files" / job_file_name
-        )
+    job_file_name = f"job_{nnp_program}_train_{machine_spec['arch_type']}_{machine}.sh"
+    if (user_files_path / job_file_name).is_file():
+        master_job_file = textfile_to_string_list(user_files_path / job_file_name)
     else:
         arcann_logger.error(
             f"No JOB file provided for '{current_step.capitalize()} / {current_phase.capitalize()}' for this machine."
         )
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Aborting...")
         return 1
 
     arcann_logger.debug(
@@ -244,321 +265,267 @@ def main(
     )
     del job_file_name
 
-    # Check DeePMD version
-    validate_deepmd_config(training_json)
+    if nnp_program == "deepmd":
+        # Check DeePMD version
+        validate_deepmd_config(training_json)
 
-    # Check if the default input json file exists
-    dp_train_input_path = (
-        training_path
-        / "user_files"
-        / f"dptrain_{training_json['deepmd_model_version']}.json"
-    ).resolve()
+        # Check if the default input json file exists
+        dp_train_input_path = (
+            user_files_path / f"dptrain_{training_json['deepmd_model_version']}.json"
+        ).resolve()
 
-    dp_train_input = load_json_file(dp_train_input_path)
-    if "type_map" not in main_json:
-        type_map = []
-        for element in main_json["properties"]:
-            type_map.append(main_json["properties"][element]["symbol"])
-        main_json["type_map"] = type_map
+        nnp_input = load_json_file(dp_train_input_path)
+        if "type_map" not in main_json:
+            type_map = [
+                main_json["properties"][element]["symbol"]
+                for element in main_json["properties"]
+            ]
+            main_json["type_map"] = type_map
 
-    # Make sure they are the same
-    if dp_train_input["model"]["type_map"] != main_json["type_map"]:
-        arcann_logger.error(
-            f"Type map in {dp_train_input_path} does not match the one in config.json."
-        )
-        arcann_logger.error(f"Aborting...")
-        return 1
+        # Make sure they are the same
+        if nnp_input["model"]["type_map"] != main_json["type_map"]:
+            arcann_logger.error(
+                f"Type map in {dp_train_input_path} does not match the one in config.json."
+            )
+            arcann_logger.error("Aborting...")
+            return 1
 
-    # main_json["type_map"] = {}
-    # main_json["type_map"] = dp_train_input["model"]["type_map"]
-    del dp_train_input_path
-    arcann_logger.debug(f"dp_train_input: {dp_train_input}")
+        del dp_train_input_path
+        arcann_logger.debug(f"dp_train_input: {nnp_input}")
+
+    elif nnp_program == "mace":
+        validate_mace_config(training_json)
+
+        mace_input_path = (
+            user_files_path / f"mace_{training_json['mace_model_version']}.yml"
+        ).resolve()
+
+        if not mace_input_path.exists():
+            mace_input_path = (
+                user_files_path / f"mace_{training_json['mace_model_version']}.yaml"
+            ).resolve()
+
+        nnp_input = load_yaml_file(mace_input_path)
+
+        # control the key to align with MACE references
+        nnp_input["energy_key"] = "REF_energy"
+        nnp_input["forces_key"] = "REF_forces"
+        nnp_input["virials_key"] = "REF_virials"
+
+        if "E0s" not in nnp_input or not isinstance(nnp_input["E0s"], dict):
+            arcann_logger.critical(
+                "It is HIGHLY recommanded when training MACE model, to do it by providing the energies of the isolated atoms."
+                "To do so, please provide these E0s by computing the energies of the isolated atoms with the same level of theory as the one used for the training dataset."
+            )
+        else:
+            e0_atoms = set(nnp_input["E0s"].keys())
+            system_atoms = [
+                main_json["properties"][element]["symbol"]
+                for element in main_json["properties"]
+            ]
+            elements = load_json_file(
+                deepmd_iterative_path / "assets" / "elements.json"
+            )
+            system_atoms = [
+                elm["atomic_number"]
+                for elm in elements.values()
+                if elm["symbol"] in system_atoms
+            ]
+            system_atoms = set(system_atoms)
+            if e0_atoms != system_atoms:
+                arcann_logger.error(
+                    f"The atoms provided for E0s don't match with the one on your systems. E0 atoms: {e0_atoms}, system atoms: {system_atoms}."
+                )
+                arcann_logger.error("Aborting...")
+                return 1
+        arcann_logger.debug(f"mace_input: {nnp_input}")
+
+        if "foundation_model" in nnp_input:
+            fondation_path = (
+                user_files_path / f"{nnp_input['foundation_model']}"
+            ).resolve()
+            if not fondation_path.is_file():
+                arcann_logger.error(
+                    f"Foundation model file {nnp_input['foundation_model']} not found in user_files."
+                )
+                arcann_logger.error("Aborting...")
+                return 1
+
     arcann_logger.debug(f"main_json: {main_json}")
 
-    # Check the initial sets json file
-    initial_datasets_info = check_initial_datasets(training_path)
-    arcann_logger.debug(f"initial_datasets_info: {initial_datasets_info}")
+    # Load the datasets that were previously processed
+    dataset = Dataset(training_dir=training_path, config_file=main_json)
+    dataset.read_dataset()  # all datasets from control/dataset.json
 
-    # Let us find what is in data
-    data_path = training_path / "data"
-    check_directory(data_path)
+    # Initial dataensemble may not be used
+    if not training_json["use_initial_datasets"]:
+        # in case we don't want to train with the initial datasets
+        dataset.remove_datasets(init_dataset=True)
 
-    # This is building the datasets (roughly 200 lines)
-    # TODO later
-    systems = []
-    extra_datasets = []
-    validation_datasets = []
-    for data_dir in data_path.iterdir():
-        if data_dir.is_dir():
-            # Escape initial/extra sets, because initial get added first and extra as last, and also escape init_
-            # not in initial_json (in case of removal)
-            if (
-                data_dir.name not in initial_datasets_info.keys()
-                and "extra_" != data_dir.name[:6]
-                and "init_" != data_dir.name[:5]
-            ):
-                # Escape test sets
-                if "test_" != data_dir.name[:5]:
-                    # Escape if set iter is superior as iter, it is only for reprocessing old stuff
-                    try:
-                        if int(data_dir.name.rsplit("_", 1)[-1]) <= curr_iter:
-                            systems.append(data_dir.name.rsplit("_", 1)[0])
-                    # TODO Better except clause
-                    except:
-                        pass
-                else:
-                    validation_datasets.append(data_dir.name)
-            # Get the extra sets !
-            elif "extra_" == data_dir.name[:6]:
-                extra_datasets.append(data_dir.name)
-    del data_dir
-
-    # TODO Implement validation dataset
-    del validation_datasets
-
-    # Training sets list construction
-    dp_train_input_datasets = []
-    training_datasets = []
-
-    # Initial
-    initial_count = 0
-    if training_json["use_initial_datasets"]:
-        for it_datasets_initial_json in initial_datasets_info.keys():
-            if (data_path / it_datasets_initial_json).is_dir():
-                dp_train_input_datasets.append(
-                    f"{(Path(data_path.parts[-1]) / it_datasets_initial_json / '_')}"[
-                        :-1
-                    ]
-                )
-                training_datasets.append(it_datasets_initial_json)
-                initial_count += initial_datasets_info[it_datasets_initial_json]
-
-        del it_datasets_initial_json
-    del initial_datasets_info
-
-    # This trick remove duplicates from list via set
-    systems = list(set(systems))
-    systems = [i for i in systems if i not in main_json["systems_auto"]]
-    systems = [
-        i
-        for i in systems
-        if i not in [zzz + "-disturbed" for zzz in main_json["systems_auto"]]
-    ]
-    systems = sorted(systems)
-    main_json["systems_adhoc"] = systems
-    del systems
-
-    # TODO As function
-    # Automatic Systems (aka systems_auto in the initialization first) && all the others are not automated !
-    # Total and what is added just for this iteration
-    added_auto_count = 0
-    added_adhoc_count = 0
-    added_auto_iter_count = 0
-    added_adhoc_iter_count = 0
-
-    if curr_iter > 0:
-        for iteration in np.arange(1, curr_iter + 1):
-            padded_iteration = str(iteration).zfill(3)
-            try:
-                for system_auto in main_json["systems_auto"]:
-                    if (data_path / f"{system_auto}_{padded_iteration}").is_dir():
-                        dp_train_input_datasets.append(
-                            f"{(Path(data_path.parts[-1]) / (system_auto+'_'+padded_iteration) / '_')}"[
-                                :-1
-                            ]
-                        )
-                        training_datasets.append(f"{system_auto}_{padded_iteration}")
-                        added_auto_count += np.load(
-                            data_path
-                            / f"{system_auto}_{padded_iteration}"
-                            / "set.000"
-                            / "box.npy"
-                        ).shape[0]
-                        if iteration == curr_iter:
-                            added_auto_iter_count += np.load(
-                                data_path
-                                / f"{system_auto}_{padded_iteration}"
-                                / "set.000"
-                                / "box.npy"
-                            ).shape[0]
-                del system_auto
-            except (KeyError, NameError):
-                pass
-            try:
-                for system_auto_disturbed in [
-                    zzz + "-disturbed" for zzz in main_json["systems_auto"]
-                ]:
-                    if (
-                        data_path / f"{system_auto_disturbed}_{padded_iteration}"
-                    ).is_dir():
-                        dp_train_input_datasets.append(
-                            f"{(Path(data_path.parts[-1]) / (system_auto_disturbed+'_'+padded_iteration) / '_')}"[
-                                :-1
-                            ]
-                        )
-                        training_datasets.append(
-                            f"{system_auto_disturbed}_{padded_iteration}"
-                        )
-                        added_auto_count += np.load(
-                            data_path
-                            / f"{system_auto_disturbed}_{padded_iteration}"
-                            / "set.000"
-                            / "box.npy"
-                        ).shape[0]
-                        if iteration == curr_iter:
-                            added_auto_iter_count += np.load(
-                                data_path
-                                / f"{system_auto_disturbed}_{padded_iteration}"
-                                / "set.000"
-                                / "box.npy"
-                            ).shape[0]
-                del system_auto_disturbed
-            except (KeyError, NameError):
-                pass
-            try:
-                for system_adhoc in main_json["systems_adhoc"]:
-                    if (data_path / f"{system_adhoc}_{padded_iteration}").is_dir():
-                        dp_train_input_datasets.append(
-                            f"{(Path(data_path.parts[-1]) / (system_adhoc+'_'+padded_iteration) / '_')}"[
-                                :-1
-                            ]
-                        )
-                        training_datasets.append(f"{system_adhoc}_{padded_iteration}")
-                        added_auto_count = (
-                            added_auto_count
-                            + np.load(
-                                data_path
-                                / f"{system_adhoc}_{padded_iteration}"
-                                / "set.000"
-                                / "box.npy"
-                            ).shape[0]
-                        )
-                        if iteration == curr_iter:
-                            added_auto_iter_count += np.load(
-                                data_path
-                                / f"{system_adhoc}_{padded_iteration}"
-                                / "set.000"
-                                / "box.npy"
-                            ).shape[0]
-                del system_adhoc
-            except (KeyError, NameError):
-                pass
-        del iteration, padded_iteration
-    # TODO End of As function
-
-    # Finally the extra sets !
-    extra_count = 0
-    if training_json["use_extra_datasets"]:
-        main_json["extra_datasets"] = extra_datasets
-        del extra_datasets
-        for extra_dataset in main_json["extra_datasets"]:
-            dp_train_input_datasets.append(
-                f"{(Path(data_path.parts[-1]) / extra_dataset / '_')}"[:-1]
-            )
-            training_datasets.append(extra_dataset)
-            extra_count += np.load(
-                data_path / extra_dataset / "set.000" / "box.npy"
-            ).shape[0]
-        del extra_dataset
-    else:
-        del extra_datasets
-
-    # Total
-    trained_count = initial_count + added_auto_count + added_adhoc_count + extra_count
-    arcann_logger.debug(
-        f"trained_count: {trained_count} = {initial_count} + {added_auto_count} + {added_adhoc_count} + {extra_count}"
+    auto_iter_count, adhoc_iter_count, val_auto_iter_count, val_adhoc_iter_count = (
+        dataset.load_dataset(
+            extra_dataset=training_json["use_extra_datasets"],
+            init_dataset=training_json["use_initial_datasets"],
+        )
     )
-    arcann_logger.debug(f"dp_train_input_datasets: {dp_train_input_datasets}")
+    dataset.update_control_file()  # update and save the control/dataset.json file
 
-    # Update the inputs with the sets
-    dp_train_input["training"]["training_data"]["systems"] = dp_train_input_datasets
+    main_json["extra_datasets"] = [list(dataset.control_file["extra_datasets"].keys())]
+    main_json["systems_adhoc"] = [list(dataset.control_file["adhoc_datasets"].keys())]
 
-    # Update the training JSON
-    training_json = {
-        **training_json,
-        "training_datasets": training_datasets,
-        "trained_count": trained_count,
-        "initial_count": initial_count,
-        "added_auto_count": added_auto_count,
-        "added_adhoc_count": added_adhoc_count,
-        "added_auto_iter_count": added_auto_iter_count,
-        "added_adhoc_iter_count": added_adhoc_iter_count,
-        "extra_count": extra_count,
+    # Total of points in the datasets
+    initial_count = sum(
+        de.size for de in dataset.training_dataset.values() if de.step == "initial"
+    )
+    auto_count = sum(
+        de.size for de in dataset.training_dataset.values() if de.step == "system_auto"
+    )
+    adhoc_count = sum(
+        de.size for de in dataset.training_dataset.values() if de.step == "system_adhoc"
+    )
+    extra_count = sum(
+        de.size for de in dataset.training_dataset.values() if de.step == "extra"
+    )
+    trained_count = initial_count + auto_count + adhoc_count + extra_count
+    arcann_logger.debug(
+        f"trained_count: {trained_count} = {initial_count} + {auto_count} + {adhoc_count} + {extra_count}"
+    )
+    arcann_logger.debug(f"training_dataset: {dataset.training_dataset}")
+    training_json |= {
+        "training_datasets": dataset.training_paths,
+        "training_count": {
+            "total": trained_count,
+            "initial_count": initial_count,
+            "added_auto_count": auto_count,
+            "added_adhoc_count": adhoc_count,
+            "extra_count": extra_count,
+            "added_auto_iter_count": auto_iter_count,
+            "added_adhoc_iter_count": adhoc_iter_count,
+        },
+    }
+
+    initial_count = sum(
+        de.size for de in dataset.validation_dataset.values() if de.step == "initial"
+    )
+    auto_count = sum(
+        de.size
+        for de in dataset.validation_dataset.values()
+        if de.step == "system_auto"
+    )
+    adhoc_count = sum(
+        de.size
+        for de in dataset.validation_dataset.values()
+        if de.step == "system_adhoc"
+    )
+    extra_count = sum(
+        de.size for de in dataset.validation_dataset.values() if de.step == "extra"
+    )
+    validation_count = initial_count + auto_count + adhoc_count + extra_count
+    arcann_logger.debug(
+        f"validation_count: {validation_count} = {initial_count} + {auto_count} + {adhoc_count} + {extra_count}"
+    )
+    arcann_logger.debug(f"validation_dataset: {dataset.validation_dataset}")
+    training_json |= {
+        "validation_datasets": dataset.validation_paths,
+        "validation_count": {
+            "total": validation_count,
+            "initial_count": initial_count,
+            "added_auto_count": auto_count,
+            "added_adhoc_count": adhoc_count,
+            "extra_count": extra_count,
+            "added_auto_iter_count": val_auto_iter_count,
+            "added_adhoc_iter_count": val_adhoc_iter_count,
+        },
     }
     arcann_logger.debug(f"training_json: {training_json}")
 
-    del training_datasets
-    del trained_count, initial_count, extra_count
-    del (
-        added_auto_count,
-        added_adhoc_count,
-        added_auto_iter_count,
-        added_adhoc_iter_count,
-    )
+    if nnp_program == "deepmd":
+        # Update the inputs with the sets
+        nnp_input["training"]["training_data"]["systems"] = [
+            "data/" + ds for ds in dataset.training_paths
+        ]
+        nnp_input["training"]["validation_data"]["systems"] = [
+            "data/" + ds for ds in dataset.validation_paths
+        ]
+    elif nnp_program == "mace":
+        nnp_input["train_file"] = "data/training_dataset.extxyz"
+        nnp_input["valid_file"] = "data/validation_dataset.extxyz"
+        nnp_input["test_file"] = "data/test_dataset.extxyz"
 
     # Here calculate the parameters
-    # decay_steps it auto-recalculated as funcion of trained_count
-    arcann_logger.debug(f"training_json - decay_steps: {training_json['decay_steps']}")
-    arcann_logger.debug(
-        f"current_input_json - decay_steps: {current_input_json['decay_steps']}"
-    )
-    if not training_json["decay_steps_fixed"]:
-        decay_steps = calculate_decay_steps(
-            training_json["trained_count"], training_json["decay_steps"]
+    # decay_steps it auto-recalculated as funcion of trained_count only for DeepMD
+    if nnp_program == "deepmd":
+        arcann_logger.debug(
+            f"training_json - decay_steps: {training_json['decay_steps']}"
         )
-        arcann_logger.debug(f"Recalculating decay_steps")
-        # Update the training JSON and the merged input JSON
-        training_json["decay_steps"] = decay_steps
-        current_input_json["decay_steps"] = decay_steps
-    else:
-        decay_steps = training_json["decay_steps"]
-    arcann_logger.debug(f"decay_steps: {decay_steps}")
-    arcann_logger.debug(f"training_json - decay_steps: {training_json['decay_steps']}")
-    arcann_logger.debug(
-        f"current_input_json - decay_steps: {current_input_json['decay_steps']}"
-    )
+        arcann_logger.debug(
+            f"current_input_json - decay_steps: {current_input_json['decay_steps']}"
+        )
+        if not training_json["decay_steps_fixed"]:
+            decay_steps = calculate_decay_steps(
+                training_json["training_count"]["total"], training_json["decay_steps"]
+            )
+            arcann_logger.debug("Recalculating decay_steps")
+            # Update the training JSON and the merged input JSON
+            training_json["decay_steps"] = decay_steps
+            current_input_json["decay_steps"] = decay_steps
+        else:
+            decay_steps = training_json["decay_steps"]
+        arcann_logger.debug(f"decay_steps: {decay_steps}")
+        arcann_logger.debug(
+            f"training_json - decay_steps: {training_json['decay_steps']}"
+        )
+        arcann_logger.debug(
+            f"current_input_json - decay_steps: {current_input_json['decay_steps']}"
+        )
 
-    # numb_steps and decay_rate
-    arcann_logger.debug(
-        f"training_json - numb_steps / decay_rate: {training_json['numb_steps']} / {training_json['decay_rate']}"
-    )
-    arcann_logger.debug(
-        f"current_input_json - numb_steps / decay_rate: {current_input_json['numb_steps']} / {current_input_json['decay_rate']}"
-    )
-    numb_steps = training_json["numb_steps"]
-    decay_rate_new = calculate_decay_rate(
-        numb_steps,
-        training_json["start_lr"],
-        training_json["stop_lr"],
-        training_json["decay_steps"],
-    )
-    while decay_rate_new < training_json["decay_rate"]:
-        numb_steps = numb_steps + 10000
+        # numb_steps and decay_rate
+        arcann_logger.debug(
+            f"training_json - numb_steps / decay_rate: {training_json['numb_steps']} / {training_json['decay_rate']}"
+        )
+        arcann_logger.debug(
+            f"current_input_json - numb_steps / decay_rate: {current_input_json['numb_steps']} / {current_input_json['decay_rate']}"
+        )
+        numb_steps = training_json["numb_steps"]
         decay_rate_new = calculate_decay_rate(
             numb_steps,
             training_json["start_lr"],
             training_json["stop_lr"],
             training_json["decay_steps"],
         )
-    # Update the training JSON and the merged input JSON
-    training_json["numb_steps"] = int(numb_steps)
-    training_json["decay_rate"] = decay_rate_new
-    current_input_json["numb_steps"] = int(numb_steps)
-    current_input_json["decay_rate"] = decay_rate_new
-    arcann_logger.debug(f"numb_steps: {numb_steps}")
-    arcann_logger.debug(f"decay_rate: {decay_rate_new}")
-    arcann_logger.debug(
-        f"training_json - numb_steps / decay_rate: {training_json['numb_steps']} / {training_json['decay_rate']}"
-    )
-    arcann_logger.debug(
-        f"current_input_json - numb_steps / decay_rate: {current_input_json['numb_steps']} / {current_input_json['decay_rate']}"
-    )
+        while decay_rate_new < training_json["decay_rate"]:
+            arcann_logger.debug(
+                f"numb_steps is too small to allow for the decay_rate, increasing numb_steps: {decay_rate_new} < {training_json['decay_rate']}"
+            )
+            numb_steps = numb_steps + 10000
+            decay_rate_new = calculate_decay_rate(
+                numb_steps,
+                training_json["start_lr"],
+                training_json["stop_lr"],
+                training_json["decay_steps"],
+            )
+        # Update the training JSON and the merged input JSON
+        training_json["numb_steps"] = int(numb_steps)
+        training_json["decay_rate"] = decay_rate_new
+        current_input_json["numb_steps"] = int(numb_steps)
+        current_input_json["decay_rate"] = decay_rate_new
+        arcann_logger.debug(f"numb_steps: {numb_steps}")
+        arcann_logger.debug(f"decay_rate: {decay_rate_new}")
+        arcann_logger.debug(
+            f"training_json - numb_steps / decay_rate: {training_json['numb_steps']} / {training_json['decay_rate']}"
+        )
+        arcann_logger.debug(
+            f"current_input_json - numb_steps / decay_rate: {current_input_json['numb_steps']} / {current_input_json['decay_rate']}"
+        )
 
-    del decay_steps, numb_steps, decay_rate_new
+        del decay_steps, numb_steps, decay_rate_new
+        nnp_input["training"]["numb_steps"] = training_json["numb_steps"]
+        nnp_input["learning_rate"]["decay_steps"] = training_json["decay_steps"]
+        nnp_input["learning_rate"]["stop_lr"] = training_json["stop_lr"]
 
-    dp_train_input["training"]["numb_steps"] = training_json["numb_steps"]
-    dp_train_input["learning_rate"]["decay_steps"] = training_json["decay_steps"]
-    dp_train_input["learning_rate"]["stop_lr"] = training_json["stop_lr"]
+    elif nnp_program == "mace":
+        nnp_input["max_num_epochs"] = training_json["max_num_epochs"]
+        # TODO se pencher sur le lr, est-ce que c'est possible dans mace et comment?
 
     # Set booleans in the training JSON
     training_json = {
@@ -574,22 +541,46 @@ def main(
     }
 
     # Rsync data to local data
+    # TODO not rsync, maybe just symlink + compress everything into one big dataset + possibly convert depending on the NNP
+
     localdata_path = current_path / "data"
     localdata_path.mkdir(exist_ok=True)
-    for dp_train_input_dataset in dp_train_input_datasets:
-        subprocess.run(
-            [
-                "rsync",
-                "-a",
-                f"{training_path / (dp_train_input_dataset.rsplit('/', 1)[0])}",
-                f"{localdata_path}",
-            ]
-        )
-    del dp_train_input_dataset, localdata_path, dp_train_input_datasets
+    if nnp_program == "deepmd":
+        for train_dataset in dataset.training_paths:
+            target_path = localdata_path / train_dataset
+            if target_path.exists():
+                shutil.rmtree(target_path)
+            shutil.copytree(
+                training_path / "data" / train_dataset,
+                target_path,
+                copy_function=os.link,
+            )
+        for valid_dataset in dataset.validation_paths:
+            target_path = localdata_path / valid_dataset
+            if target_path.exists():
+                shutil.rmtree(target_path)
+            shutil.copytree(
+                training_path / "data" / valid_dataset,
+                target_path,
+                copy_function=os.link,
+            )
+        del train_dataset, valid_dataset, localdata_path
 
-    # Change some inside output
-    dp_train_input["training"]["disp_file"] = "lcurve.out"
-    dp_train_input["training"]["save_ckpt"] = "model.ckpt"
+    elif nnp_program == "mace":
+        dataset.prepare_for_mace_train(data_path=localdata_path)
+        if nnp_input.get("foundation_model"):
+            foundation_model_path = (
+                user_files_path / f"{nnp_input['foundation_model']}"
+            ).resolve()
+            shutil.copy(
+                foundation_model_path, current_path / foundation_model_path.name
+            )
+            del foundation_model_path
+
+    if nnp_program == "deepmd":
+        # Change some inside output
+        nnp_input["training"]["disp_file"] = "lcurve.out"
+        nnp_input["training"]["save_ckpt"] = "model.ckpt"
 
     arcann_logger.debug(f"training_json: {training_json}")
     arcann_logger.debug(f"user_input_json: {user_input_json}")
@@ -654,17 +645,28 @@ def main(
         check_directory(local_path)
 
         random.seed()
-        random_0_1000 = random.randrange(0, 1000)
+        random_0_1000 = random.randrange(0, 1000)  # noqa: S311
+        if nnp_program == "deepmd":
+            replace_values_by_key_name(
+                nnp_input, "seed", int(f"{nnp}{random_0_1000}{padded_curr_iter}")
+            )
 
-        replace_values_by_key_name(
-            dp_train_input, "seed", int(f"{nnp}{random_0_1000}{padded_curr_iter}")
-        )
+            dp_train_input_file = (Path(f"{nnp}") / "training.json").resolve()
 
-        dp_train_input_file = (Path(f"{nnp}") / "training.json").resolve()
-
-        write_json_file(
-            dp_train_input, dp_train_input_file, enable_logging=False, read_only=True
-        )
+            write_json_file(
+                nnp_input,
+                dp_train_input_file,
+                enable_logging=False,
+                read_only=True,
+            )
+        elif nnp_program == "mace":
+            nnp_input["seed"] = int(f"{nnp}{random_0_1000}{padded_curr_iter}")
+            nnp_input["name"] = f"model_{nnp}_{padded_curr_iter}"
+            nnp_input["model_dir"] = "MACE_models"
+            mace_input_file = (Path(f"{nnp}") / "training.yaml").resolve()
+            write_yaml_file(
+                nnp_input, mace_input_file, enable_logging=False, read_only=True
+            )
 
         job_file = replace_in_slurm_file_general(
             master_job_file,
@@ -674,31 +676,57 @@ def main(
             training_json["job_email"],
         )
 
-        # Replace the inputs/variables in the job file
-        job_file = replace_substring_in_string_list(
-            job_file, "_R_DEEPMD_VERSION_", f"{training_json['deepmd_model_version']}"
-        )
-        job_file = replace_substring_in_string_list(
-            job_file, "_R_DEEPMD_INPUT_FILE_", "training.json"
-        )
-        job_file = replace_substring_in_string_list(
-            job_file, "_R_DEEPMD_LOG_FILE_", "training.log"
-        )
-        job_file = replace_substring_in_string_list(
-            job_file, "_R_DEEPMD_OUTPUT_FILE_", "training.out"
-        )
+        if nnp_program == "deepmd":
+            # Replace the inputs/variables in the job file
+            job_file = replace_substring_in_string_list(
+                job_file,
+                "_R_DEEPMD_VERSION_",
+                f"{training_json['deepmd_model_version']}",
+            )
+            job_file = replace_substring_in_string_list(
+                job_file, "_R_DEEPMD_INPUT_FILE_", "training.json"
+            )
+            job_file = replace_substring_in_string_list(
+                job_file, "_R_DEEPMD_LOG_FILE_", "training.log"
+            )
+            job_file = replace_substring_in_string_list(
+                job_file, "_R_DEEPMD_OUTPUT_FILE_", "training.out"
+            )
+
+        elif nnp_program == "mace":
+            # Replace the inputs/variables in the job file
+            job_file = replace_substring_in_string_list(
+                job_file, "_R_MACE_VERSION_", f"{training_json['mace_model_version']}"
+            )  # maybe not a version but a repo
+            job_file = replace_substring_in_string_list(
+                job_file, "_R_MACE_INPUT_FILE_", "training.yaml"
+            )
+            job_file = replace_substring_in_string_list(
+                job_file, "_R_MACE_LOG_FILE_", "training.log"
+            )
+            job_file = replace_substring_in_string_list(
+                job_file, "_R_MACE_OUTPUT_FILE_", "training.out"
+            )
+            if nnp_input.get("foundation_model"):
+                job_file = replace_substring_in_string_list(
+                    job_file,
+                    "_R_MACE_FONDATION_FILE_",
+                    f"../{nnp_input['foundation_model']}",
+                )
 
         string_list_to_textfile(
-            local_path / f"job_deepmd_train_{machine_spec['arch_type']}_{machine}.sh",
+            local_path
+            / f"job_{nnp_program}_train_{machine_spec['arch_type']}_{machine}.sh",
             job_file,
             read_only=True,
         )
-        del job_file, local_path, dp_train_input_file, random_0_1000
+        del job_file, local_path, random_0_1000
 
-    del nnp, walltime_approx_s, dp_train_input, mean_s_per_step
+    del nnp, walltime_approx_s, mean_s_per_step
 
     # Dump the JSON files (main, training and current input)
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
+    arcann_logger.debug(f"main_json: {main_json}")
     write_json_file(main_json, (control_path / "config.json"), read_only=True)
     write_json_file(
         training_json,
@@ -710,13 +738,13 @@ def main(
     )
 
     # End
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     arcann_logger.info(
         f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
     )
 
     # Cleaning
-    del current_path, control_path, training_path, data_path
+    del current_path, control_path, training_path
     del (
         default_input_json,
         default_input_json_present,
@@ -744,7 +772,7 @@ def main(
     )
     del master_job_file
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 

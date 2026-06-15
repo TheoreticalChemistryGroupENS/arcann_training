@@ -10,27 +10,29 @@ Last modified: 2024/08/28
 """
 
 # Standard library modules
+import importlib
 import logging
 import sys
 from pathlib import Path
-import importlib
 
 # Non-standard library imports
 import numpy as np
 
+from arcann_training.common.check import validate_step_folder
+
 # Local imports
-from arcann_training.common.json import load_json_file, write_json_file
-from arcann_training.common.list import textfile_to_string_list, string_list_to_textfile
+from arcann_training.common.dataset import Dataset
 from arcann_training.common.filesystem import check_file_existence
+from arcann_training.common.json import load_json_file, write_json_file
+from arcann_training.common.list import textfile_to_string_list
 from arcann_training.common.parsing_labeling import (
+    extract_and_convert_box_volume,
+    extract_and_convert_coordinates,
     extract_and_convert_energy,
     extract_and_convert_forces,
     extract_and_convert_virial,
     extract_and_convert_wannier,
-    extract_and_convert_box_volume,
-    extract_and_convert_coordinates,
 )
-from arcann_training.common.check import validate_step_folder
 
 # Import constants
 try:
@@ -39,22 +41,15 @@ try:
 
     Ha_to_eV = constants.physical_constants["atomic unit of electric potential"][0]
     Bohr_to_A = constants.physical_constants["Bohr radius"][0] / constants.angstrom
-    au_to_eV_per_A = np.float64(Ha_to_eV / Bohr_to_A)
-    eV_per_A3_to_GPa = np.float64(constants.eV / constants.angstrom**3 / constants.giga)
-except ImportError:
+    au_to_eV_per_A = np.float64(Ha_to_eV / Bohr_to_A)  # noqa: N816
+    eV_per_A3_to_GPa = np.float64(constants.eV / constants.angstrom**3 / constants.giga)  # noqa: N816
+except (ImportError, Exception):
     import numpy as np
 
     Ha_to_eV = np.float64(27.211386245988)
     Bohr_to_A = np.float64(0.529177210903)
-    au_to_eV_per_A = np.float64(Ha_to_eV / Bohr_to_A)
-    eV_per_A3_to_GPa = np.float64(160.21766208)
-except Exception:
-    import numpy as np
-
-    Ha_to_eV = np.float64(27.211386245988)
-    Bohr_to_A = np.float64(0.529177210903)
-    au_to_eV_per_A = np.float64(Ha_to_eV / Bohr_to_A)
-    eV_per_A3_to_GPa = np.float64(160.21766208)
+    au_to_eV_per_A = np.float64(Ha_to_eV / Bohr_to_A)  # noqa: N816
+    eV_per_A3_to_GPa = np.float64(160.21766208)  # noqa: N816
 
 
 def main(
@@ -68,7 +63,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -78,7 +73,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -97,12 +92,13 @@ def main(
 
     # Check if we can continue
     if not labeling_json["is_checked"]:
-        arcann_logger.error(f"Lock found. Execute first: labeling launch.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Lock found. Execute first: labeling launch.")
+        arcann_logger.error("Aborting...")
         return 1
 
     # Create if it doesn't exists the data path.
-    (training_path / "data").mkdir(exist_ok=True)
+    # (training_path / "data").mkdir(exist_ok=True)
+    dataset = Dataset(training_dir=training_path, config_file=main_json)
 
     for system_auto_index, system_auto in enumerate(labeling_json["systems_auto"]):
         arcann_logger.info(
@@ -122,9 +118,9 @@ def main(
 
         system_path = current_path / system_auto
 
-        data_path = training_path / "data" / (system_auto + "_" + padded_curr_iter)
-        data_path.mkdir(exist_ok=True)
-        (data_path / "set.000").mkdir(exist_ok=True)
+        # data_path = training_path / "data" / (system_auto + "_" + padded_curr_iter)
+        # data_path.mkdir(exist_ok=True)
+        # (data_path / "set.000").mkdir(exist_ok=True)
 
         energy_array_raw = np.zeros(
             (system_candidates_count - system_candidates_skipped_count),
@@ -157,8 +153,8 @@ def main(
             dtype=np.float64,
         )
         # Options
-        is_virial = False
-        is_wannier = False
+        is_virial, virial_array_raw = False, None
+        is_wannier, wannier_array_raw = False, None
 
         # Wannier
         wannier_not_converged = ["#Indexes start at 0\n"]
@@ -220,26 +216,14 @@ def main(
                     lammps_data = [g.split(" ")[1:2] for g in lammps_data]
                     type_atom_array = np.asarray(lammps_data, dtype=np.int64).flatten()
                     type_atom_array = type_atom_array - 1
-                    np.savetxt(
-                        f"{system_path}/type.raw",
-                        type_atom_array,
-                        delimiter=" ",
-                        newline=" ",
-                        fmt="%d",
-                    )
-                    np.savetxt(
-                        f"{data_path}/type.raw",
-                        type_atom_array,
-                        delimiter=" ",
-                        newline=" ",
-                        fmt="%d",
-                    )
 
                     # Get the CP2K/Orca version
                     if labeling_program == "cp2k":
+                        step_nb = 2 if labeling_json["two_steps_labeling"] else 1
+                        arcann_logger.debug(f"step_nb: {step_nb}")
                         output_cp2k = textfile_to_string_list(
                             labeling_step_path
-                            / f"2_labeling_{padded_labeling_step}.out"
+                            / f"{step_nb}_labeling_{padded_labeling_step}.out"
                         )
                         output_cp2k = [
                             _ for _ in output_cp2k if "CP2K| version string:" in _
@@ -269,11 +253,11 @@ def main(
                 del coordinate_xyz
 
                 if labeling_program == "cp2k":
-
+                    step_nb = 2 if labeling_json["two_steps_labeling"] else 1
                     # Energy
                     energy_cp2k = textfile_to_string_list(
                         labeling_step_path
-                        / f"2_labeling_{padded_labeling_step}-Force_Eval.fe"
+                        / f"{step_nb}_labeling_{padded_labeling_step}-Force_Eval.fe"
                     )
                     energy_array_raw = extract_and_convert_energy(
                         energy_cp2k,
@@ -306,7 +290,7 @@ def main(
                     # Forces
                     force_cp2k = textfile_to_string_list(
                         labeling_step_path
-                        / f"2_labeling_{padded_labeling_step}-Forces.for"
+                        / f"{step_nb}_labeling_{padded_labeling_step}-Forces.for"
                     )
                     force_array_raw = extract_and_convert_forces(
                         force_cp2k,
@@ -321,11 +305,11 @@ def main(
                     # Virial
                     if (
                         labeling_step_path
-                        / f"2_labeling_{padded_labeling_step}-Stress_Tensor.st"
+                        / f"{step_nb}_labeling_{padded_labeling_step}-Stress_Tensor.st"
                     ).is_file():
                         stress_cp2k = textfile_to_string_list(
                             labeling_step_path
-                            / f"2_labeling_{padded_labeling_step}-Stress_Tensor.st"
+                            / f"{step_nb}_labeling_{padded_labeling_step}-Stress_Tensor.st"
                         )
                         virial_array_raw, is_virial = extract_and_convert_virial(
                             stress_cp2k,
@@ -341,15 +325,15 @@ def main(
                     # Wannier
                     if (
                         labeling_step_path
-                        / f"2_labeling_{padded_labeling_step}-Wannier.xyz"
+                        / f"{step_nb}_labeling_{padded_labeling_step}-Wannier.xyz"
                     ).is_file():
                         output_cp2k = textfile_to_string_list(
                             labeling_step_path
-                            / f"2_labeling_{padded_labeling_step}.out"
+                            / f"{step_nb}_labeling_{padded_labeling_step}.out"
                         )
                         wannier_xyz = textfile_to_string_list(
                             labeling_step_path
-                            / f"2_labeling_{padded_labeling_step}-Wannier.xyz"
+                            / f"{step_nb}_labeling_{padded_labeling_step}-Wannier.xyz"
                         )
                         if system_candidates_not_skipped_counter == 1:
                             wannier_array_raw = np.zeros(
@@ -445,40 +429,56 @@ def main(
             system_candidates_not_skipped_counter,
         )
 
+        # Save the data in the system path as raw files
+        np.savetxt(
+            system_path / "type.raw",
+            type_atom_array,
+            delimiter=" ",
+            newline=" ",
+            fmt="%d",
+        )
         np.savetxt(system_path / "energy.raw", energy_array_raw, delimiter=" ")
-        np.save(data_path / "set.000" / "energy", energy_array_raw)
-        del energy_array_raw
-
         np.savetxt(system_path / "coord.raw", coord_array_raw, delimiter=" ")
-        np.save(data_path / "set.000" / "coord", coord_array_raw)
-        del coord_array_raw
-
         np.savetxt(system_path / "box.raw", box_array_raw, delimiter=" ")
-        np.save(data_path / "set.000" / "box", box_array_raw)
-        del box_array_raw, volume_array_raw
-
         np.savetxt(system_path / "force.raw", force_array_raw, delimiter=" ")
-        np.save(data_path / "set.000" / "force", force_array_raw)
-        del force_array_raw
-
         if is_virial:
             np.savetxt(system_path / "virial.raw", virial_array_raw, delimiter=" ")
-            np.save(data_path / "set.000" / "virial", virial_array_raw)
-        del virial_array_raw, is_virial
-
         if is_wannier:
             np.savetxt(system_path / "wannier.raw", wannier_array_raw, delimiter=" ")
-            np.save(data_path / "set.000" / "wannier", wannier_array_raw)
-            if len(wannier_not_converged) > 1:
-                string_list_to_textfile(
-                    data_path / "set.000" / "wannier_not-converged.txt",
-                    wannier_not_converged,
-                )
-            del wannier_not_converged, wannier_array_raw, is_wannier
+
+        # Add the data in the dataset, will do the split into training/validation in the data dir
+        dataset.add_system_dataset(
+            step="system_auto",
+            system_name=system_auto,
+            iteration=padded_curr_iter,
+            type=type_atom_array,
+            energy=energy_array_raw,
+            coord=coord_array_raw,
+            box=box_array_raw,
+            force=force_array_raw,
+            virial=virial_array_raw,
+            wannier=wannier_array_raw,
+            wannier_not_cvg=wannier_not_converged,
+            is_periodic=is_periodic,
+        )
+
+        del (
+            energy_array_raw,
+            coord_array_raw,
+            box_array_raw,
+            volume_array_raw,
+            force_array_raw,
+        )
+        del (
+            virial_array_raw,
+            is_virial,
+            wannier_not_converged,
+            wannier_array_raw,
+            is_wannier,
+        )
 
         if not is_periodic:
             arcann_logger.warning(f"System {system_auto} is not periodic.")
-            np.savetxt(data_path / "nopbc", np.array([True]), fmt="%s")
         del is_periodic
 
         arcann_logger.debug("Extraction done.")
@@ -496,14 +496,6 @@ def main(
             > 0
         ):
             arcann_logger.debug("Starting extraction for disturbed...")
-            data_path = (
-                training_path
-                / "data"
-                / (system_auto + "-disturbed_" + padded_curr_iter)
-            )
-            data_path.mkdir(exist_ok=True)
-            (data_path / "set.000").mkdir(exist_ok=True)
-
             energy_array_raw = np.zeros(
                 (
                     system_disturbed_candidates_count
@@ -552,8 +544,8 @@ def main(
             )
 
             # Options
-            is_virial = False
-            is_wannier = False
+            is_virial, virial_array_raw = False, None
+            is_wannier, wannier_array_raw = False, None
 
             # Wannier
             wannier_not_converged = ["#Indexes start at 0\n"]
@@ -620,20 +612,6 @@ def main(
                             lammps_data, dtype=np.int64
                         ).flatten()
                         type_atom_array = type_atom_array - 1
-                        np.savetxt(
-                            f"{system_path}/type.raw",
-                            type_atom_array,
-                            delimiter=" ",
-                            newline=" ",
-                            fmt="%d",
-                        )
-                        np.savetxt(
-                            f"{data_path}/type.raw",
-                            type_atom_array,
-                            delimiter=" ",
-                            newline=" ",
-                            fmt="%d",
-                        )
 
                         # Get the CP2K/Orca version
                         if labeling_program == "cp2k":
@@ -808,15 +786,15 @@ def main(
                         # TODO
                         system_cell = main_json["systems_auto"][system_auto]["cell"]
                         # box_array_raw, volume_array_raw = extract_and_convert_box_volume(energy_orca, box_array_raw, volume_array_raw, system_candidates_not_skipped_counter, 1.0, labeling_program, program_version)
-                        box_array_raw[system_candidates_not_skipped_counter, 0] = (
-                            system_cell[0]
-                        )
-                        box_array_raw[system_candidates_not_skipped_counter, 4] = (
-                            system_cell[1]
-                        )
-                        box_array_raw[system_candidates_not_skipped_counter, 8] = (
-                            system_cell[2]
-                        )
+                        box_array_raw[
+                            system_disturbed_candidates_not_skipped_counter, 0
+                        ] = system_cell[0]
+                        box_array_raw[
+                            system_disturbed_candidates_not_skipped_counter, 4
+                        ] = system_cell[1]
+                        box_array_raw[
+                            system_disturbed_candidates_not_skipped_counter, 8
+                        ] = system_cell[2]
                         is_periodic = False
                         del system_cell
 
@@ -848,43 +826,60 @@ def main(
                 system_disturbed_candidates_not_skipped_counter,
             )
 
+            # Save the data in the system path as raw files
+            np.savetxt(
+                system_path / "type.raw",
+                type_atom_array,
+                delimiter=" ",
+                newline=" ",
+                fmt="%d",
+            )
             np.savetxt(system_path / "energy.raw", energy_array_raw, delimiter=" ")
-            np.save(data_path / "set.000" / "energy", energy_array_raw)
-            del energy_array_raw
-
             np.savetxt(system_path / "coord.raw", coord_array_raw, delimiter=" ")
-            np.save(data_path / "set.000" / "coord", coord_array_raw)
-            del coord_array_raw
-
             np.savetxt(system_path / "box.raw", box_array_raw, delimiter=" ")
-            np.save(data_path / "set.000" / "box", box_array_raw)
-            del box_array_raw, volume_array_raw
-
             np.savetxt(system_path / "force.raw", force_array_raw, delimiter=" ")
-            np.save(data_path / "set.000" / "force", force_array_raw)
-            del force_array_raw
-
             if is_virial:
                 np.savetxt(system_path / "virial.raw", virial_array_raw, delimiter=" ")
-                np.save(data_path / "set.000" / "virial", virial_array_raw)
-            del virial_array_raw, is_virial
-
             if is_wannier:
                 np.savetxt(
                     system_path / "wannier.raw", wannier_array_raw, delimiter=" "
                 )
-                np.save(data_path / "set.000" / "wannier", wannier_array_raw)
-                if len(wannier_not_converged) > 1:
-                    string_list_to_textfile(
-                        data_path / "set.000" / "wannier_not-converged.txt",
-                        wannier_not_converged,
-                    )
-                del wannier_not_converged, wannier_array_raw, is_wannier
+
+            # Add the data in the dataset, will do the split into training/validation in the data dir
+            dataset.add_system_dataset(
+                step="system_disturbed",
+                system_name=system_auto,
+                iteration=padded_curr_iter,
+                type=type_atom_array,
+                energy=energy_array_raw,
+                coord=coord_array_raw,
+                box=box_array_raw,
+                force=force_array_raw,
+                virial=virial_array_raw,
+                wannier=wannier_array_raw,
+                wannier_not_cvg=wannier_not_converged,
+                is_periodic=is_periodic,
+            )
+
+            del (
+                energy_array_raw,
+                coord_array_raw,
+                box_array_raw,
+                volume_array_raw,
+                force_array_raw,
+            )
+            del (
+                virial_array_raw,
+                is_virial,
+                wannier_not_converged,
+                wannier_array_raw,
+                is_wannier,
+            )
+
             arcann_logger.debug("Extraction for disturbed done.")
 
             if not is_periodic:
                 arcann_logger.warning(f"System {system_auto} is not periodic.")
-                np.savetxt(data_path / "nopbc", np.array([True]), fmt="%s")
             del is_periodic
 
         arcann_logger.info(
@@ -897,20 +892,21 @@ def main(
         del output_orca
 
     del system_auto, system_auto_index
-    del system_candidates_count, system_candidates_skipped_count, system_path, data_path
+    del system_candidates_count, system_candidates_skipped_count, system_path
     del indexes, idx, type_atom_array, lammps_data
     del program_version
     del system_disturbed_candidates_count, system_disturbed_candidates_skipped_count
 
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     # Update the booleans in the exploration JSON
     labeling_json["is_extracted"] = True
 
     # Dump the JSON files (exploration JSONN)
     write_json_file(labeling_json, (control_path / f"labeling_{padded_curr_iter}.json"))
+    dataset.save_control_file()
 
     # End
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     arcann_logger.info(
         f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
     )
@@ -918,10 +914,10 @@ def main(
     # Cleaning
     del current_path, control_path, training_path
     del user_input_json_filename
-    del main_json, labeling_json
+    del main_json, labeling_json, dataset
     del curr_iter, padded_curr_iter
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 

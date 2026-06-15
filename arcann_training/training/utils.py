@@ -35,13 +35,14 @@ validate_deepmd_config(training_config) -> None
 # TODO: Homogenize the docstrings for this module
 
 # Standard library modules
-from pathlib import Path
-from copy import deepcopy
-from typing import Dict, Tuple
 import json
+from copy import deepcopy
+from pathlib import Path
+from typing import Dict, Tuple
 
 # Third-party modules
 import numpy as np
+from packaging import version
 
 # Local imports
 from arcann_training.common.utils import catch_errors_decorator
@@ -134,12 +135,12 @@ def calculate_decay_steps(num_structures: int, min_decay_steps: int = 5000) -> i
     """
     # Check if num_structures is a positive integer
     if not isinstance(num_structures, int) or num_structures <= 0:
-        error_msg = f"The argument 'num_structures' must be a positive integer."
+        error_msg = "The argument 'num_structures' must be a positive integer."
         raise ValueError(error_msg)
 
     # Check if min_decay_steps is a positive integer
     if not isinstance(min_decay_steps, int) or min_decay_steps <= 0:
-        error_msg = f"The argument 'min_decay_steps' must be a positive integer."
+        error_msg = "The argument 'min_decay_steps' must be a positive integer."
         raise ValueError(error_msg)
 
     # Round down to the nearest multiple of 10000
@@ -188,11 +189,11 @@ def calculate_decay_rate(
     """
     # Check that the start learning rate is a positive number.
     if start_lr <= 0 or not isinstance(start_lr, (int, float)):
-        error_msg = f"The argument 'start_lr' must be a positive number."
+        error_msg = "The argument 'start_lr' must be a positive number."
         raise ValueError(error_msg)
 
     if decay_steps <= 0 or not isinstance(decay_steps, int):
-        error_msg = f"The argument 'decay_steps' must be a positive integer."
+        error_msg = "The argument 'decay_steps' must be a positive integer."
         raise ValueError(error_msg)
 
     # Calculate the decay rate using the given training parameters
@@ -237,10 +238,10 @@ def calculate_learning_rate(
         isinstance(arg, (int, float))
         for arg in (current_step, start_lr, decay_rate, decay_steps)
     ):
-        error_msg = f"All arguments must be positive."
+        error_msg = "All arguments must be positive."
         raise ValueError(error_msg)
     if not isinstance(decay_steps, int):
-        error_msg = f"The argument 'decay_steps' must be a positive integer."
+        error_msg = "The argument 'decay_steps' must be a positive integer."
         raise ValueError(error_msg)
 
     # Calculate the learning rate based on the current training step
@@ -332,9 +333,38 @@ def validate_deepmd_config(training_config) -> None:
         If the configuration is not valid with respect to machine/arch_name/arch and DeePMD.
     """
     # Check DeePMD version
-    if (
-        float(training_config["deepmd_model_version"]) < 2.0
-        or float(training_config["deepmd_model_version"]) > 3.0
-    ):
+    current = version.parse(training_config["deepmd_model_version"])
+    min_v = version.parse("2.0")
+    max_v = version.parse("3.0")
+    if current < min_v or current > max_v:
         error_msg = f"Only 2.x and 3.0 versions of deepmd are suppported: '{training_config['deepmd_model_version']}'."
+        raise ValueError(error_msg)
+
+
+@catch_errors_decorator
+def validate_mace_config(training_config) -> None:
+    """
+    Validate the provided training configuration for a MACE model.
+
+    Parameters
+    ----------
+    training_config : dict
+        A dictionary containing the training configuration.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    ValueError
+        If mace_model_version is not 0.3x
+        If the configuration is not valid with respect to machine/arch_name/arch and MACE.
+    """
+    # Check MACE version
+    current = version.parse(training_config["mace_model_version"])
+    min_v = version.parse("0.3.0")
+    max_v = version.parse("0.4.0")
+    if current < min_v or current >= max_v:
+        error_msg = f"Only versions 0.3x of MACE are suppported: '{training_config['mace_model_version']}'."
         raise ValueError(error_msg)

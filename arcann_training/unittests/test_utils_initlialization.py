@@ -25,8 +25,8 @@ from pathlib import Path
 
 # Local imports
 from arcann_training.initialization.utils import (
-    generate_main_json,
     check_properties_file,
+    generate_main_json,
 )
 
 
@@ -50,6 +50,7 @@ class TestGenerateMainJson(unittest.TestCase):
         self.default_json = {
             "systems_auto": [""],
             "nnp_count": 3,
+            "nnp_program": "deepmd",
         }
 
     def test_generate_main_json_with_valid_input(self):
@@ -59,16 +60,19 @@ class TestGenerateMainJson(unittest.TestCase):
         input_json = {
             "systems_auto": ["subsys1", "subsys2"],
             "nnp_count": 5,
+            "nnp_program": "mace",
         }
 
         expected_config_json = {
             "systems_auto": {"subsys1": {"index": 0}, "subsys2": {"index": 1}},
             "nnp_count": 5,
+            "nnp_program": "mace",
             "current_iteration": 0,
         }
         expected_merged_input_json = {
             "systems_auto": ["subsys1", "subsys2"],
             "nnp_count": 5,
+            "nnp_program": "mace",
         }
         expected_padded_curr_iter = "000"
 
@@ -91,11 +95,13 @@ class TestGenerateMainJson(unittest.TestCase):
         expected_config_json = {
             "systems_auto": {"subsys1": {"index": 0}, "subsys2": {"index": 1}},
             "nnp_count": 3,
+            "nnp_program": "deepmd",
             "current_iteration": 0,
         }
         expected_merged_input_json = {
             "systems_auto": ["subsys1", "subsys2"],
             "nnp_count": 3,
+            "nnp_program": "deepmd",
         }
         expected_padded_curr_iter = "000"
 
@@ -114,6 +120,7 @@ class TestGenerateMainJson(unittest.TestCase):
         input_json = {
             "systems_auto": ["subsys1", 2],
             "nnp_count": "not a number",
+            "nnp_program": "not a string",
         }
 
         with self.assertRaises(TypeError):
@@ -126,6 +133,7 @@ class TestGenerateMainJson(unittest.TestCase):
         input_json = {
             "systems_auto": ["subsys1", 2],
             "nnp_count": 2,
+            "nnp_program": "deepmd",
         }
 
         with self.assertRaises(TypeError):
@@ -162,7 +170,7 @@ class TestCheckPropertiesFile(unittest.TestCase):
 
     def create_temp_file(self, content):
         temp_file = Path(self.test_dir.name) / "temp_properties_file.txt"
-        with open(temp_file, "w") as file:
+        with temp_file.open("w") as file:
             file.write(content)
         return temp_file
 

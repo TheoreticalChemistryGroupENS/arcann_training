@@ -11,12 +11,13 @@ Last modified: 2024/05/15
 
 # Standard library modules
 import logging
+import subprocess
 import sys
 from pathlib import Path
-import subprocess
 
 # Local imports
 from arcann_training.common.check import validate_step_folder
+from arcann_training.common.filesystem import check_directory
 from arcann_training.common.json import (
     backup_and_overwrite_json_file,
     get_key_in_dict,
@@ -34,7 +35,6 @@ from arcann_training.common.machine import (
     get_machine_spec_for_step,
 )
 from arcann_training.common.slurm import replace_in_slurm_file_general
-from arcann_training.common.filesystem import check_directory
 
 
 def main(
@@ -48,7 +48,7 @@ def main(
     arcann_logger = logging.getLogger("ArcaNN")
 
     # Get the current path and set the training path as the parent of the current path
-    current_path = Path(".").resolve()
+    current_path = Path().resolve()
     training_path = current_path.parent
 
     # Log the step and phase of the program
@@ -58,7 +58,7 @@ def main(
     arcann_logger.debug(f"Current path :{current_path}")
     arcann_logger.debug(f"Training path: {training_path}")
     arcann_logger.debug(f"Program path: {deepmd_iterative_path}")
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
 
     # Check if the current folder is correct for the current step
     validate_step_folder(current_step)
@@ -106,6 +106,14 @@ def main(
     control_path = training_path / "control"
     main_json = load_json_file((control_path / "config.json"))
     training_json = load_json_file((control_path / f"training_{padded_curr_iter}.json"))
+
+    nnp_program: str = main_json["nnp_program"]
+
+    arcann_logger.info(f"Using {nnp_program} as NNP software")
+    arcann_logger.info("-" * 88)
+
+    if nnp_program == "mace":
+        raise NotImplementedError("arcann test does not support MACE evaluation yet!")
 
     # Load the previous testing JSON
     if curr_iter > 0:
@@ -188,8 +196,8 @@ def main(
 
     # Check if we can continue
     if not training_json["is_incremented"]:
-        arcann_logger.error(f"Lock found. Please execute 'training increment' first.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Lock found. Please execute 'training increment' first.")
+        arcann_logger.error("Aborting...")
         return 1
 
     # Check if the job file is present
@@ -205,7 +213,7 @@ def main(
         arcann_logger.error(
             f"No JOB file provided for '{current_step.capitalize()} / {current_phase.capitalize()}' for this machine."
         )
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Aborting...")
         return 1
     del job_file_name
 
@@ -250,14 +258,14 @@ def main(
 
     # Check if the NNP files are present
     if not all([(training_path / "NNP" / nnp).is_file() for nnp in nnp_list]):
-        arcann_logger.error(f"NNP file(s) not found.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("NNP file(s) not found.")
+        arcann_logger.error("Aborting...")
         return 1
 
     # Check if the data folder is present
     if not (training_path / "data").is_dir():
-        arcann_logger.error(f"Data folder not found.")
-        arcann_logger.error(f"Aborting...")
+        arcann_logger.error("Data folder not found.")
+        arcann_logger.error("Aborting...")
         return 1
 
     # Prepare the testing, create the folders and the job files, and update the testing JSON
@@ -307,7 +315,7 @@ def main(
         "is_checked": False,
     }
 
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     # Dump the testing JSON and the current input JSON
     write_json_file(
         testing_json,
@@ -319,7 +327,7 @@ def main(
     )
 
     # End
-    arcann_logger.info(f"-" * 88)
+    arcann_logger.info("-" * 88)
     arcann_logger.info(
         f"Step: {current_step.capitalize()} - Phase: {current_phase.capitalize()} is a success!"
     )
@@ -345,7 +353,7 @@ def main(
     )
     del master_job_file
 
-    arcann_logger.debug(f"LOCAL")
+    arcann_logger.debug("LOCAL")
     arcann_logger.debug(f"{locals()}")
     return 0
 
