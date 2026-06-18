@@ -126,7 +126,7 @@ def main(
             if training_json["is_compressed"]:
                 for conv_mod in [
                     f
-                    for ext in ("json", "model", "-lammps.pt", "-mliap_lammps.pt")
+                    for ext in ("json", "model", "model-lammps.pt", "-mliap_lammps.pt")
                     for f in nnp_path.glob(f"model*.{ext}")
                 ]:
                     subprocess.run(  # noqa: S603
