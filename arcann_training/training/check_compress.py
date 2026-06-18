@@ -89,7 +89,7 @@ def main(
 
         style_ext = {
             LAMMPSPair.SYMMETRIX: ".model.json",
-            LAMMPSPair.MACE: "-lammps.pt",
+            LAMMPSPair.MACE: ".model-lammps.pt",
             LAMMPSPair.MLIAP: "-mliap_lammps.pt",
         }
 
