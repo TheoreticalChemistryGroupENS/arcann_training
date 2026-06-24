@@ -299,9 +299,15 @@ def main(
     nb_sim = 0
 
     job_array_params_file = {}
-    job_array_params_file["lammps"] = [
-        f"PATH/_R_{nnp_program.upper()}_VERSION_/_R_MODEL_FILES_/_R_LAMMPS_IN_FILE_/_R_DATA_FILE_/_R_RERUN_FILE_/_R_PLUMED_FILES_/"
-    ]
+    if nnp_program == "deepmd":
+        job_array_params_file["lammps"] = [
+            f"PATH/_R_{nnp_program.upper()}_VERSION_/_R_MODEL_FILES_/_R_LAMMPS_IN_FILE_/_R_DATA_FILE_/_R_RERUN_FILE_/_R_PLUMED_FILES_/"
+        ]
+    else:
+        job_array_params_file["lammps"] = [
+            f"PATH/_R_{nnp_program.upper()}_VERSION_/_R_MODEL_FILES_/_R_LAMMPS_IN_FILE_/_R_DATA_FILE_/_R_RERUN_FILE_/_R_PLUMED_FILES_/_R_MACE_RERUN_FILE_"
+        ]
+
     job_array_params_file["i-PI"] = [
         "PATH/_R_DEEPMD_VERSION_/_R_MODEL_FILES_/_R_INPUT_FILE_/_R_DATA_FILE_/_R_RERUN_FILE_/_R_PLUMED_FILES_/"
     ]
@@ -966,12 +972,10 @@ def main(
                         "print_every_x_steps"
                     ] = int(system_print_every_x_steps)
 
-                    with (
-                        local_path / f"{system_auto}_{nnp_index}_{padded_curr_iter}.in"
-                    ).open("w+") as input:
-                        input.write(
-                            lmp_input_handler.apply_variables(input_replace_dict)
-                        )
+                    lmp_input_handler.write(
+                        local_path / f"{system_auto}_{nnp_index}_{padded_curr_iter}.in",
+                        input_replace_dict,
+                    )
 
                     # ? Use reset or recreate from scratch?
                     lmp_input_handler.reset()  # reset input handler so the next iteration is properly handled
@@ -994,7 +998,6 @@ def main(
                         f"{system_auto}_{nnp_index}_{padded_curr_iter}.in" + "/"
                     )
                     job_array_params_line += f"{system_lammps_data_fn}" + "/"
-                    job_array_params_line += "" + "/"
 
                     # INDIVIDUAL JOB FILE
                     job_file = replace_in_slurm_file_general(
@@ -1033,21 +1036,108 @@ def main(
                     job_file = replace_substring_in_string_list(
                         job_file, "_R_DATA_FILE_", f"{system_lammps_data_fn}"
                     )
-                    job_file = replace_substring_in_string_list(
-                        job_file, ' "_R_RERUN_FILE_"', ""
-                    )
-                    if plumed[0] == 1:
+
+                    if nnp_program == "mace":
                         job_file = replace_substring_in_string_list(
-                            job_file, "_R_PLUMED_FILES_", '" "'.join(plumed_input)
+                            job_file,
+                            "_R_RERUN_FILE_",
+                            f"{system_auto}_{nnp_index}_{padded_curr_iter}-rerun.in",
                         )
-                        job_array_params_line += '" "'.join(plumed_input)
+                        job_array_params_line += (
+                            f"{system_auto}_{nnp_index}_{padded_curr_iter}-rerun.in/"
+                        )
                     else:
                         job_file = replace_substring_in_string_list(
-                            job_file, ' "_R_PLUMED_FILES_"', ""
+                            job_file, ' "_R_RERUN_FILE_"', ""
                         )
+                        job_array_params_line += "/"
+
+                    plumed_inputs = ""
+                    plumed_key = "_R_PLUMED_FILES_"
+
+                    if plumed[0] == 1:
+                        plumed_inputs = '" "'.join(plumed_input)
+                        job_array_params_line += plumed_inputs
+                    else:
+                        plumed_key = ' "_R_PLUMED_FILES_"'
                         job_array_params_line += ""
 
+                    job_file = replace_substring_in_string_list(
+                        job_file, plumed_key, plumed_inputs
+                    )
+
+                    if nnp_program == "mace":
+                        job_file = replace_substring_in_string_list(
+                            job_file,
+                            ' "_R_MACE_RERUN_FILE_"',
+                            f"{system_auto}_{nnp_index}_{padded_curr_iter}-rerun.in",
+                        )
+
+                        job_array_params_line += "/"
+                        job_array_params_line += (
+                            f"{system_auto}_{nnp_index}_{padded_curr_iter}-rerun.in"
+                        )
+
+                        # INDIVIDUAL JOB FILE
+                        rerun_job_file = replace_in_slurm_file_general(
+                            master_job_file[system_exploration_type],
+                            machine_spec,
+                            system_walltime_approx_s,
+                            machine_walltime_format,
+                            current_input_json["job_email"],
+                        )
+                        # Replace the inputs/variables in the job file
+                        rerun_job_file = replace_substring_in_string_list(
+                            rerun_job_file,
+                            "_R_MACE_RERUN_FILE_",
+                            f"{system_auto}_{nnp_index}_{padded_curr_iter}-rerun.in",
+                        )
+                        rerun_job_file = replace_substring_in_string_list(
+                            rerun_job_file,
+                            "_R_RERUN_FILE_",
+                            f' "{system_auto}_{nnp_index}_{padded_curr_iter}-rerun.in"',
+                        )
+                        rerun_job_file = replace_substring_in_string_list(
+                            rerun_job_file,
+                            f"_R_{nnp_program.upper()}_VERSION_",
+                            f"{exploration_json[f'{nnp_program}_model_version']}",
+                        )
+                        rerun_job_file = replace_substring_in_string_list(
+                            rerun_job_file,
+                            "_R_MODEL_FILES_",
+                            str(models_string.replace(" ", '" "')),
+                        )
+                        rerun_job_file = replace_substring_in_string_list(
+                            rerun_job_file,
+                            "_R_LAMMPS_IN_FILE_",
+                            f"{system_auto}_{nnp_index}_{padded_curr_iter}-rerun.in",
+                        )
+                        rerun_job_file = replace_substring_in_string_list(
+                            rerun_job_file,
+                            "_R_LAMMPS_LOG_FILE_",
+                            f"{system_auto}_{nnp_index}_{padded_curr_iter}-rerun.log",
+                        )
+                        rerun_job_file = replace_substring_in_string_list(
+                            rerun_job_file,
+                            "_R_LAMMPS_OUT_FILE_",
+                            f"{system_auto}_{nnp_index}_{padded_curr_iter}-rerun.out",
+                        )
+                        rerun_job_file = replace_substring_in_string_list(
+                            rerun_job_file, "_R_DATA_FILE_", f"{system_lammps_data_fn}"
+                        )
+                        rerun_job_file = replace_substring_in_string_list(
+                            rerun_job_file, plumed_key, plumed_inputs
+                        )
+
+                        string_list_to_textfile(
+                            local_path
+                            / f"job_{system_exploration_type}-{nnp_program}_explore_{arch_type}_{machine}-rerun.sh",
+                            rerun_job_file,
+                            read_only=True,
+                        )
+
                     job_array_params_line += "/"
+
                     job_array_params_file[system_exploration_type].append(
                         job_array_params_line
                     )
