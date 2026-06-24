@@ -466,6 +466,12 @@ def main(
         arcann_logger.warning(
             "Some jobs have failed/not converged/still running (first step). Check manually if needed."
         )
+        if not two_steps:
+            arcann_logger.critical(
+                "Or create files named 'skip' to skip some configurations."
+            )
+            arcann_logger.critical("Aborting")
+            return 1
     elif (
         candidates_expected_count
         != (candidates_step_count[0] + candidates_skipped_count)
@@ -521,7 +527,10 @@ def main(
     ):
         labeling_json["is_checked"] = True
     else:
-        arcann_logger.error(f"We did not reach the expected number of labeled data: expected {candidates_expected_count}, got {candidates_step_count[0] + candidates_skipped_count}.")
+        arcann_logger.error(
+            f"We did not reach the expected number of labeled data: expected {candidates_expected_count}, got {candidates_step_count[0] + candidates_skipped_count}."
+        )
+        return 1
 
     del candidates_expected_count, candidates_skipped_count, candidates_step_count
 

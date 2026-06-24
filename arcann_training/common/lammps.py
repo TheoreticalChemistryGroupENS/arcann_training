@@ -32,7 +32,9 @@ from typing import Literal
 try:
     from enum import StrEnum
 except ImportError:
-    from strenum import StrEnum  # type: ignore
+    from strenum import LowercaseStrEnum  # type: ignore
+
+    StrEnum = LowercaseStrEnum
 
 # Third-party modules
 import numpy as np
@@ -255,6 +257,7 @@ class LAMMPSInputHandler:
         "dump traj_frc all custom _R_PRINT_FREQ_ _RI_NAME__mace_forces_model1.lammpstrj id type x y z fx fy fz",
         "dump_modify traj_xyz sort id",
         "dump_modify traj_frc sort id",
+        "",
     )
 
     def __init__(self, lmp_input: str | Path, elements: list[str]):
@@ -372,13 +375,14 @@ class LAMMPSInputHandler:
             )
 
         run_index = match_run.start()
-        self._raw_text = (
-            self._raw_text[:run_index]
-            + "\n".join(self.cell_info_lammps)
-            + "\n".join(self.mace_dump_0)
-            + self._raw_text[run_index:]
-            + "\n"
-        )
+        _modified_text = self._raw_text[:run_index] + "\n".join(self.cell_info_lammps)
+
+        match self.lmp_pair:
+            case LAMMPSPair.MACE | LAMMPSPair.MLIAP | LAMMPSPair.SYMMETRIX:
+                _modified_text += "\n".join(self.mace_dump_0)
+
+        _modified_text += self._raw_text[run_index:] + "\n"
+        self._raw_text = _modified_text
 
     @property
     def lines(self, keepends=False) -> list[str]:

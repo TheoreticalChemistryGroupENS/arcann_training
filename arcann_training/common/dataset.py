@@ -174,7 +174,7 @@ class Set000Ensemble(DataEnsemble):
         self.type = np.loadtxt(self.path / "type.raw", dtype=int)
         self.box = np.load(self.path / "set.000" / "box.npy")
         self.coord = np.load(self.path / "set.000" / "coord.npy")
-        self.energy = np.load(self.path / "set.000" / "energy.npy")
+        self.energy = np.load(self.path / "set.000" / "energy.npy").flatten()
         self.force = np.load(self.path / "set.000" / "force.npy")
         self.virial = (
             np.load(self.path / "set.000" / "virial.npy")
@@ -229,7 +229,7 @@ class Set000Ensemble(DataEnsemble):
                 cell=self.box[i].reshape(3, 3),
                 pbc=self.is_periodic,
             )
-            frame.info["REF_energy"] = np.array([float(self.energy[i])])
+            frame.info["REF_energy"] = float(self.energy[i])
             frame.arrays["REF_forces"] = self.force[i].reshape(-1, 3)
             if self.virial is not None:
                 frame.info["REF_virials"] = self.virial[i].reshape(3, 3)
@@ -502,17 +502,19 @@ class Dataset:
         for datadir in self.dataset_dir.iterdir():
             if datadir.is_dir() and datadir.name not in dataset_names:
                 step, system_name, iteration = None, None, None
-                if (
-                    datadir.name.startswith("extra_")
-                    and extra_dataset
-                    and not only_init
-                ):
-                    # case of extra datasets
-                    step = "extra"
+                if datadir.name.startswith("extra_"):
+                    if extra_dataset and not only_init:
+                        # case of extra datasets
+                        step = "extra"
+                    else:
+                        continue
 
-                elif datadir.name.startswith("init_") and (init_dataset or only_init):
-                    # case of initial datasets
-                    step = "initial"
+                elif datadir.name.startswith("init_"):
+                    if init_dataset or only_init:
+                        # case of initial datasets
+                        step = "initial"
+                    else:
+                        continue
 
                 elif not only_init:
                     # case of system datasets
@@ -766,10 +768,6 @@ class Dataset:
                 dataset.to_set000()
             for dataset in self.validation_dataset.values():
                 dataset.to_set000()
-        else:
-            raise ValueError(
-                "The provided conversion is not valid. Please use to_extxyz=True or to_set000=True."
-            )
 
     def prepare_for_mace_train(self, data_path: Path):
         """Data should be converted into the extxyz format and put together in a single file"""

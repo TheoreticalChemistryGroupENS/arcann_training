@@ -328,7 +328,7 @@ def main(
                 elements = load_json_file(
                     deepmd_iterative_path / "assets" / "elements.json"
                 )
-                system_atoms = [
+                system_nbs = [
                     elm["atomic_number"]
                     for elm in elements.values()
                     if elm["symbol"] in system_atoms
@@ -336,7 +336,7 @@ def main(
                 job_file = replace_substring_in_string_list(
                     job_file,
                     "_R_ATOMIC_NUMBERS_",
-                    " ".join([str(num) for num in system_atoms]),
+                    " ".join([str(num) for num in system_nbs]),
                 )
                 job_file = replace_substring_in_string_list(
                     job_file,

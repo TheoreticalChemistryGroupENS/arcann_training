@@ -17,7 +17,6 @@ dependencies = [
     "strenum>=0.4.15 ; python_full_version == '3.10.*'",
 ]
 classifiers = [
-    "License :: OSI Approved :: GNU Affero General Public License v3",
     "Intended Audience :: Science/Research",
 ]
 
@@ -30,10 +29,12 @@ mace = [
     "mace-torch>=0.3.14",
 ]
 mace-mliap = [
+    "arcann_training[mace]",
     "cuequivariance-torch>=0.8.1",
 ]
 symmetrix = [
-    "symmetrix",
+    "arcann_training[mace]",
+    "symmetrix @ git+https://github.com/wcwitt/symmetrix.git@main#subdirectory=symmetrix",
 ]
 
 [project.scripts]
@@ -47,3 +48,6 @@ dev = [
 
 [tool.uv.sources]
 symmetrix = { git = "https://github.com/wcwitt/symmetrix.git", subdirectory = "symmetrix" }
+
+[tool.hatch.metadata]
+allow-direct-references = true

@@ -64,6 +64,7 @@ def main(
     control_path = training_path / "control"
     main_json = load_json_file((control_path / "config.json"))
     training_json = load_json_file((control_path / f"training_{padded_curr_iter}.json"))
+    arcann_logger.debug(f"training_json: {training_json}")
     nnp_program: str = main_json["nnp_program"]
 
     arcann_logger.info(f"Using {nnp_program} as NNP software")
@@ -227,6 +228,9 @@ def main(
     # Update the boolean in the training JSON
     if completed_count == main_json["nnp_count"]:
         training_json["is_checked"] = True
+    if nnp_program == "mace":  # because we don't need them for mace
+        training_json["is_freeze_launched"] = True
+        training_json["is_frozen"] = True
 
     # If not empty
     if training_times and step_sizes:
@@ -239,6 +243,11 @@ def main(
         training_json["stdeviation_s_per_step"] = np.std(training_times) / np.average(
             step_sizes
         )
+    elif nnp_program == "mace":
+        training_json["mean_s_per_step"] = 0.0
+        training_json["median_s_per_step"] = 0.0
+        training_json["stdeviation_s_per_step"] = 0.0
+
     else:
         training_json["mean_s_per_step"] = -1
         training_json["median_s_per_step"] = -1
