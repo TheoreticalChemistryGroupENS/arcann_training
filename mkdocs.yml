@@ -1,5 +1,4 @@
 site_name: ArcanNN - Training
-Home: index.md
 plugins:
     - search
     - awesome-pages
