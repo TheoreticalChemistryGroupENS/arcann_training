@@ -244,6 +244,13 @@ def main(
             step_sizes
         )
     elif nnp_program == "mace":
+        # FIXME: claude - bug — MACE never populates training_times/step_sizes above (only the
+        # "deepmd" branch around line 112-176 does), so this branch is always taken and
+        # mean_s_per_step is unconditionally hardcoded to 0.0 for every MACE training,
+        # not just when there's genuinely no timing data. Since training/prepare.py uses
+        # the previous iteration's mean_s_per_step to auto-compute job_walltime_train_h
+        # when it's left at -1, every MACE training from the 2nd iteration onward gets
+        # an auto-computed walltime of 0 hours unless the user overrides it explicitly.
         training_json["mean_s_per_step"] = 0.0
         training_json["median_s_per_step"] = 0.0
         training_json["stdeviation_s_per_step"] = 0.0
