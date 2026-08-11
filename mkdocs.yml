@@ -1,6 +1,11 @@
 site_name: ArcanNN - Training
+repo_url: https://github.com/TheoreticalChemistryGroupENS/arcann_training
+repo_name: TheoreticalChemistryGroupENS/arcann_training
 plugins:
     - search
     - awesome-pages
     - markdownextradata
-theme: readthedocs
+theme:
+    name: material
+    icon:
+        repo: fontawesome/brands/github
