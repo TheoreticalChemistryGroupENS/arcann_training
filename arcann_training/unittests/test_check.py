@@ -240,8 +240,7 @@ class TestValidateStepFolder(unittest.TestCase):
         """
         Test that 'validate_step_folder' raises a ValueError when the current directory name does not contain the step name.
         """
-        with tempfile.TemporaryDirectory() as temp_dir:
-            os.chdir(temp_dir)
+        with tempfile.TemporaryDirectory() as temp_dir, chdir(temp_dir):
             with self.assertRaises(ValueError):
                 validate_step_folder(self.step_name)
 
