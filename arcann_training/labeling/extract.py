@@ -446,6 +446,24 @@ def main(
         if is_wannier:
             np.savetxt(system_path / "wannier.raw", wannier_array_raw, delimiter=" ")
 
+        # PolarMACE mandatory fields: charge and total_spin are constant per system
+        # (set in the labeling config), external_field defaults to zero (no finite-field
+        # data generation yet)
+        charge_array_raw = np.full(
+            system_candidates_count - system_candidates_skipped_count,
+            labeling_json["systems_auto"][system_auto]["charge"],
+            dtype=np.int64,
+        )
+        total_spin_array_raw = np.full(
+            system_candidates_count - system_candidates_skipped_count,
+            labeling_json["systems_auto"][system_auto]["total_spin"],
+            dtype=np.int64,
+        )
+        external_field_array_raw = np.zeros(
+            (system_candidates_count - system_candidates_skipped_count, 3),
+            dtype=np.float64,
+        )
+
         # Add the data in the dataset, will do the split into training/validation in the data dir
         dataset.add_system_dataset(
             step="system_auto",
@@ -460,6 +478,9 @@ def main(
             wannier=wannier_array_raw,
             wannier_not_cvg=wannier_not_converged,
             is_periodic=is_periodic,
+            charge=charge_array_raw,
+            total_spin=total_spin_array_raw,
+            external_field=external_field_array_raw,
         )
 
         del (
@@ -476,6 +497,7 @@ def main(
             wannier_array_raw,
             is_wannier,
         )
+        del charge_array_raw, total_spin_array_raw, external_field_array_raw
 
         if not is_periodic:
             arcann_logger.warning(f"System {system_auto} is not periodic.")
@@ -845,6 +867,30 @@ def main(
                     system_path / "wannier.raw", wannier_array_raw, delimiter=" "
                 )
 
+            # PolarMACE mandatory fields: charge and total_spin are constant per system
+            # (set in the labeling config), external_field defaults to zero (no finite-field
+            # data generation yet)
+            charge_array_raw = np.full(
+                system_disturbed_candidates_count
+                - system_disturbed_candidates_skipped_count,
+                labeling_json["systems_auto"][system_auto]["charge"],
+                dtype=np.int64,
+            )
+            total_spin_array_raw = np.full(
+                system_disturbed_candidates_count
+                - system_disturbed_candidates_skipped_count,
+                labeling_json["systems_auto"][system_auto]["total_spin"],
+                dtype=np.int64,
+            )
+            external_field_array_raw = np.zeros(
+                (
+                    system_disturbed_candidates_count
+                    - system_disturbed_candidates_skipped_count,
+                    3,
+                ),
+                dtype=np.float64,
+            )
+
             # Add the data in the dataset, will do the split into training/validation in the data dir
             dataset.add_system_dataset(
                 step="system_disturbed",
@@ -859,6 +905,9 @@ def main(
                 wannier=wannier_array_raw,
                 wannier_not_cvg=wannier_not_converged,
                 is_periodic=is_periodic,
+                charge=charge_array_raw,
+                total_spin=total_spin_array_raw,
+                external_field=external_field_array_raw,
             )
 
             del (
@@ -875,6 +924,7 @@ def main(
                 wannier_array_raw,
                 is_wannier,
             )
+            del charge_array_raw, total_spin_array_raw, external_field_array_raw
 
             arcann_logger.debug("Extraction for disturbed done.")
 

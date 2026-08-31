@@ -291,10 +291,12 @@ def main(
             system_nb_nodes,
             system_nb_mpi_per_node,
             system_nb_threads_per_mpi,
+            system_charge,
+            system_total_spin,
         ) = get_system_labeling(current_input_json, system_auto_index)
 
         arcann_logger.debug(
-            f"{system_labeling_program, system_walltime_first_job_h, system_walltime_second_job_h, system_nb_nodes, system_nb_mpi_per_node, system_nb_threads_per_mpi}"
+            f"{system_labeling_program, system_walltime_first_job_h, system_walltime_second_job_h, system_nb_nodes, system_nb_mpi_per_node, system_nb_threads_per_mpi, system_charge, system_total_spin}"
         )
 
         if labeling_count == 0:
@@ -311,6 +313,8 @@ def main(
             labeling_json["systems_auto"][system_auto]["nb_threads_per_mpi"] = (
                 system_nb_threads_per_mpi
             )
+            labeling_json["systems_auto"][system_auto]["charge"] = system_charge
+            labeling_json["systems_auto"][system_auto]["total_spin"] = system_total_spin
             labeling_json["systems_auto"][system_auto]["candidates_count"] = (
                 candidates_count
             )
@@ -850,6 +854,8 @@ def main(
         labeling_json["systems_auto"][system_auto]["nb_threads_per_mpi"] = (
             system_nb_threads_per_mpi
         )
+        labeling_json["systems_auto"][system_auto]["charge"] = system_charge
+        labeling_json["systems_auto"][system_auto]["total_spin"] = system_total_spin
         labeling_json["systems_auto"][system_auto]["candidates_count"] = (
             candidates_count
         )
@@ -865,6 +871,8 @@ def main(
             system_nb_nodes,
             system_nb_mpi_per_node,
             system_nb_threads_per_mpi,
+            system_charge,
+            system_total_spin,
         )
         del candidates_count, disturbed_candidates_count, labeling_count
 
