@@ -213,34 +213,6 @@ class TestExtXYZEnsemblePolarMace(unittest.TestCase):
         )
 
     def test_write_load_roundtrip(self):
-        source = Set000Ensemble(
-            path=self.path,
-            step="initial",
-            training_type="training",
-            system_name=None,
-            iteration=None,
-            data_format="set.000",
-            properties=PROPERTIES,
-        )
-        source.load_from_raw_arrays(
-            type=self.frames["type"],
-            energy=self.frames["energy"],
-            coord=self.frames["coord"],
-            box=self.frames["box"],
-            force=self.frames["force"],
-            virial=None,
-            wannier=None,
-            wannier_not_cvg=[],
-            is_periodic=True,
-            charge=self.frames["charge"],
-            total_spin=self.frames["total_spin"],
-            external_field=self.frames["external_field"],
-            elec_temp=self.frames["elec_temp"],
-            ref_charges=self.frames["ref_charges"],
-        )
-
-        # Directly build/write an ExtXYZEnsemble from the same raw arrays instead of
-        # going through Set000Ensemble.write(), so the extxyz file is self-contained.
         ensemble = self._new_ensemble()
         ensemble.load_from_raw_arrays(
             type=self.frames["type"],
@@ -264,11 +236,17 @@ class TestExtXYZEnsemblePolarMace(unittest.TestCase):
         reloaded.load()
         np.testing.assert_array_equal(reloaded.charge, self.frames["charge"])
         np.testing.assert_array_equal(reloaded.total_spin, self.frames["total_spin"])
+        # extxyz round-trips floats through limited-precision text, so allow for
+        # that (rather than exact equality) instead of the tight default tolerance
         np.testing.assert_allclose(
-            reloaded.external_field, self.frames["external_field"]
+            reloaded.external_field, self.frames["external_field"], atol=1e-6
         )
-        np.testing.assert_allclose(reloaded.elec_temp, self.frames["elec_temp"])
-        np.testing.assert_allclose(reloaded.ref_charges, self.frames["ref_charges"])
+        np.testing.assert_allclose(
+            reloaded.elec_temp, self.frames["elec_temp"], atol=1e-6
+        )
+        np.testing.assert_allclose(
+            reloaded.ref_charges, self.frames["ref_charges"], atol=1e-6
+        )
 
 
 class TestCheckPolarMaceFormat(unittest.TestCase):
