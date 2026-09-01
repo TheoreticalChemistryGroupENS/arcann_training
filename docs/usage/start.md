@@ -115,5 +115,3 @@ And run or rerun  `exploration prepare`: you will see within the  `used_input.js
 
 The parameters indicated in an `input.json` file will **always override** the default or auto-calculated ones, and for some of them, the values **will persist**.
 For instance, if you provided an override for `max_candidates` in iteration `003`, it will be maintained in iteration `004` without requiring another `input.json`.
-
-We will now describe each **step** of the concurrent learning procedure in detail.

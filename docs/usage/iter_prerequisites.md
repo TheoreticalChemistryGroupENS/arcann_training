@@ -8,8 +8,10 @@ A *dataset* corresponds to an ensemble of structures (*e.g.*, atomic positions, 
 You get the idea: you need a subsystem for every kind of chemical composition, physical state (temperature, density, pressure, cell size, etc.), biased reactive pathway, and more that you wish to include in your final training *dataset*.
 
 **Attention**, **systems** are defined once and for all in the [Initialization](initialization.md) of the procedure.
-Because of this, every time you want to include a new subsystem (such as transition state structures, see [SN2](../examples/sn2.md) example), you will need to initialize the procedure again.
-This is very simple—you only need to create a new `$WORK_DIR` and include the necessary files in `user_files/` for each extra **system** you want to add.
+Because of this, every time you want to include a new subsystem that should go through the full automated exploration and labeling loop (such as transition state structures, see [SN2](../examples/sn2.md) example), you will need to initialize the procedure again.
+This is very simple — you only need to create a new `$WORK_DIR` and include the necessary files in `user_files/` for each extra **system** you want to add.
+
+If you only need to inject already-labeled data under a new system name into training, without running exploration or labeling for it, you do not need to reinitialize: see the *ad-hoc datasets* note in [Training](training.md#notes).
 
 To initiate the iterative training procedure, you should create in your `$WORK_DIR` two folders: `user_files/` and `data/`.
 
