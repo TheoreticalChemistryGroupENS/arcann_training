@@ -37,14 +37,12 @@ If at this point you want to modify the datasets used for the first training you
 
 ## Switching architectures: the `transition` phase
 
-The `initialization` step has a second, optional phase called `transition`. Its purpose is to let you **reuse data you already have when switching between the two architectures**, without having to label your configurations again.
+The `initialization` step has a second, optional phase called `transition`. Its purpose is to **convert your existing datasets between the file formats used by the two architectures**, so you can switch `nnp_program` without regenerating your data.
 
-The two programs store data differently: DeePMD-kit uses the `set.000` (`.npy`) format, while MACE uses the `extxyz` format. If you have already generated a data set in one format (for example from a previous DeePMD-kit campaign) and now want to train with the other program, run:
+The two programs store data differently: DeePMD-kit uses the `set.000` (`.npy`) format, while MACE uses the `extxyz` format. If your `data/` folder already contains data sets in one format (for example from a previous DeePMD-kit campaign) and you now want to train with the other program, run:
 
 ```bash
 python -m arcann_training initialization transition
 ```
 
 ArcaNN will detect the format currently present in your `data/` folder and convert every data set to the format required by the `nnp_program` you have selected. Your data folder must contain only one format at a time; if both are present, the phase will stop and ask you to keep only one. You would typically run this phase right after changing `nnp_program` (and `data_format`) in your initialization input.
-
-**Known limitation:** only the `set.000 → extxyz` direction (DeePMD-kit data reused for MACE) is currently reliable. Converting the other way (`extxyz → set.000`, reusing MACE-labeled data for DeePMD-kit) does not currently work as documented — the phase reports success but the data is silently left in its original format. If you need to go from MACE back to DeePMD-kit, verify the resulting `data/` folder contents manually before starting training.

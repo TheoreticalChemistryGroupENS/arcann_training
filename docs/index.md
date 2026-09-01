@@ -19,8 +19,8 @@ ArcaNN proposes an automated enhanced sampling generation of training sets for c
 It simplifies and automates the iterative training process of a neural network potential for a user-chosen system.
 ArcaNN supports two neural network potential architectures, and you choose which one to use at the start of the procedure:
 
-- [**DeePMD-kit**](https://doi.org/10.1063/5.0155600) (the original, default choice), and
-- [**MACE**](https://github.com/ACEsuit/mace), an equivariant message-passing architecture (added in this version).
+- [**DeePMD-kit**](https://doi.org/10.1063/5.0155600) (default), and
+- [**MACE**](https://github.com/ACEsuit/mace), an equivariant message-passing architecture (added in version 2.0).
 
 The choice is made once, through a single `nnp_program` setting during initialization (see [Initialization](usage/initialization.md)), and the rest of the workflow adapts automatically. The core concepts of this training procedure are architecture-agnostic and could be extended to other network architectures in the future.
 
@@ -47,7 +47,7 @@ We adopt their naming scheme for the steps in the iterative procedure. Each iter
 - **Training**
 - **Exploration**
 - **Labeling**
-- (Optional) **Testing**
+- **Testing** (Optional)
 
 Ensure you understand the meaning of each step before using the code.
 
@@ -69,4 +69,4 @@ Note: For the **exploration** step some keywords have two default values, the fi
         - A job folder for each step, where skeleton submission files are provided as templates that **ArcaNN** uses to launch the different phases in each `step` when they require a HPC machine.
         For example, in `job_exploration_lammps_slurm/`, `job_labeling_CP2K_slurm`, `job_training_deepmd_slurm` (or `job_training_mace_slurm` if you train with MACE) and the optional `step` `job_test_deepmd_slurm`, you can find basic `Slurm` submission files.
 
-You **must** adapt these files to ensure they work on your machine (see [Usage](usage/iter_prerequisites.md)), but **be careful not to modify the replaceable keywords** (every word starting with `_R_` and ending with `_`) that Arcann will replace with user-defined or auto-generated values (e.g., the wall time for labeling calculations, the cluster partition to be used, etc.).
+You **must** adapt these files to ensure they work on your machine (see [Usage](usage/iter_prerequisites.md)), but **be careful not to modify the replaceable keywords** (every word starting with `_R_` and ending with `_`). Arcann will replace them with user-defined or auto-generated values (e.g., the wall time for labeling calculations, the cluster partition to be used, etc.).

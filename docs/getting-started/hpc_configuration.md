@@ -54,7 +54,7 @@ Below is an example of the initial entries for an HPC machine using a SLURM job 
 
 Each HPC machine entry contains a JSON dictionary where each key corresponds to a configuration entry.
 
-- **hostname**: A substring contained in the output of `python -c "import socket ; print(socket.gethostname())"`. This should match your machine's name.
+- **hostname**: A substring contained in the output of the command `hostname` or `python -c "import socket ; print(socket.gethostname())"`. This should match your machine's name.
 - **walltime_format**: The unit of time (e.g., hours) used to specify wall time on the cluster.
 - **job_scheduler**: The job scheduler used by your HPC machine. **In the current version, only `"slurm"` is actually supported** — job submission, array jobs, and all job-file templates in `examples/user_files/job*` are Slurm-specific. Other values are accepted by the config parser but have no corresponding logic, so set this to `"slurm"`.
 - **launch_command**: The command for submitting jobs, i.e. `sbatch` for `Slurm`.

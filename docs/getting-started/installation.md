@@ -6,7 +6,7 @@ ArcaNN is a standard Python package: its dependencies (`ase`, `numpy`, `pyyaml`,
 
 - **Clone or Download the Repository:**
 
-Use the green `Code` button on the repository's main page to either clone or download the repository.
+Use the green `Code` button on the [repository](https://github.com/TheoreticalChemistryGroupENS/arcann_training)'s main page to either clone or download the repository.
 While it's recommended to keep a local copy of this repository on any computer that will be used for preparing, running, or analyzing the iterative training process, this is not mandatory.
 
 - **Navigate to the Repository Folder:**
@@ -54,7 +54,7 @@ This method allows any modifications to the source files to take effect immediat
 
 ## Installing MACE Support
 
-The base install above only pulls in what DeePMD-kit needs, and MACE extras are optional: whether you need them at all, and in which environment, depends on how MACE models get converted to their LAMMPS-ready format (see below). If you plan to set `nnp_program` to `"mace"` (see [Initialization](../usage/initialization.md)) and do end up needing them, install the extra dependencies that match the LAMMPS `pair_style` you will use for exploration (see [Requirements](requirements.md)) with one of:
+The base install above install the basics for what DeePMD-kit and MACE needs. There are optional MACE extras: whether you need them at all, and in which environment, depends on how MACE models get converted to their LAMMPS-ready format (see below). If you plan to set `nnp_program` to `"mace"` (see [Initialization](../usage/initialization.md)) and do end up needing them, install the extra dependencies that match the LAMMPS `pair_style` you will use for exploration (see [Requirements](requirements.md)) with one of:
 
 ```bash
 # pair_style mace
@@ -71,10 +71,8 @@ pip install ".[symmetrix]"
 
 **Where you need this installed** depends on how MACE models get converted to their LAMMPS-ready format:
 
-- If you run the `training compress` phase every iteration (recommended, and the default expectation — see [Training](../usage/training.md)), the conversion happens inside the submitted `Slurm` job, so the environment running `python -m arcann_training ...` itself does **not** need these extras.
-- If you skip `training compress`, the conversion happens **in-process**, so whichever Python environment you invoke ArcaNN from — wherever you run `exploration prepare` — must have the matching extra installed. ArcaNN will otherwise warn you and ask you to run `training compress` instead.
-
-When in doubt, installing the extra matching your `pair_style` in your main ArcaNN environment is the safe choice.
+- If you run the `training compress` phase every iteration (recommended, and the default expectation — see [Training](../usage/training.md)), the conversion happens inside the submitted `Slurm` job, so you **do not** need these extras.
+- If you skip `training compress`, the conversion happens wherever you run `exploration prepare`, for which you **do need** to have the matching extra installed. ArcaNN will otherwise warn you and ask you to run `training compress` instead.
 
 ## Installation on Machines without Internet Access
 
