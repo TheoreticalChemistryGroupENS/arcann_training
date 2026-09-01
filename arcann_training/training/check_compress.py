@@ -87,6 +87,14 @@ def main(
                 ).lmp_pair
             )
 
+        if not needed_mace_styles:
+            arcann_logger.error(
+                "No LAMMPS '.in' input template found in 'user_files/' - "
+                "cannot determine which pair_style(s) were compressed."
+            )
+            arcann_logger.error("Aborting...")
+            return 1
+
         style_ext = {
             LAMMPSPair.SYMMETRIX: ".model.json",
             LAMMPSPair.MACE: "-lammps.pt",
