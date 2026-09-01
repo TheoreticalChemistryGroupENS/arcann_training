@@ -296,6 +296,14 @@ def main(
                 ).lmp_pair
             )
 
+        if not needed_mace_styles:
+            arcann_logger.error(
+                "No LAMMPS '.in' input template found in 'user_files/' - "
+                "cannot determine which pair_style(s) to compress for."
+            )
+            arcann_logger.error("Aborting...")
+            return 1
+
         for nnp in range(1, main_json["nnp_count"] + 1):
             for style in needed_mace_styles:
                 local_path = current_path / f"{nnp}" / "MACE_models"
