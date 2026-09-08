@@ -26,14 +26,13 @@ Different steps in the workflow are supported by specific programs. For the **tr
 **Neural network potential program (pick one, used in the training step):**
 
 - **DeePMD-kit**: `>= 2.0` (supported versions currently include `2.0`, `2.1`, `2.2`, and `3.0`). Used when `nnp_program` is set to `"deepmd"` (the default). Also used in the optional **testing** step.
-- **MACE**: used when `nnp_program` is set to `"mace"`. Note that the **testing** step does not yet support MACE, and that MACE exploration currently only works with LAMMPS (not i-PI or Sander/EMLE; see [Exploration](../usage/exploration.md)). MACE itself is **not** a default dependency of ArcaNN: you may additionally install one of the `mace`, `mace-mliap`, or `symmetrix` extras — see [Installing MACE Support](./installation.md#installing-mace-support) — matching the `pair_style` below that your LAMMPS build supports.
+- **MACE**: used when `nnp_program` is set to `"mace"`. Note that the **testing** step does not yet support MACE, and that MACE exploration currently only works with LAMMPS (not Sander/EMLE; see [Exploration](../usage/exploration.md)). MACE itself is **not** a default dependency of ArcaNN: you may additionally install one of the `mace`, `mace-mliap`, or `symmetrix` extras — see [Installing MACE Support](./installation.md#installing-mace-support) — matching the `pair_style` below that your LAMMPS build supports.
 
 **Molecular dynamics and supporting programs (used in the exploration step):**
 
 - **LAMMPS**: used for classical-nuclei simulations. It must be built with support for the potential you selected:
     - For DeePMD-kit, LAMMPS must be compatible with DeePMD-kit.
     - For MACE, LAMMPS must provide a compatible MACE interface. ArcaNN recognizes the `mace`, `mliap`, and `symmetrix/mace` pair styles (Kokkos/GPU variants are also accepted); you choose which one to use in your LAMMPS input file.
-- **i-PI**: for quantum-nuclei (path-integral) simulations. **Under development**.
 - **PLUMED**: for enhanced-sampling/biased simulations. **Only DeepMD supported**.
 
 **Electronic-structure program (pick one, used in the labeling step):**

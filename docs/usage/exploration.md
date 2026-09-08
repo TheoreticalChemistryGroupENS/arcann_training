@@ -1,12 +1,12 @@
 # Exploration
 
-In the exploration phase we will generate new configurations (referred to as **candidates**) to include in the training set. For this we will perform MD simulations with either the LAMMPS (classical nuclei) or i-PI (quantum nuclei) softwares. Go to the current iteration exploration folder `XXX-exploration` created at the end of the previous training phase and execute the `prepare` phase to initialize the exploration.
+In the exploration phase we will generate new configurations (referred to as **candidates**) to include in the training set. For this we will perform MD simulations with the LAMMPS or Sander/EMLE softwares. Go to the current iteration exploration folder `XXX-exploration` created at the end of the previous training phase and execute the `prepare` phase to initialize the exploration.
 
 The exploration phase is driven by the neural network potential you trained, so it uses the architecture you chose with `nnp_program` (DeePMD-kit or MACE). The commands and phases are the same in both cases. If you train with MACE, the only thing to be aware of is that the `pair_style` line in each `SYSTEM.in` LAMMPS input file selects how the MACE model is evaluated: ArcaNN supports `pair_style mace`, `pair_style mliap`, and `pair_style symmetrix/mace` (with the corresponding Kokkos/GPU variants also accepted). Choose the one supported by your LAMMPS build (see [Iterative procedure prerequisites](./iter_prerequisites.md)); ArcaNN reads it automatically and uses the matching model files prepared during training. Note that converting the trained MACE model(s) into the files LAMMPS needs happens on-demand during `prepare`, which requires the `mace`/`symmetrix` Python package(s) to be importable in the environment you run `prepare` from — this is a separate requirement from your LAMMPS build itself supporting the pair style.
 
 Also, unlike DeePMD-kit — where a single LAMMPS run natively evaluates the whole committee of NNPs to get the deviation — MACE/`mliap`/`symmetrix` pair styles can only evaluate one model per dynamics run. To still get a committee deviation, ArcaNN runs the dynamics with one model and then automatically appends extra "rerun" passes that replay the resulting trajectory through each of the other trained models. This is handled for you, but it means MACE exploration jobs do noticeably more compute work per trajectory than the LAMMPS run time alone would suggest.
 
-**MACE currently requires `exploration_type: "lammps"`.** The `i-PI` and `sander_emle` exploration types described below are only implemented for DeePMD-kit; if `nnp_program` is `"mace"` and a system's `exploration_type` is not `"lammps"`, ArcaNN stops with an error.
+**MACE currently requires `exploration_type: "lammps"`.** The `sander_emle` exploration type described below is only implemented for DeePMD-kit; if `nnp_program` is `"mace"` and a system's `exploration_type` is not `"lammps"`, ArcaNN stops with an error.
 
 For the first exploration phase we might want to generate only a few candidate configurations to check whether our initial NNP are stable enough to give physically meaningful configurations. We might as well want to use a relatively strict error criterion for candidate selection.
 To change these parameters you can create a `input.json` file , indicating the values to be updated, and run the `prepare` phase again. If you want to keep the default values you only need to run the `prepare` phase once. As for the Initialization and Training steps, this will generate a `used_input.json` file:
@@ -43,7 +43,7 @@ To change these parameters you can create a `input.json` file , indicating the v
 ```
 
 - `"traj_count"`: number of independent MD trajectories launched per **system** and per trained NNP (so the total number of runs for a system is `traj_count × nnp_count`).
-- `"temperature_K"` and `"timestep_ps"`: temperature (K) and integration timestep (ps) of the MD run. As noted above, if you give two values they are used for classical (LAMMPS) and quantum-nuclei (i-PI) exploration respectively.
+- `"temperature_K"` and `"timestep_ps"`: temperature (K) and integration timestep (ps) of the MD run.
 - `"exp_time_ps"`: the requested simulation length, in ps, for this iteration (`-1` lets ArcaNN pick a value automatically from previous iterations). `"max_exp_time_ps"` is a hard ceiling on how long any single run is allowed to run for, regardless of `exp_time_ps`.
 - `"job_walltime_h"`: wall time requested for the MD `Slurm` job, in hours. `-1` (the default) lets ArcaNN estimate it automatically — 1 h for the very first exploration of a system, then from the measured time-per-step of the previous iteration's runs, scaled to the new `exp_time_ps`.
 - `"print_interval_mult"`: fraction of the total number of MD steps between two saved frames/deviation evaluations (e.g. `0.01` means a frame is written roughly every 1% of the trajectory). Lower values sample the trajectory more finely (more candidate opportunities, larger output files).
@@ -55,17 +55,9 @@ To change these parameters you can create a `input.json` file , indicating the v
 
 **Note:** the `vmd_path` keyword is not needed if `vmd` is immediately available in our path when executing the `extract` phase (loaded as a module for example). Similarly, we can remove `atomsk_path` if `atomsk` is already in the path.
 
-Some of the phases are slightly different if you use LAMMPS or i-PI, both phase workflows are detailed below.
-
 ## LAMMPS: classical nuclei simulations
 
 Once you are satisfied with your exploration parameters (see example below) you can execute the next exploration phases: `launch` to run MD trajectories with each subsystem  and `check` (once the `Slurm` MD jobs are done!). If the `check` phase is successful, you can move on to the `deviate` phase, where you can set important parameters for candidate selection. Once again you can modify these keywords by the creation (or modification if you already created one for a previous phase) of a `default_input.json` file and re-executing the `deviate` phase. In the `extract` phase an important choice can be made: whether to include "disturbed" candidates in the training set or not. This is done by changing the `disturbed_start_value` and `disturbed_candidate_value` variables from the defaults (0.0) and will include a set of candidates generated by applying a random perturbation to those obtained in the MD trajectories (this will multiply by 2 the number of selected candidates, make sure that the `disturbed_start_value` that you choose will still give physically meaningful configurations, otherwise you will deteriorate your NNP!). Once you execute this phase a `candidates_XXX_SUBSYS.xyz` file will be created in each subsystem directory containing the candidate configurations that will be added to the training set (you might want to check that they make sense!). You can also disturb only some atoms in the configuration in which case you will need to write their (zero-based) atomic indices in the `disturbed_candidate_indexes` variable. The `clean` phase can be executed to clean up all the temporary files. A `control/exploration_XXX.json` file will be written recording all the exploration parameters. You can now move on to the labeling phase! (Don't forget to keep your local folder updated so that you can analyze all these results)
-
-## i-PI quantum nuclei simulations (Under development)
-
-Simulations explicitly including nuclear quantum effects by path-integral molecular dynamics with i-PI are quite similar to classical nuclei simulations with LAMMPS. Although the i-PI input files are different (see [i-PI](https://ipi-code.org/)), the `prepare`, `launch` and `check` phases can be done exactly as previously (see [LAMMPS classical nuclei simulations](#lammps-classical-nuclei-simulations) above). **Available with DeePMD-kit only** (see the MACE note above).
-
-**Note:** support for the phases past `check` (`deviate`/`extract`) for i-PI exploration is still under development.
 
 ## Sander/EMLE: QM/MM exploration
 
@@ -85,10 +77,10 @@ Optional `plumed_SYSTEM.dat` / `plumed_*_SYSTEM.dat` files are supported exactly
 
 ## Handling failed or borderline runs: `skip` and `force`
 
-During `check`, a run that ArcaNN cannot validate is handled in one of two ways. This applies the same way regardless of `exploration_type` (LAMMPS, i-PI, or Sander/EMLE):
+During `check`, a run that ArcaNN cannot validate is handled in one of two ways. This applies the same way regardless of `exploration_type` (LAMMPS, or Sander/EMLE):
 
 - **`skip`**: ArcaNN itself creates an empty `skip` file in a run's folder when the trajectory output (the `.dcd`/`.nc` file) exists but is unreadable/corrupted. You can also create this file yourself (`touch RUNFOLDER/skip`) to discard a run you know is unusable; skipped runs are excluded from candidate selection and counted as `skipped_count` in `control/exploration_XXX.json`.
-- **`force`**: create this file yourself (`touch RUNFOLDER/force`) when a run looks like it failed (e.g., no "Total wall time" line found in the LAMMPS log, no "Average timings for all steps" line in the `sander_emle` log, or no "SIMULATION: Exiting cleanly" line in the i-PI log) but you have checked it and consider it usable anyway. `check` then accepts it as completed instead of reporting it as failed, and counts it under `forced_count`.
+- **`force`**: create this file yourself (`touch RUNFOLDER/force`) when a run looks like it failed (e.g., no "Total wall time" line found in the LAMMPS log, or no "Average timings for all steps" line in the `sander_emle` log) but you have checked it and consider it usable anyway. `check` then accepts it as completed instead of reporting it as failed, and counts it under `forced_count`.
 
 Re-run `check` after adding either file; it will report how many runs were skipped/forced.
 

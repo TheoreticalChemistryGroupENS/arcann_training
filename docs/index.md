@@ -61,7 +61,6 @@ You will find in our [GitHub repository](https://github.com/TheoreticalChemistry
     - The `inputs/` folder with five JSON files, one per `step`.
 These files contain all the keywords used to control each step of an iteration (namely **initialization**, **exploration**, **labeling**, **training** and optionally **test**), including their type and the default values taken by the code if a keyword isn't provided by the user.
 If the default is a list containing a single value it means that this value will be repeated and used for every **system** (see the corresponding section for each `step`).
-Note: For the **exploration** step some keywords have two default values, the first one will be used if the exploration is conducted with classical nuclei MD (*i.e.* LAMMPS) and the second one will be used with quantum nuclei MD (*i.e.* i-PI).
     - The `user_files/` folder with:
         - A `machine.json` template file where all the information about your cluster should be provided (see [HPC Configuration](getting-started/hpc_configuration.md)).
         - An input folder for each `step`, where skeleton files are provided as templates for writing your own inputs for the respective external programs.
