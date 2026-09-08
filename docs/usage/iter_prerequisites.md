@@ -18,7 +18,7 @@ To initiate the iterative training procedure, you should create in your `$WORK_D
 In `user_files/` you will store all the files needed for each step. You can find some templates to start with in the [GitHub Repository](https://github.com/TheoreticalChemistryGroupENS/arcann_training), now available in your machine at your ArcaNN installation location `arcann_training/examples/user_files/`.
 
 - For the exploration step, you must adapt the template files found in `exploration_lammps/` or `exploration_sander_emle/` depending of your choice. You will need the following files:
-    - The input files: `SYSTEM.in` for LAMMPS and `SYSTEM.xml` for i-PI.
+    - The input files: `SYSTEM.in` for LAMMPS.
     - The plumed files: `plumed_SYSTEM.dat` where `SYSNAME` refers to the **system** name (additional PLUMED files can be used as `plumed_*_SYSNAME.dat`, which will also be taken into account for explorations).
 
 - For the labeling step, use the template files found in `labeling_cp2k/` or `labeling_orca/`. You will need the following files:

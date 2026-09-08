@@ -4,7 +4,7 @@ We warmly welcome contributions to ArcaNN. If you have ideas, code contributions
 
 ## Code layout
 
-The `arcann_training/` package is organized by **step**, mirroring the iterative procedure: `initialization/`, `exploration/`, `labeling/`, `training/`, and `test/` each contain one module per *phase* (`prepare.py`, `launch.py`, `check.py`, ...), plus a `utils.py` for step-specific helpers. Code shared across steps (JSON/XML/YAML handling, machine and Slurm configuration, LAMMPS/i-PI/PLUMED file helpers, logging) lives in `common/`. Unit tests live in `arcann_training/unittests/`.
+The `arcann_training/` package is organized by **step**, mirroring the iterative procedure: `initialization/`, `exploration/`, `labeling/`, `training/`, and `test/` each contain one module per *phase* (`prepare.py`, `launch.py`, `check.py`, ...), plus a `utils.py` for step-specific helpers. Code shared across steps (JSON/XML/YAML handling, machine and Slurm configuration, LAMMPS/PLUMED file helpers, logging) lives in `common/`. Unit tests live in `arcann_training/unittests/`.
 
 ## Development setup
 
