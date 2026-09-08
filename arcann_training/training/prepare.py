@@ -312,6 +312,14 @@ def main(
         nnp_input["forces_key"] = "REF_forces"
         nnp_input["virials_key"] = "REF_virials"
 
+        # PolarMACE models require extra per-configuration/per-atom reference keys
+        is_polar_mace = nnp_input.get("model") == "PolarMACE"
+        if is_polar_mace:
+            nnp_input["total_charge_key"] = "charge"
+            nnp_input["total_spin_key"] = "total_spin"
+            nnp_input["elec_temp_key"] = "elec_temp"
+            nnp_input["charges_key"] = "REF_charges"
+
         if "E0s" not in nnp_input or not isinstance(nnp_input["E0s"], dict):
             arcann_logger.critical(
                 "It is HIGHLY recommanded when training MACE model, to do it by providing the energies of the isolated atoms."
@@ -567,7 +575,9 @@ def main(
         del train_dataset, valid_dataset, localdata_path
 
     elif nnp_program == "mace":
-        dataset.prepare_for_mace_train(data_path=localdata_path)
+        dataset.prepare_for_mace_train(
+            data_path=localdata_path, polar_mace=is_polar_mace
+        )
         if nnp_input.get("foundation_model"):
             foundation_model_path = (
                 user_files_path / f"{nnp_input['foundation_model']}"
