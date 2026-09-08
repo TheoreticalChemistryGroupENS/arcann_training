@@ -3,6 +3,6 @@
     "user_machine_keyword_test": { "value": null, "_comment": "null (use machine.json default), str (shortcut used in machine.json (ex: v100), list of str (project,allocation,arch, ex [myproject,myalloc,v100]) ", "_default": null},
     "job_email": { "value": null, "_comment": "str", "_default": ""},
     "job_walltime_h" : { "value": null, "_comment": "float or list of float", "_default": 2.0},
-    "is_compressed" : { "value": null, "_comment": "bool", "_default": true},
-    "deepmd_model_version": { "value": null, "_comment": "float, values: 2.0 or 2.1 or 2.2, -1 will take the highest dptrain_VERSION.json in the user_files folder", "_default": -1}
+    "is_compressed" : { "value": null, "_comment": "bool. This placeholder is only used if you create an input.json; with no input.json at all, ArcaNN instead copies the value from that iteration's control/training_XXX.json", "_default": false},
+    "deepmd_model_version": { "value": null, "_comment": "str, values: 2.0, 2.1, 2.2 or 3.0. Same caveat as is_compressed: only used if you create an input.json, otherwise copied from control/training_XXX.json", "_default": 0.0}
 }

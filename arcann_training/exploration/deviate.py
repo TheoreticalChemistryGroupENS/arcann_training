@@ -127,6 +127,11 @@ def main(
         arcann_logger.error("Aborting...")
         return 1
     if "is_rechecked" in exploration_json and not exploration_json["is_rechecked"]:
+        # FIXME: claude - bug — there is no "recheck" (nor "select_beads"/"rerun") phase
+        # implemented anywhere in arcann_training/exploration/, so is_rechecked can
+        # never be set True for i-PI systems and this branch always aborts. i-PI
+        # exploration currently has no working path past "check". See the matching
+        # FIXME: claude - in exploration/prepare.py where these flags are initialized.
         arcann_logger.critical("Lock found. Execute first: exploration recheck.")
         arcann_logger.critical("Aborting...")
         return 1

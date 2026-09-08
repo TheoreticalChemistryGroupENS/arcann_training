@@ -214,6 +214,10 @@ def main(
         extra_dataset=True,
         init_dataset=True,
     )
+    # FIXME: claude - bug — "set000" here never matches main_json["data_format"], which is
+    # always "set.000" (with a dot, see assets/default_config.json). to_set000 is
+    # therefore always False, so extxyz -> set.000 transitions silently do nothing
+    # (dataset.convert_dataset() no-ops) instead of converting. Should be "set.000".
     dataset.convert_dataset(
         to_extxyz=(main_json["data_format"] == "extxyz"),
         to_set000=(main_json["data_format"] == "set000"),
