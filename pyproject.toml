@@ -37,8 +37,8 @@ symmetrix = [
     "symmetrix @ git+https://github.com/wcwitt/symmetrix.git@main#subdirectory=symmetrix",
 ]
 
-# [project.scripts]
-# arcann = "arcann_training:main"
+[project.scripts]
+arcann = "arcann_training.__main__:main"
 
 [dependency-groups]
 dev = [
