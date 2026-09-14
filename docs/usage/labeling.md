@@ -20,10 +20,14 @@ For this we need to go to the `XXX-labeling` folder and as usual run the `prepar
     "nb_nodes": [1, 1, 1],
     "nb_mpi_per_node": [32, 32, 64],
     "nb_threads_per_mpi": [2, 2, 2],
+    "systems_charge": [0, 0, -1],
+    "systems_total_spin": [1, 1, 1],
 }
 ```
 
 The `"use_machine_keyword_label"` keyword corresponds to the partition in the HPC machine, The `"nb_mpi_per_node"` and `"nb_nodes"` keywords set the number of CPU nodes used for the labeling. The wall times should be set for the first iteration but can be guessed automatically later using the average time per CP2K calculation measured in the previous iteration. 
+
+`"systems_charge"` and `"systems_total_spin"` set the total charge and total spin of each system (one value per system, in the same order as `"systems_auto"`); they must be consistent with the `CHARGE`/`MULTIPLICITY` you set in that system's CP2K template. They only take effect if ArcaNN detected a PolarMACE model during [Initialization](../initialization) (i.e. one of your `mace_MACEVERSION.yml` files declares `model: PolarMACE`) — in that case every extracted configuration is recorded with the mandatory PolarMACE `charge`/`total_spin`/`external_field` fields. If you are training a regular DeepMD or MACE model, you can ignore these keys entirely; nothing extra is written to your dataset.
 
 Once you have executed this phase, folders will have been created for each subsystem within which there will be as many folders as candidate configurations (maximum number of 99999 per iteration), containing all required files to run CP2K. Make sure that you have prepared (and correctly named!) Slurm submission files for your machine in the `$WORK_DIR/user_files/` folder (see [Initialization](../initialization)), from the template files. 
 

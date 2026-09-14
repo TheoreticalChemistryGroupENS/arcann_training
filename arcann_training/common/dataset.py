@@ -40,11 +40,17 @@ class DataEnsemble:
         iteration (int | None): Iteration (of arcann) number from which the data ensemble originates. None if not applicable
         data_format (Literal["extxyz", "set.000"]): Type of data ensemble
         properties (Dict[int, Dict[str, str | float]]): Properties associated with the data ensemble
+        charge (np.ndarray | None): Per-configuration total charge. Mandatory for PolarMACE
+        total_spin (np.ndarray | None): Per-configuration total spin. Mandatory for PolarMACE
+        external_field (np.ndarray | None): Per-configuration external electric field (nframes, 3). Mandatory for PolarMACE
+        elec_temp (np.ndarray | None): Per-configuration electronic temperature. Optional for PolarMACE
+        ref_charges (np.ndarray | None): Per-atom reference charges. Optional for PolarMACE
 
     Methods:
     --------
         to_dict(): Convert the data ensemble to a dictionary
         check_format(): Check the format of the data ensemble
+        check_polar_mace_format(): Check that the mandatory PolarMACE fields are present
         get_size(): Get the size of the data ensemble (ie. nb of confs)
         load_data(): Load the data of data ensemble
         get_extxyz(): Get the data under the extxyz format
@@ -90,6 +96,14 @@ class DataEnsemble:
         self.is_periodic = None
         self.wannier_not_cvg = None
 
+        # PolarMACE-specific data: charge, total_spin and external_field are mandatory
+        # for PolarMACE, elec_temp and ref_charges (per-atom) are optional
+        self.charge = None
+        self.total_spin = None
+        self.external_field = None
+        self.elec_temp = None
+        self.ref_charges = None
+
     def to_dict(self):
         """Convert the data ensemble to a dictionary for saving in the control file"""
         return {
@@ -122,8 +136,14 @@ class DataEnsemble:
         wannier: np.ndarray | None,
         wannier_not_cvg: list,
         is_periodic: bool,
+        charge: np.ndarray | None = None,
+        total_spin: np.ndarray | None = None,
+        external_field: np.ndarray | None = None,
+        elec_temp: np.ndarray | None = None,
+        ref_charges: np.ndarray | None = None,
     ):
-        """From the raw files (type.raw, energy.raw, coord.raw, box.raw, force.raw), load the ensemble attributes"""
+        """From the raw files (type.raw, energy.raw, coord.raw, box.raw, force.raw), load the ensemble attributes.
+        charge, total_spin and external_field are mandatory for PolarMACE, elec_temp and ref_charges are optional."""
         self.type = type
         self.box = box
         self.coord = coord
@@ -133,10 +153,35 @@ class DataEnsemble:
         self.wannier = wannier
         self.is_periodic = is_periodic
         self.wannier_not_cvg = wannier_not_cvg
+        self.charge = charge
+        self.total_spin = total_spin
+        self.external_field = external_field
+        self.elec_temp = elec_temp
+        self.ref_charges = ref_charges
         self.size = self.box.shape[0]
 
     def write(self):
         raise NotImplementedError
+
+    # Mandatory per-configuration info fields required by PolarMACE
+    POLAR_MACE_MANDATORY_FIELDS = ("charge", "total_spin", "external_field")
+
+    def check_polar_mace_format(self) -> None:
+        """
+        Check that the mandatory PolarMACE fields (charge, total_spin, external_field) are
+        set on this data ensemble. Must be called after load()/load_from_raw_arrays().
+        """
+        missing = [
+            name
+            for name in self.POLAR_MACE_MANDATORY_FIELDS
+            if getattr(self, name) is None
+        ]
+        if missing:
+            raise ValueError(
+                f"Data ensemble at {self.path} is missing the mandatory PolarMACE field(s) {missing}. "
+                "PolarMACE requires 'charge', 'total_spin' and 'external_field' to be set for every "
+                "configuration (optionally 'elec_temp' and per-atom 'REF_charges')."
+            )
 
 
 class Set000Ensemble(DataEnsemble):
@@ -192,6 +237,32 @@ class Set000Ensemble(DataEnsemble):
             if (self.path / "set.000" / "wannier-not-converged.txt").is_file()
             else []
         )
+        set_path = self.path / "set.000"
+        self.charge = (
+            np.load(set_path / "charge.npy")
+            if (set_path / "charge.npy").is_file()
+            else None
+        )
+        self.total_spin = (
+            np.load(set_path / "total_spin.npy")
+            if (set_path / "total_spin.npy").is_file()
+            else None
+        )
+        self.external_field = (
+            np.load(set_path / "external_field.npy")
+            if (set_path / "external_field.npy").is_file()
+            else None
+        )
+        self.elec_temp = (
+            np.load(set_path / "elec_temp.npy")
+            if (set_path / "elec_temp.npy").is_file()
+            else None
+        )
+        self.ref_charges = (
+            np.load(set_path / "REF_charges.npy")
+            if (set_path / "REF_charges.npy").is_file()
+            else None
+        )
         self.size = self.get_size()
 
     def write(self):
@@ -206,6 +277,16 @@ class Set000Ensemble(DataEnsemble):
             np.save(self.path / "set.000" / "virial.npy", self.virial)
         if self.wannier:
             np.save(self.path / "set.000" / "wannier.npy", self.wannier)
+        if self.charge is not None:
+            np.save(self.path / "set.000" / "charge.npy", self.charge)
+        if self.total_spin is not None:
+            np.save(self.path / "set.000" / "total_spin.npy", self.total_spin)
+        if self.external_field is not None:
+            np.save(self.path / "set.000" / "external_field.npy", self.external_field)
+        if self.elec_temp is not None:
+            np.save(self.path / "set.000" / "elec_temp.npy", self.elec_temp)
+        if self.ref_charges is not None:
+            np.save(self.path / "set.000" / "REF_charges.npy", self.ref_charges)
         if self.is_periodic is not None and not self.is_periodic:
             np.savetxt(self.path / "nopbc", np.array([True]), fmt="%s")
         if len(self.wannier_not_cvg) > 1:
@@ -233,6 +314,16 @@ class Set000Ensemble(DataEnsemble):
             frame.arrays["REF_forces"] = self.force[i].reshape(-1, 3)
             if self.virial is not None:
                 frame.info["REF_virials"] = self.virial[i].reshape(3, 3)
+            if self.charge is not None:
+                frame.info["charge"] = int(self.charge[i])
+            if self.total_spin is not None:
+                frame.info["total_spin"] = int(self.total_spin[i])
+            if self.external_field is not None:
+                frame.info["external_field"] = self.external_field[i].reshape(3)
+            if self.elec_temp is not None:
+                frame.info["elec_temp"] = float(self.elec_temp[i])
+            if self.ref_charges is not None:
+                frame.arrays["REF_charges"] = self.ref_charges[i].reshape(-1)
             frames.append(frame)
 
         if save:
@@ -302,6 +393,33 @@ class ExtXYZEnsemble(DataEnsemble):
             if (self.path / "wannier.npy").is_file()
             else None
         )
+        self.charge = (
+            np.array([atoms.info["charge"] for atoms in trajectory])
+            if "charge" in trajectory[0].info
+            else None
+        )
+        self.total_spin = (
+            np.array([atoms.info["total_spin"] for atoms in trajectory])
+            if "total_spin" in trajectory[0].info
+            else None
+        )
+        self.external_field = (
+            np.array([atoms.info["external_field"] for atoms in trajectory]).reshape(
+                -1, 3
+            )
+            if "external_field" in trajectory[0].info
+            else None
+        )
+        self.elec_temp = (
+            np.array([atoms.info["elec_temp"] for atoms in trajectory])
+            if "elec_temp" in trajectory[0].info
+            else None
+        )
+        self.ref_charges = (
+            np.array([atoms.arrays["REF_charges"] for atoms in trajectory])
+            if "REF_charges" in trajectory[0].arrays
+            else None
+        )
 
         self.is_periodic = trajectory[0].get_pbc()
         self.type = np.array(
@@ -338,6 +456,16 @@ class ExtXYZEnsemble(DataEnsemble):
             frame.arrays["REF_forces"] = self.force[i].reshape(-1, 3)
             if self.virial is not None:
                 frame.info["REF_virials"] = self.virial[i].reshape(3, 3)
+            if self.charge is not None:
+                frame.info["charge"] = int(self.charge[i])
+            if self.total_spin is not None:
+                frame.info["total_spin"] = int(self.total_spin[i])
+            if self.external_field is not None:
+                frame.info["external_field"] = self.external_field[i].reshape(3)
+            if self.elec_temp is not None:
+                frame.info["elec_temp"] = float(self.elec_temp[i])
+            if self.ref_charges is not None:
+                frame.arrays["REF_charges"] = self.ref_charges[i].reshape(-1)
             frames.append(frame)
 
         if self.is_periodic is not None and not self.is_periodic:
@@ -373,6 +501,16 @@ class ExtXYZEnsemble(DataEnsemble):
             np.save(self.path / "set.000" / "virial.npy", self.virial)
         if self.wannier:
             np.save(self.path / "set.000" / "wannier.npy", self.wannier)
+        if self.charge is not None:
+            np.save(self.path / "set.000" / "charge.npy", self.charge)
+        if self.total_spin is not None:
+            np.save(self.path / "set.000" / "total_spin.npy", self.total_spin)
+        if self.external_field is not None:
+            np.save(self.path / "set.000" / "external_field.npy", self.external_field)
+        if self.elec_temp is not None:
+            np.save(self.path / "set.000" / "elec_temp.npy", self.elec_temp)
+        if self.ref_charges is not None:
+            np.save(self.path / "set.000" / "REF_charges.npy", self.ref_charges)
         if self.is_periodic is not None and not self.is_periodic:
             np.savetxt(self.path / "nopbc", np.array([True]), fmt="%s")
         if len(self.wannier_not_cvg) > 1:
@@ -612,6 +750,11 @@ class Dataset:
         wannier: np.ndarray | None,
         wannier_not_cvg: list | None,
         is_periodic: bool = True,
+        charge: np.ndarray | None = None,
+        total_spin: np.ndarray | None = None,
+        external_field: np.ndarray | None = None,
+        elec_temp: np.ndarray | None = None,
+        ref_charges: np.ndarray | None = None,
     ) -> None:
         """Add a new system dataset to the dataset.
         Create two data ensembles (training and validation) from the provided raw arrays."""
@@ -648,6 +791,11 @@ class Dataset:
             "force": force,
             "virial": virial,
             "wannier": wannier,
+            "charge": charge,
+            "total_spin": total_spin,
+            "external_field": external_field,
+            "elec_temp": elec_temp,
+            "ref_charges": ref_charges,
         }
         train_arrays = {
             name: arr[train_idx] if arr is not None else None
@@ -769,11 +917,15 @@ class Dataset:
             for dataset in self.validation_dataset.values():
                 dataset.to_set000()
 
-    def prepare_for_mace_train(self, data_path: Path):
-        """Data should be converted into the extxyz format and put together in a single file"""
+    def prepare_for_mace_train(self, data_path: Path, polar_mace: bool = False):
+        """Data should be converted into the extxyz format and put together in a single file.
+        If polar_mace is True, every data ensemble is checked for the mandatory PolarMACE
+        fields (charge, total_spin, external_field) before being combined."""
         combined_frames = []
         for dataset in self.training_dataset.values():
             dataset_frames = dataset.to_extxyz(save=False)
+            if polar_mace:
+                dataset.check_polar_mace_format()
             arcann_logger.debug(
                 f"Loading dataset {dataset.path} for MACE training preparation: {len(dataset_frames)} frames"
             )
@@ -787,6 +939,8 @@ class Dataset:
         valid_frames, test_frames = [], []
         for dataset in self.validation_dataset.values():
             dataset_frames = dataset.to_extxyz(save=False)
+            if polar_mace:
+                dataset.check_polar_mace_format()
             arcann_logger.debug(
                 f"Loading dataset {dataset.path} for MACE validation/test preparation: {len(dataset_frames)} frames"
             )

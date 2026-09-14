@@ -90,6 +90,11 @@ def main(
     labeling_program = labeling_json["labeling_program"]
     arcann_logger.debug(f"labeling_program: {labeling_program}")
 
+    # Only PolarMACE needs the charge/total_spin/external_field fields: leave regular
+    # DeepMD/MACE datasets untouched (no extra files, no extra extxyz info fields)
+    polar_mace = main_json.get("polar_mace", False)
+    arcann_logger.debug(f"polar_mace: {polar_mace}")
+
     # Check if we can continue
     if not labeling_json["is_checked"]:
         arcann_logger.error("Lock found. Execute first: labeling launch.")
@@ -446,6 +451,26 @@ def main(
         if is_wannier:
             np.savetxt(system_path / "wannier.raw", wannier_array_raw, delimiter=" ")
 
+        # PolarMACE mandatory fields: charge and total_spin are constant per system
+        # (set in the labeling config), external_field defaults to zero (no finite-field
+        # data generation yet). Left out entirely for non-PolarMACE runs.
+        polar_mace_kwargs = {}
+        if polar_mace:
+            polar_mace_kwargs["charge"] = np.full(
+                system_candidates_count - system_candidates_skipped_count,
+                labeling_json["systems_auto"][system_auto]["charge"],
+                dtype=np.int64,
+            )
+            polar_mace_kwargs["total_spin"] = np.full(
+                system_candidates_count - system_candidates_skipped_count,
+                labeling_json["systems_auto"][system_auto]["total_spin"],
+                dtype=np.int64,
+            )
+            polar_mace_kwargs["external_field"] = np.zeros(
+                (system_candidates_count - system_candidates_skipped_count, 3),
+                dtype=np.float64,
+            )
+
         # Add the data in the dataset, will do the split into training/validation in the data dir
         dataset.add_system_dataset(
             step="system_auto",
@@ -460,6 +485,7 @@ def main(
             wannier=wannier_array_raw,
             wannier_not_cvg=wannier_not_converged,
             is_periodic=is_periodic,
+            **polar_mace_kwargs,
         )
 
         del (
@@ -476,6 +502,7 @@ def main(
             wannier_array_raw,
             is_wannier,
         )
+        del polar_mace_kwargs
 
         if not is_periodic:
             arcann_logger.warning(f"System {system_auto} is not periodic.")
@@ -845,6 +872,32 @@ def main(
                     system_path / "wannier.raw", wannier_array_raw, delimiter=" "
                 )
 
+            # PolarMACE mandatory fields: charge and total_spin are constant per system
+            # (set in the labeling config), external_field defaults to zero (no finite-field
+            # data generation yet). Left out entirely for non-PolarMACE runs.
+            polar_mace_kwargs = {}
+            if polar_mace:
+                polar_mace_kwargs["charge"] = np.full(
+                    system_disturbed_candidates_count
+                    - system_disturbed_candidates_skipped_count,
+                    labeling_json["systems_auto"][system_auto]["charge"],
+                    dtype=np.int64,
+                )
+                polar_mace_kwargs["total_spin"] = np.full(
+                    system_disturbed_candidates_count
+                    - system_disturbed_candidates_skipped_count,
+                    labeling_json["systems_auto"][system_auto]["total_spin"],
+                    dtype=np.int64,
+                )
+                polar_mace_kwargs["external_field"] = np.zeros(
+                    (
+                        system_disturbed_candidates_count
+                        - system_disturbed_candidates_skipped_count,
+                        3,
+                    ),
+                    dtype=np.float64,
+                )
+
             # Add the data in the dataset, will do the split into training/validation in the data dir
             dataset.add_system_dataset(
                 step="system_disturbed",
@@ -859,6 +912,7 @@ def main(
                 wannier=wannier_array_raw,
                 wannier_not_cvg=wannier_not_converged,
                 is_periodic=is_periodic,
+                **polar_mace_kwargs,
             )
 
             del (
@@ -875,6 +929,7 @@ def main(
                 wannier_array_raw,
                 is_wannier,
             )
+            del polar_mace_kwargs
 
             arcann_logger.debug("Extraction for disturbed done.")
 
@@ -896,6 +951,7 @@ def main(
     del indexes, idx, type_atom_array, lammps_data
     del program_version
     del system_disturbed_candidates_count, system_disturbed_candidates_skipped_count
+    del polar_mace
 
     arcann_logger.info("-" * 88)
     # Update the booleans in the exploration JSON
