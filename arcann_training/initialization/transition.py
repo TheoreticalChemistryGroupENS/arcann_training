@@ -214,9 +214,10 @@ def main(
         extra_dataset=True,
         init_dataset=True,
     )
+
     dataset.convert_dataset(
         to_extxyz=(main_json["data_format"] == "extxyz"),
-        to_set000=(main_json["data_format"] == "set000"),
+        to_set000=(main_json["data_format"] == "set.000"),
     )
     dataset.update_control_file()
 
