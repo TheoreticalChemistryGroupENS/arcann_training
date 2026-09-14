@@ -153,7 +153,7 @@ def main(
             dtype=np.float64,
         )
         # Options
-        is_virial, virial_array_raw = False, None
+        is_virial = False
         is_wannier, wannier_array_raw = False, None
 
         # Wannier
@@ -544,7 +544,7 @@ def main(
             )
 
             # Options
-            is_virial, virial_array_raw = False, None
+            is_virial = False
             is_wannier, wannier_array_raw = False, None
 
             # Wannier
