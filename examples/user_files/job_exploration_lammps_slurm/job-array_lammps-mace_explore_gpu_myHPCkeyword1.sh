@@ -50,6 +50,9 @@ EXTRA_FILES=()
 EXTRA_FILES+=("${array_param[4]}")
 if [ -n "${array_param[5]}" ]; then
     EXTRA_FILES+=("${array_param[5]}")
+    MACE_RERUN_FILE="${array_param[5]}"
+    MACE_RERUN_LOG=${MACE_RERUN_FILE/.in/.log}
+    MACE_RERUN_OUT=${MACE_RERUN_FILE/.in/.out}
 fi
 if [ -n "${array_param[6]}" ]; then
     IFS='" "' read -r -a PLUMED_FILES <<< "${array_param[6]}"
@@ -94,7 +97,12 @@ cd "${TEMPWORKDIR}" || { echo "Could not go to ${TEMPWORKDIR}. Aborting..."; exi
 
 echo "# [$(date)] Running LAMMPS..."
 lmp -in "${LAMMPS_IN_FILE}" -log "${LAMMPS_LOG_FILE}" -screen none > "${LAMMPS_OUT_FILE}" 2>&1
-echo "# [$(date)] LAMMPS finished."
+
+if [ $? -eq 0 ]; then
+    echo "# [$(date)] LAMMPS finished."
+else
+    lmp -in "${MACE_RERUN_FILE}" -log "${MACE_RERUN_LOG}" -screen none > "${MACE_RERUN_OUT}" 2>&1
+fi
 
 # Move back data from the temporary work directory and scratch, and clean-up
 if [ -f log.cite ]; then rm log.cite ; fi
