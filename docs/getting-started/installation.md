@@ -1,38 +1,36 @@
-# ArcaNN Installation Guide 
+# ArcaNN Installation Guide
 
-## Installation on Machines with Internet Access ##
+## Installation on Machines with Internet Access
 
-To install `ArcaNN`, follow these steps:
+ArcaNN is a standard Python package: its dependencies (`ase`, `numpy`, `pyyaml`, ...) are declared in `pyproject.toml` and installed automatically by `pip`, so no separate Conda environment file is needed. To install it, follow these steps:
 
 - **Clone or Download the Repository:**
 
-Use the green `Code` button on the repository's main page to either clone or download the repository.
+Use the green `Code` button on the [repository](https://github.com/TheoreticalChemistryGroupENS/arcann_training)'s main page to either clone or download the repository.
 While it's recommended to keep a local copy of this repository on any computer that will be used for preparing, running, or analyzing the iterative training process, this is not mandatory.
 
 - **Navigate to the Repository Folder:**
 
 After downloading or cloning, navigate to the main folder of the repository.
 
-- **Create a Python Environment:**
+- **(Recommended) Create an Isolated Python Environment:**
 
-Create a new Python environment with all the required packages listed in the `tools/arcann_conda_linux-64_env.txt` file using the following command:
-
-```bash
-conda create --name <ENVNAME> --file tools/arcann_conda_linux-64_env.txt
-```
-
-- **Activate the Environment and Install the Package:**
-Activate the environment using:
+ArcaNN requires Python `>= 3.10` (see [Requirements](requirements.md)). Any isolation tool works — Conda, `venv`, or [`uv`](https://docs.astral.sh/uv/) — for example:
 
 ```bash
+conda create --name <ENVNAME> python=3.10
 conda activate <ENVNAME>
 ```
 
-Then, install `ArcaNN` as a Python module:
+(If you're developing ArcaNN itself rather than just running it, see [Contributions](../contributions/contributions.md) for the `uv`-based setup used in CI instead.)
+
+- **Install the Package:**
 
 ```bash
 pip install .
 ```
+
+This resolves and installs all required dependencies automatically.
 
 - **Verify the Installation:**
 To ensure that `ArcaNN` has been installed correctly, run the following command:
@@ -54,51 +52,53 @@ pip install -e .
 
 This method allows any modifications to the source files to take effect immediately during program execution. It is only recommended if you plan to modify the source files and requires you to keep the repository folder on your machine.
 
-## Installation on Machines without Internet Access ##
+## Installing MACE Support
 
-If your machine does not have access to the internet, follow these steps:
-
-- **Download the Repository and Required Files:**
-
-On a machine with internet access, download the `ArcaNN` repository. Then, copy the following files into a `tmp/` folder (outside of the repository):
+The base install above install the basics for what DeePMD-kit and MACE needs. There are optional MACE extras: whether you need them at all, and in which environment, depends on how MACE models get converted to their LAMMPS-ready format (see below). If you plan to set `nnp_program` to `"mace"` (see [Initialization](../usage/initialization.md)) and do end up needing them, install the extra dependencies that match the LAMMPS `pair_style` you will use for exploration (see [Requirements](requirements.md)) with one of:
 
 ```bash
-arcann_training/tools/download_arcann_environment.sh
-arcann_training/tools/arcann_conda_linux-64_env.txt
+# pair_style mace
+pip install ".[mace]"
+
+# pair_style mliap (adds cuequivariance-torch)
+pip install ".[mace-mliap]"
+
+# pair_style symmetrix/mace
+pip install ".[symmetrix]"
 ```
 
-- **Download the Required Python Packages:**
+(For `symmetrix`, `pip`'s `--config-settings` flag can also be passed through if your build needs it.) Each extra pulls in `mace-torch` plus whatever additional package that `pair_style` requires.
 
-In the `tmp/` folder, make the script executable and run it to download all the required Python packages:
+**Where you need this installed** depends on how MACE models get converted to their LAMMPS-ready format:
+
+- If you run the `training compress` phase every iteration (recommended, and the default expectation — see [Training](../usage/training.md)), the conversion happens inside the submitted `Slurm` job, so you **do not** need these extras.
+- If you skip `training compress`, the conversion happens wherever you run `exploration prepare`, for which you **do need** to have the matching extra installed. ArcaNN will otherwise warn you and ask you to run `training compress` instead.
+
+## Installation on Machines without Internet Access
+
+If your machine does not have access to the internet, download ArcaNN's dependencies on a machine that does, then transfer them over. Since dependencies are declared in `pyproject.toml`, `pip download` handles this without any extra tooling:
+
+- **Download the Repository and the Packages it Needs:**
+
+On a machine with internet access, download the `ArcaNN` repository, then download the wheels for ArcaNN and all its dependencies into a local folder (append `[mace]`, `[mace-mliap]`, or `[symmetrix]` to `./arcann_training` below if you also need [MACE support](#installing-mace-support)):
 
 ```bash
-chmod +x download_arcann_environment.sh
-./download_arcann_environment.sh arcann_conda_linux-64_env.txt
+pip download ./arcann_training -d arcann_offline_packages
 ```
-
-This script will download all the necessary Python packages into a `arcann_conda_linux-64_env_offline_files/` folder and create a `arcann_conda_linux-64_env_offline.txt` file.
 
 - **Transfer Files to the Offline Machine:**
 
 Use rsync to transfer the downloaded packages and the ArcaNN repository to your offline machine:
 
 ```bash
-rsync -rvu tmp/* USER@WORKMACHINE:/PATH/TO/INSTALLATION/FOLDER/.
+rsync -rvu arcann_offline_packages USER@WORKMACHINE:/PATH/TO/INSTALLATION/FOLDER/.
 rsync -rvu arcann_training USER@WORKMACHINE:/PATH/TO/INSTALLATION/FOLDER/.
 ```
 
-- **Create the Python Environment on the Offline Machine:**
+- **Install ArcaNN on the Offline Machine:**
 
-On your offline machine, create the required Python environment using the downloaded packages:
-
-``bash
-conda create --name <ENVNAME> --file arcann_conda_linux-64_env_offline.txt
-``
-
-- **Install ArcaNN:**
-
-Finally, install ArcaNN as a Python module by following the installation steps provided earlier:
+On your offline machine, install ArcaNN and its dependencies directly from the downloaded folder, without contacting any package index:
 
 ```bash
-pip install .
+pip install --no-index --find-links=/PATH/TO/INSTALLATION/FOLDER/arcann_offline_packages ./arcann_training
 ```

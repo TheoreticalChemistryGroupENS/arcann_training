@@ -78,6 +78,10 @@ def main(
 
     completed_count = 0
 
+    # FIXME: claude - relies on current_path/"data" (XXX-test/data) existing — see the FIXMEs in
+    # test/prepare.py, which never actually creates this folder (its per-NNP symlinks
+    # target the same non-existent path). Raises an unhandled FileNotFoundError if the
+    # user hasn't manually created XXX-test/data.
     datasets = [_.stem for _ in (current_path / "data").iterdir()]
 
     for nnp in range(1, main_json["nnp_count"] + 1):
