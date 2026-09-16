@@ -265,6 +265,7 @@ def main(
     )
     del job_file_name
 
+    finetuning = False
     if nnp_program == "deepmd":
         # Check DeePMD version
         validate_deepmd_config(training_json)
@@ -292,6 +293,36 @@ def main(
 
         del dp_train_input_path
         arcann_logger.debug(f"dp_train_input: {nnp_input}")
+
+        finetuning = any(
+            not line.strip().startswith("#")
+            and "train" in line
+            and "--finetune" in line
+            for line in master_job_file
+        )
+        if finetuning:
+            for line in master_job_file:
+                if (
+                    not line.strip().startswith("#")
+                    and "train" in line
+                    and "--finetune" in line
+                ):
+                    tokens = line.split()
+                    fondation_name = tokens[tokens.index("--finetune") + 1]
+                    if not fondation_name.endswith(".pt"):
+                        arcann_logger.error(
+                            f"The finetuned model should end with '.pt', got: '{fondation_name}'."
+                        )
+                        arcann_logger.error("Aborting...")
+                        return 1
+                    break
+            foundation_path = (user_files_path / fondation_name).resolve()
+            if not foundation_path.is_file():
+                arcann_logger.error(
+                    f"Foundation model file {fondation_name} not found in user_files."
+                )
+                arcann_logger.error("Aborting...")
+                return 1
 
     elif nnp_program == "mace":
         validate_mace_config(training_json)
@@ -340,11 +371,15 @@ def main(
                 return 1
         arcann_logger.debug(f"mace_input: {nnp_input}")
 
-        if "foundation_model" in nnp_input:
-            fondation_path = (
+        finetuning = (
+            "foundation_model" in nnp_input
+            and nnp_input["foundation_model"] is not None
+        )
+        if finetuning:
+            foundation_path = (
                 user_files_path / f"{nnp_input['foundation_model']}"
             ).resolve()
-            if not fondation_path.is_file():
+            if not foundation_path.is_file():
                 arcann_logger.error(
                     f"Foundation model file {nnp_input['foundation_model']} not found in user_files."
                 )
@@ -565,17 +600,15 @@ def main(
                 copy_function=os.link,
             )
         del train_dataset, valid_dataset, localdata_path
+        if finetuning:
+            shutil.copy(foundation_path, current_path / foundation_path.name)
+            del foundation_path
 
     elif nnp_program == "mace":
         dataset.prepare_for_mace_train(data_path=localdata_path)
-        if nnp_input.get("foundation_model"):
-            foundation_model_path = (
-                user_files_path / f"{nnp_input['foundation_model']}"
-            ).resolve()
-            shutil.copy(
-                foundation_model_path, current_path / foundation_model_path.name
-            )
-            del foundation_model_path
+        if finetuning:
+            shutil.copy(foundation_path, current_path / foundation_path.name)
+            del foundation_path
 
     if nnp_program == "deepmd":
         # Change some inside output
@@ -692,6 +725,12 @@ def main(
             job_file = replace_substring_in_string_list(
                 job_file, "_R_DEEPMD_OUTPUT_FILE_", "training.out"
             )
+            if finetuning:
+                job_file = replace_substring_in_string_list(
+                    job_file,
+                    "_R_DEEPMD_FONDATION_FILE_",
+                    f"../{foundation_path.name}",
+                )
 
         elif nnp_program == "mace":
             # Replace the inputs/variables in the job file
@@ -707,11 +746,11 @@ def main(
             job_file = replace_substring_in_string_list(
                 job_file, "_R_MACE_OUTPUT_FILE_", "training.out"
             )
-            if nnp_input.get("foundation_model"):
+            if finetuning:
                 job_file = replace_substring_in_string_list(
                     job_file,
                     "_R_MACE_FONDATION_FILE_",
-                    f"../{nnp_input['foundation_model']}",
+                    f"../{foundation_path.name}",
                 )
 
         string_list_to_textfile(
