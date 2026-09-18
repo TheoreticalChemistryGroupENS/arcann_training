@@ -365,6 +365,7 @@ class LAMMPSInputHandler:
                 f"No 'run _R_NUMBER_OF_STEPS_' found in the LAMMPS input file: {self._lmp_input}"
             )
 
+        # TODO: support the 'restart' lammps command
         match_rest = re.search(
             r"^\s*(?!#)write_restart\s+_R_RESTART_OUT_", self._raw_text, re.MULTILINE
         )
@@ -375,11 +376,21 @@ class LAMMPSInputHandler:
             )
 
         run_index = match_run.start()
-        _modified_text = self._raw_text[:run_index] + "\n".join(self.cell_info_lammps)
+
+        _modified_text = (
+            self._raw_text[:run_index] + "\n".join(self.cell_info_lammps) + "\n"
+        )
 
         match self.lmp_pair:
             case LAMMPSPair.MACE | LAMMPSPair.MLIAP | LAMMPSPair.SYMMETRIX:
-                _modified_text += "\n".join(self.mace_dump_0)
+                _modified_text += "\n".join(self.mace_dump_0) + "\n"
+
+                # To do independent rerun, we need a restart file written before run,
+                # as the simulation may break before writing it
+                if run_index < (rest_index := match_rest.start()):
+                    _modified_text += (
+                        self._raw_text[rest_index : match_rest.end()] + "\n"
+                    )
 
         _modified_text += self._raw_text[run_index:] + "\n"
         self._raw_text = _modified_text
@@ -425,7 +436,21 @@ class LAMMPSInputHandler:
         for key, value in variables.items():
             formatted_text = formatted_text.replace(key, value)
 
+        # TODO: this is ugly, needs refactoring
+        if hasattr(self, "mace_rerun_text"):
+            for key, value in variables.items():
+                self.mace_rerun_text = self.mace_rerun_text.replace(key, value)
+
         return formatted_text if not splitlines else formatted_text.splitlines()
+
+    def write(self, file: Path, input_replace_dict: dict[str, str]) -> None:
+        with file.open("w+") as inp:
+            inp.write(self.apply_variables(input_replace_dict))
+
+        match self.lmp_pair:
+            case LAMMPSPair.MACE | LAMMPSPair.MLIAP | LAMMPSPair.SYMMETRIX:
+                with file.with_stem(file.stem + "-rerun").open("w+") as inp_rr:
+                    inp_rr.write(self.mace_rerun_text)
 
     @property
     def lmp_pair(self) -> LAMMPSPair:
@@ -485,13 +510,14 @@ class LAMMPSInputHandler:
             self._raw_text = self.apply_variables({"_R_MODEL_FILES_": " ".join(models)})
         else:
             self._raw_text = self.apply_variables({"_R_MODEL_FILES_": models[0]})
-            self._prepare_mace_rerun()
+            self.mace_rerun_text = self._prepare_mace_rerun()
 
     @catch_errors_decorator
-    def _prepare_mace_rerun(self) -> None:
+    def _prepare_mace_rerun(self) -> str:
+        mace_rerun_text = ""
         for i, model in enumerate(self._models[1:], start=2):
             rr_str = f"Rerun with {to_ordinal(i)} model"
-            self._raw_text += f"""\n# {"-" * len(rr_str)}
+            mace_rerun_text += f"""\n# {"-" * len(rr_str)}
 # {rr_str}
 # {"-" * len(rr_str)}
 clear
@@ -511,6 +537,10 @@ dump_modify traj{i} sort id
 
 rerun {self._lmp_input.stem}_mace_run_model1.lammpstrj dump x y z
 """
+
+        self._raw_text += mace_rerun_text
+
+        return mace_rerun_text
 
     def _get_pair_lmp_string(self, model: str) -> str:
         elements = " ".join(self._el)
