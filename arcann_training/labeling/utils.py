@@ -13,7 +13,7 @@ Functions
 generate_input_labeling_json(user_input_json: Dict, previous_json: Dict, default_input_json: Dict, merged_input_json: Dict, main_json: Dict) -> Dict
     Update and complete input JSON by incorporating values from the user input JSON, the previous JSON, and the default JSON.
 
-get_system_labeling(merged_input_json: Dict, system_auto_index: int) -> Tuple[float, float, int, int, int]
+get_system_labeling(merged_input_json: Dict, system_auto_index: int) -> Tuple[float, float, int, int, int, int, int]
     Returns a tuple of system labeling parameters based on the input JSON and system number.
 """
 
@@ -21,9 +21,10 @@ get_system_labeling(merged_input_json: Dict, system_auto_index: int) -> Tuple[fl
 import logging
 from typing import Dict, List, Tuple
 
+from arcann_training.common.json import convert_control_to_input
+
 # Local imports
 from arcann_training.common.utils import catch_errors_decorator
-from arcann_training.common.json import convert_control_to_input
 
 
 # TODO: Add tests for this function
@@ -82,12 +83,14 @@ def generate_input_labeling_json(
         "nb_nodes",
         "nb_mpi_per_node",
         "nb_threads_per_mpi",
+        "systems_charge",
+        "systems_total_spin",
     ]:
         # Get the value
         default_used = False
         if key in user_input_json:
             if (
-                user_input_json[key] == "default" or user_input_json[key] == None
+                user_input_json[key] == "default" or user_input_json[key] is None
             ) and key in default_input_json:
                 value = default_input_json[key]
                 default_used = True
@@ -154,10 +157,14 @@ def generate_input_labeling_json(
 
 # TODO: Add tests for this function
 @catch_errors_decorator
-def get_system_labeling(merged_input_json: Dict, system_auto_index: int) -> Tuple[
+def get_system_labeling(
+    merged_input_json: Dict, system_auto_index: int
+) -> Tuple[
     str,
     float,
     float,
+    int,
+    int,
     int,
     int,
     int,
@@ -174,7 +181,7 @@ def get_system_labeling(merged_input_json: Dict, system_auto_index: int) -> Tupl
 
     Returns
     -------
-    Tuple[str, float, float, int, int, int]
+    Tuple[str, float, float, int, int, int, int, int]
         A tuple containing system labeling parameters:
         - labeling_program : str
             The labeling program.
@@ -188,21 +195,26 @@ def get_system_labeling(merged_input_json: Dict, system_auto_index: int) -> Tupl
             The number of MPI processes per node.
         - nb_threads_per_mpi : int
             The number of threads per MPI process.
+        - charge : int
+            The total charge of the system, used as the 'charge' info field for PolarMACE.
+        - total_spin : int
+            The total spin of the system, used as the 'total_spin' info field for PolarMACE.
     """
-    system_values = []
-    for key in ["labeling_program"]:
-        system_values.append(merged_input_json[key])
+    system_values = [merged_input_json[key] for key in ["labeling_program"]]
 
-    for key in [
-        "walltime_first_job_h",
-        "walltime_second_job_h",
-    ]:
-        system_values.append(float(merged_input_json[key][system_auto_index]))
+    system_values.extend(
+        float(merged_input_json[key][system_auto_index])
+        for key in ["walltime_first_job_h", "walltime_second_job_h"]
+    )
 
-    for key in [
-        "nb_nodes",
-        "nb_mpi_per_node",
-        "nb_threads_per_mpi",
-    ]:
-        system_values.append(int(merged_input_json[key][system_auto_index]))
+    system_values.extend(
+        int(merged_input_json[key][system_auto_index])
+        for key in [
+            "nb_nodes",
+            "nb_mpi_per_node",
+            "nb_threads_per_mpi",
+            "systems_charge",
+            "systems_total_spin",
+        ]
+    )
     return tuple(system_values)

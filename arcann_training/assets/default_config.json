@@ -63,7 +63,9 @@
         "walltime_second_job_h": [1.0],
         "nb_nodes": [1],
         "nb_mpi_per_node": [10],
-        "nb_threads_per_mpi": [1]
+        "nb_threads_per_mpi": [1],
+        "systems_charge": [0],
+        "systems_total_spin": [1]
     },
     "test":
     {
