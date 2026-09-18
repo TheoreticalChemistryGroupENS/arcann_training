@@ -41,6 +41,8 @@ python -m arcann_training --help
 
 This command should display the basic usage message of the code.
 
+**Note:** installing the package also puts an `arcann` command on your `PATH`, which is a shorthand for `python -m arcann_training` (*e.g.* `arcann --help`, `arcann initialization start`). The two are strictly equivalent; this guide uses `python -m arcann_training` throughout, but you can substitute `arcann` in any example.
+
 - **Optional:**
 If you wish, you can delete the repository folder after installation is complete.
 

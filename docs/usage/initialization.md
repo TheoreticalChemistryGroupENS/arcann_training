@@ -46,3 +46,5 @@ python -m arcann_training initialization transition
 ```
 
 ArcaNN will detect the format currently present in your `data/` folder and convert every data set to the format required by the `nnp_program` you have selected. Your data folder must contain only one format at a time; if both are present, the phase will stop and ask you to keep only one. You would typically run this phase right after changing `nnp_program` (and `data_format`) in your initialization input.
+
+**Note:** you do not strictly need to run `transition` before every training — the `training prepare` phase also auto-converts, on the fly, any individual data set it finds in the wrong format (logging a message when it does). Prefer `transition` when switching architectures wholesale, since it converts everything in `data/` up front; the automatic conversion in `prepare` is mainly a convenience for individual initial, extra, or ad-hoc data sets you add later in the format you have on hand.
