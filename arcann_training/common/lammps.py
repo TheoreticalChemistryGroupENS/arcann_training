@@ -351,18 +351,41 @@ class LAMMPSInputHandler:
         Inject additional commands into the LAMMPS input.
 
         Typically includes cell info variables and MACE dump commands.
+        Injection happens right before the first 'run' command, so that it
+        applies regardless of whether the input has a single run or several
+        (e.g. staged runs, or runs driven by a LAMMPS variable).
 
         Raises
         ------
         ValueError
-            If no 'run _R_NUMBER_OF_STEPS_' command is found.
+            If no 'run' command is found, or if '_R_NUMBER_OF_STEPS_' is not
+            used to set the total number of steps, either directly in a
+            'run _R_NUMBER_OF_STEPS_' command or through a variable defined
+            using '_R_NUMBER_OF_STEPS_'. Whether that variable (or one
+            derived from it) is actually the one driving a 'run' command is
+            not verified: tracing arbitrary variable dependency chains is
+            out of scope, so this only checks that the placeholder is used
+            somewhere meaningful.
         """
-        match_run = re.search(
-            r"^\s*(?!#)run\s+_R_NUMBER_OF_STEPS_", self._raw_text, re.MULTILINE
-        )
+        match_run = re.search(r"^\s*(?!#)run\s+\S+", self._raw_text, re.MULTILINE)
         if not match_run:
             raise ValueError(
-                f"No 'run _R_NUMBER_OF_STEPS_' found in the LAMMPS input file: {self._lmp_input}"
+                f"No 'run' command found in the LAMMPS input file: {self._lmp_input}"
+            )
+
+        direct_steps = re.search(
+            r"^\s*(?!#)run\s+_R_NUMBER_OF_STEPS_", self._raw_text, re.MULTILINE
+        )
+        variable_steps = re.search(
+            r"^\s*(?!#)variable\s+\S+\s+equal\s+.*_R_NUMBER_OF_STEPS_",
+            self._raw_text,
+            re.MULTILINE,
+        )
+
+        if not direct_steps and not variable_steps:
+            raise ValueError(
+                "No 'run _R_NUMBER_OF_STEPS_' found, and no LAMMPS variable set "
+                f"from '_R_NUMBER_OF_STEPS_', in the LAMMPS input file: {self._lmp_input}"
             )
 
         match_rest = re.search(
