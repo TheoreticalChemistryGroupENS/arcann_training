@@ -85,3 +85,72 @@ During `check`, a run that ArcaNN cannot validate is handled in one of two ways.
 Re-run `check` after adding either file; it will report how many runs were skipped/forced.
 
 **MACE caveat:** with `nnp_program: "mace"`, `check` only inspects the main dynamics LAMMPS log, not the per-model rerun trajectories used to build the committee deviation (see the note on reruns above). Forcing a run whose main log looks incomplete does not guarantee those rerun passes finished for every model in the committee; if one is missing or truncated, the later `deviate` phase can fail or produce an inconsistent deviation for that run. Check that all `SYSTEM_mace_forces_model*.lammpstrj` files exist and have matching frame counts before forcing a MACE run.
+
+## Reference: template placeholders
+
+Every `_R_` placeholder below is filled in by the `prepare` phase and must be kept as-is in your templates. The generic `Slurm` header placeholders (`_R_PROJECT_`, `_R_ALLOC_`, `_R_PARTITION_`, `_R_SUBPARTITION_`, `_R_QOS_`, `_R_WALLTIME_`, `_R_EMAIL_`) apply here too — see [HPC Configuration](../getting-started/hpc_configuration.md#common-_r_-placeholders-every-slurm-job-script) — and are not repeated below.
+
+### Individual job scripts (`job_TYPE-PROGRAM_explore_ARCHTYPE_myHPCkeyword.sh`)
+
+These apply regardless of `exploration_type`, on top of the type-specific ones further down:
+
+| Placeholder | Filled with |
+| --- | --- |
+| `_R_DEEPMD_VERSION_` / `_R_MACE_VERSION_` | The `nnp_program`-specific model version used for this iteration (whichever of the two matches your `nnp_program`). |
+| `_R_MODEL_FILES_` | The NNP model file name(s) for the committee member/trajectory (space-separated, quoted for the shell). |
+| `_R_PLUMED_FILES_` | The PLUMED input file name(s) used by this run, if any `plumed*_SYSTEM.dat` file is present; otherwise the line referencing it is removed. |
+| `_R_RERUN_FILE_` | Reserved placeholder — in the current version it is always stripped out (replaced with an empty string), never populated. |
+
+**LAMMPS** (`exploration_type: "lammps"`) additionally fills:
+
+| Placeholder | Filled with |
+| --- | --- |
+| `_R_LAMMPS_IN_FILE_` | The generated `SYSTEM_NNPINDEX_ITER.in` LAMMPS input file name. |
+| `_R_LAMMPS_LOG_FILE_` | The LAMMPS log file name. |
+| `_R_LAMMPS_OUT_FILE_` | The LAMMPS stdout/stderr file name. |
+| `_R_DATA_FILE_` | The `.lmp` starting-configuration file used for this run (the system's own `SYSTEM.lmp`, or a previous-iteration starting point). |
+
+**Sander/EMLE** (`exploration_type: "sander_emle"`) additionally fills:
+
+| Placeholder | Filled with |
+| --- | --- |
+| `_R_SANDER_IN_FILE_` | The generated Sander `.in` input file name. |
+| `_R_EMLE_IN_FILE_` | The generated EMLE `.yaml` configuration file name. |
+| `_R_SANDER_LOG_FILE_` | The Sander log file name. |
+| `_R_SANDER_OUT_FILE_` | The Sander stdout/stderr file name. |
+| `_R_SANDER_RESTART_FILE_` | The Sander/Amber restart (`.ncrst`) output file name. |
+| `_R_EMLE_OUT_FILE_` | The EMLE stdout/stderr file name. |
+| `_R_SANDER_TRAJOUT_FILE_` | The trajectory (`.nc`) output file name. |
+| `_R_TOP_FILE_` | The Amber topology (`SYSTEM.prmtop`) file name. |
+| `_R_SANDER_COORD_FILE_` | The starting restart-coordinates (`.ncrst`) file name. |
+| `_R_EMLE_MODEL_FILE_` | The trained EMLE model (`SYSTEM.mat`) file name. |
+
+### Job-array scripts (`job-array_TYPE-PROGRAM_explore_ARCHTYPE_myHPCkeyword.sh`)
+
+Used for LAMMPS and Sander/EMLE explorations when more than one run is generated (one array task per `system` × NNP-committee-member × trajectory combination). Each task reads its own parameters (paths, model files, input file names, ...) from a companion `job-array-params_..._.lst` file at runtime, one line per task — you should not need to touch that file's format, only keep the `sed`/array-index parsing logic in the example template.
+
+| Placeholder | Filled with |
+| --- | --- |
+| `_R_ARRAY_START_` | `0` (the `Slurm` array's starting index). |
+| `_R_ARRAY_END_` | The total number of runs for this `exploration_type` minus 1. |
+
+### Input file templates (`SYSTEM.in`)
+
+Filled directly inside your LAMMPS or Sander input templates (in `user_files/`):
+
+| Placeholder | Filled with |
+| --- | --- |
+| `_R_ATOM_LABELS_` | The space-separated element symbols, in `properties.txt` order (LAMMPS only; filled as soon as the template is read, before any other substitution). |
+| `_R_TIMESTEP_` | The MD timestep, from `"timestep_ps"`. |
+| `_R_TEMPERATURE_` | The MD temperature (K), from `"temperature_K"`. |
+| `_R_NUMBER_OF_STEPS_` | The number of MD steps for this run, derived from `"exp_time_ps"`/`"timestep_ps"` (capped by `"max_exp_time_ps"`), or from the number of steps of a PLUMED `MOVINGRESTRAINTS` (SMD) block if present. |
+| `_R_PRINT_FREQ_` | The number of steps between two saved frames/deviation evaluations, from `"print_interval_mult"`. Also used inside the cell-tracking `fix ... print` line and the MACE/`mliap`/`symmetrix` `dump` commands that ArcaNN injects automatically into LAMMPS inputs. |
+| `_R_DATA_FILE_` | The `.lmp` starting-configuration file name (LAMMPS). |
+| `_R_COORD_FILE_` | The starting restart-coordinates (`.ncrst`) file name (Sander/EMLE). |
+| `_R_SEED_VEL_` / `_R_SEED_THER_` | Randomly generated velocity/thermostat seeds (LAMMPS). |
+| `_R_DCD_OUT_` | The output DCD trajectory file name (LAMMPS). |
+| `_R_NC_OUT_` | The output NetCDF trajectory file name (Sander/EMLE). |
+| `_R_RESTART_OUT_` | The output restart file name (LAMMPS/Sander-EMLE). |
+| `_R_MODEL_FILES_` | The NNP model file(s) used by `pair_style` (LAMMPS; all committee models for DeePMD-kit, or the first model for MACE/`mliap`/`symmetrix`, with the other committee members appended afterwards as `rerun` blocks). |
+| `_R_DEVI_OUT_` | The model-deviation output file name (LAMMPS/Sander-EMLE, DeePMD-kit only). |
+| `_R_PLUMED_IN_` / `_R_PLUMED_OUT_` | The PLUMED input/log file names, if PLUMED is used. |
