@@ -29,3 +29,12 @@ To run it, go to the `XXX-test/` folder of the iteration you want to test and ru
 `launch` submits the testing job using `dp test` (see [DeePMD-kit test documentation](https://docs.deepmodeling.com/projects/deepmd/en/r2/test/test.html)); if you need the ["detail files"](https://docs.deepmodeling.com/projects/deepmd/en/r2/test/test.html) it can generate, add the corresponding flag directly to your `job_deepmd_test_ARCHTYPE_myHPCkeyword.sh` submission file (from the `job_test_deepmd_slurm/` templates — note the file itself is named `job_deepmd_test_...`, not `job_test_deepmd_...`). `check` verifies the job completed successfully. `clean` removes temporary files; if detail files were not requested it also removes the whole `XXX-test/` folder, since all the results are already consolidated into `control/testing_XXX.json`.
 
 A full worked example (equivalent to the [SN2](../examples/sn2.md) walkthrough for the main steps) is not available yet, sorry!
+
+## Reference: template placeholders
+
+Every `_R_` placeholder below is filled in by the `prepare` phase and must be kept as-is in your `job_deepmd_test_ARCHTYPE_myHPCkeyword.sh` template. The generic `Slurm` header placeholders (`_R_PROJECT_`, `_R_ALLOC_`, `_R_PARTITION_`, `_R_SUBPARTITION_`, `_R_QOS_`, `_R_WALLTIME_` — here set from `"job_walltime_h"` — and `_R_EMAIL_`) apply here too — see [HPC Configuration](../getting-started/hpc_configuration.md#common-_r_-placeholders-every-slurm-job-script) — and are not repeated below.
+
+| Placeholder | Filled with |
+| --- | --- |
+| `_R_DEEPMD_VERSION_` | The DeePMD-kit version the graph being tested was trained with (from that iteration's `control/training_XXX.json`; see the note above on `"deepmd_model_version"` not being user-selectable here). |
+| `_R_DEEPMD_MODEL_FILE_` | The NNP graph file name being tested (from `$WORK_DIR/NNP/`, compressed or not depending on `"is_compressed"`). |

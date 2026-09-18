@@ -161,3 +161,37 @@ find ./ -name '1_*.gbw' | tar -cf labeling_XXXXX_WFN.tar --files-from -
 ```
 
 Everything else — the overall folder structure, the maximum of 99999 candidates per iteration, and iterating until convergence — works exactly as described above for CP2K.
+
+## Reference: template placeholders
+
+Every `_R_` placeholder below is filled in by the `prepare` phase and must be kept as-is in your templates. The generic `Slurm` header placeholders (`_R_PROJECT_`, `_R_ALLOC_`, `_R_PARTITION_`, `_R_SUBPARTITION_`, `_R_QOS_`, `_R_WALLTIME_`, `_R_EMAIL_`) apply here too — see [HPC Configuration](../getting-started/hpc_configuration.md#common-_r_-placeholders-every-slurm-job-script) — and are not repeated below. `PROGRAM` below stands for `CP2K` or `ORCA` (matching `"labeling_program"`).
+
+### Job scripts (`job_PROGRAM_label_ARCHTYPE_myHPCkeyword.sh` and `job-array_PROGRAM_label_ARCHTYPE_myHPCkeyword_N.sh`)
+
+| Placeholder | Filled with |
+| --- | --- |
+| `_R_nb_NODES_` | Number of nodes, from `"nb_nodes"`. |
+| `_R_nb_MPI_` | Total number of MPI processes (`nb_nodes × nb_mpi_per_node`). |
+| `_R_nb_MPIPERNODE_` | MPI processes per node, from `"nb_mpi_per_node"`. |
+| `_R_nb_THREADSPERMPI_` | OpenMP threads per MPI process, from `"nb_threads_per_mpi"`. |
+| `_R_PROGRAM_JOBNAME_` (e.g. `_R_CP2K_JOBNAME_` / `_R_ORCA_JOBNAME_`) | A generated job name, `PROGRAM_SYSTEM_ITER`. |
+| `_R_WALLTIME_` | The combined wall time for the batch (`"walltime_first_job_h"` + `"walltime_second_job_h"`, converted to seconds); note this is the array/individual job's total wall time and is distinct from the per-calculation `_R_WALLTIME_` filled inside the CP2K/ORCA input files below. |
+
+The job-array script additionally handles **batching and chaining**, needed because a system can have more candidates than the machine's `max_array_size`/`max_jobs` allow in a single array: ArcaNN splits the candidates for a system into successive array-job files (`job-array_PROGRAM_label_ARCHTYPE_myHPCkeyword_0.sh`, `_1.sh`, ...), and — once all candidates for one system are queued — chains directly into the first batch of the *next* system with pending candidates, without any user intervention:
+
+| Placeholder | Filled with |
+| --- | --- |
+| `_R_ARRAY_START_` / `_R_ARRAY_END_` | Start/end index of this batch's `Slurm` array. |
+| `_R_NEW_START_` | Offset added to the array task ID when reading the corresponding line of the `.lst` parameters file (so later batches keep reading further down the same file). |
+| `_R_LAUNCHNEXT_` | `"1"` if another batch (same or next system) must be submitted once this one finishes, `"0"` if this was the last batch overall. |
+| `_R_NEXT_JOB_FILE_` | The numeric suffix of the next batch's job-array script to submit (only meaningful when `_R_LAUNCHNEXT_` is `"1"`). |
+| `_R_CD_WHERE_` | The directory to `cd` into before submitting the next batch: the current system's folder for a same-system continuation, or `../NEXT_SYSTEM` when moving on to the next system. |
+
+### CP2K/ORCA input file templates
+
+| Placeholder | Filled with |
+| --- | --- |
+| `_R_WALLTIME_` | The wall time (in seconds) for that specific calculation — `"walltime_first_job_h"` for the first/only CP2K step or the single ORCA step, `"walltime_second_job_h"` for CP2K's second (reference-level) step. |
+| `_R_NB_MPI_` | Total number of MPI processes (`nb_nodes × nb_mpi_per_node`), for CP2K's `%pal`/ORCA's `%pal nprocs` (or equivalent) directives. |
+| `_R_PADDEDSTEP_` | The zero-padded (5-digit) candidate index, used to name per-candidate input/output/wavefunction files (*e.g.* `labeling_00003.xyz`). |
+| `_R_CELL_` | The candidate's periodic box lengths (CP2K `&CELL`/`ABC` only; ORCA calculations are always treated as non-periodic — see the ORCA limitation note above). |
