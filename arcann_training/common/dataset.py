@@ -458,13 +458,31 @@ class Dataset:
                 f"The provided data format {provided_format} is not recognized. Please use 'set.000' or 'extxyz'."
             )
 
-        # datasets = os.listdir(self.dataset_dir)
-        # for dataset in datasets:
-        #     dataset_path = self.dataset_dir / dataset
-        #     if dataset_path.is_dir():
-        #         if (dataset_path / "set.000").is_dir() and self.data_format != "set.000":
-        #             self.convert
-        #         elif any(file.suffix == ".extxyz" for file in dataset_path.glob("*.extxyz")):
+    def _convert_if_needed(
+        self, datadir: Path, step: str, training_type: str, system_name, iteration
+    ) -> None:
+        """Detect the on-disk format and convert to self.data_format if it does not match."""
+        on_disk_set000 = (datadir / "set.000").is_dir() and (
+            datadir / "set.000" / "box.npy"
+        ).is_file()
+        on_disk_extxyz = (datadir / f"{datadir.name}.extxyz").is_file()
+
+        kwargs = {
+            "step": step,
+            "training_type": training_type,
+            "system_name": system_name,
+            "iteration": iteration,
+            "properties": self.config_file["properties"],
+        }
+
+        if self.data_format == "extxyz" and on_disk_set000 and not on_disk_extxyz:
+            arcann_logger.info(f"Converting {datadir.name} from set.000 to extxyz")
+            Set000Ensemble(path=datadir, data_format="set.000", **kwargs).to_extxyz(
+                save=True
+            )
+        elif self.data_format == "set.000" and on_disk_extxyz and not on_disk_set000:
+            arcann_logger.info(f"Converting {datadir.name} from extxyz to set.000")
+            ExtXYZEnsemble(path=datadir, data_format="extxyz", **kwargs).to_set000()
 
     def read_dataset(self) -> Union[int, int]:
         """Read the datasets from the already processed datasets in the control file"""
@@ -548,24 +566,27 @@ class Dataset:
                             adhoc_count += 1
 
                 if step:
+                    training_type = (
+                        "validation" if "valid" in datadir.name else "training"
+                    )
+                    self._convert_if_needed(
+                        datadir, step, training_type, system_name, iteration
+                    )
+                    ensemble = self.data_ensemble(
+                        path=datadir,
+                        step=step,
+                        training_type=training_type,
+                        system_name=system_name,
+                        iteration=iteration,
+                        **common_kwargs,
+                    )
+                    if not ensemble.size:
+                        arcann_logger.warning(f"Skipping empty dataset: {datadir.name}")
+                        continue
                     if "valid" in datadir.name:
-                        self.validation_dataset[datadir.name] = self.data_ensemble(
-                            path=datadir,
-                            step=step,
-                            training_type="validation",
-                            system_name=system_name,
-                            iteration=iteration,
-                            **common_kwargs,
-                        )
+                        self.validation_dataset[datadir.name] = ensemble
                     else:
-                        self.training_dataset[datadir.name] = self.data_ensemble(
-                            path=datadir,
-                            step=step,
-                            training_type="training",
-                            system_name=system_name,
-                            iteration=iteration,
-                            **common_kwargs,
-                        )
+                        self.training_dataset[datadir.name] = ensemble
         self.training_paths = list(self.training_dataset.keys())
         self.validation_paths = list(self.validation_dataset.keys())
         return system_count, system_val_count, adhoc_count, adhoc_val_count
