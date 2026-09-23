@@ -602,13 +602,11 @@ def main(
         del train_dataset, valid_dataset, localdata_path
         if finetuning:
             shutil.copy(foundation_path, current_path / foundation_path.name)
-            del foundation_path
 
     elif nnp_program == "mace":
         dataset.prepare_for_mace_train(data_path=localdata_path)
         if finetuning:
             shutil.copy(foundation_path, current_path / foundation_path.name)
-            del foundation_path
 
     if nnp_program == "deepmd":
         # Change some inside output
