@@ -28,6 +28,7 @@ from arcann_training.common.json import (
 )
 from arcann_training.common.list import textfile_to_string_list
 from arcann_training.common.yaml import load_yaml_file
+from arcann_training.training.plot import plot_mace_learning_curves
 
 
 def main(
@@ -181,6 +182,15 @@ def main(
                 "Training complete" in s for s in training_out
             ):
                 completed_count += 1
+                results_dir = local_path / "results"
+                if results_dir.is_dir():
+                    results_files = sorted(
+                        results_dir.glob(
+                            f"model_{nnp}_{padded_curr_iter}_run-*_train.txt"
+                        )
+                    )
+                    if results_files:
+                        plot_mace_learning_curves(results_files[0])
             else:
                 arcann_logger.critical(f"DP Train - '{nnp}' not finished/failed.")
             del training_out
