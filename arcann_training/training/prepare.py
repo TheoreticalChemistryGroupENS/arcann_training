@@ -631,6 +631,8 @@ def main(
                 * 3600
             )
             mean_s_per_step = walltime_approx_s / training_json["numb_steps"]
+        if walltime_approx_s == 0:
+            walltime_approx_s = previous_training_json["job_walltime_train_h"] * 3600
 
     current_input_json["job_walltime_train_h"] = float(walltime_approx_s / 3600)
     current_input_json["mean_s_per_step"] = mean_s_per_step
