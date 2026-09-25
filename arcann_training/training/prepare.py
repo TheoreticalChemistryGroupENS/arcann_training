@@ -490,72 +490,75 @@ def main(
     # Here calculate the parameters
     # decay_steps it auto-recalculated as funcion of trained_count only for DeepMD
     if nnp_program == "deepmd":
-        arcann_logger.debug(
-            f"training_json - decay_steps: {training_json['decay_steps']}"
-        )
-        arcann_logger.debug(
-            f"current_input_json - decay_steps: {current_input_json['decay_steps']}"
-        )
-        if not training_json["decay_steps_fixed"]:
-            decay_steps = calculate_decay_steps(
-                training_json["training_count"]["total"], training_json["decay_steps"]
-            )
-            arcann_logger.debug("Recalculating decay_steps")
-            # Update the training JSON and the merged input JSON
-            training_json["decay_steps"] = decay_steps
-            current_input_json["decay_steps"] = decay_steps
-        else:
-            decay_steps = training_json["decay_steps"]
-        arcann_logger.debug(f"decay_steps: {decay_steps}")
-        arcann_logger.debug(
-            f"training_json - decay_steps: {training_json['decay_steps']}"
-        )
-        arcann_logger.debug(
-            f"current_input_json - decay_steps: {current_input_json['decay_steps']}"
-        )
-
-        # numb_steps and decay_rate
-        arcann_logger.debug(
-            f"training_json - numb_steps / decay_rate: {training_json['numb_steps']} / {training_json['decay_rate']}"
-        )
-        arcann_logger.debug(
-            f"current_input_json - numb_steps / decay_rate: {current_input_json['numb_steps']} / {current_input_json['decay_rate']}"
-        )
-        numb_steps = training_json["numb_steps"]
-        decay_rate_new = calculate_decay_rate(
-            numb_steps,
-            training_json["start_lr"],
-            training_json["stop_lr"],
-            training_json["decay_steps"],
-        )
-        while decay_rate_new < training_json["decay_rate"]:
+        if nnp_input["learning_rate"]["type"] == "exp":
             arcann_logger.debug(
-                f"numb_steps is too small to allow for the decay_rate, increasing numb_steps: {decay_rate_new} < {training_json['decay_rate']}"
+                f"training_json - decay_steps: {training_json['decay_steps']}"
             )
-            numb_steps = numb_steps + 10000
+            arcann_logger.debug(
+                f"current_input_json - decay_steps: {current_input_json['decay_steps']}"
+            )
+            if not training_json["decay_steps_fixed"]:
+                decay_steps = calculate_decay_steps(
+                    training_json["training_count"]["total"],
+                    training_json["decay_steps"],
+                )
+                arcann_logger.debug("Recalculating decay_steps")
+                # Update the training JSON and the merged input JSON
+                training_json["decay_steps"] = decay_steps
+                current_input_json["decay_steps"] = decay_steps
+            else:
+                decay_steps = training_json["decay_steps"]
+            arcann_logger.debug(f"decay_steps: {decay_steps}")
+            arcann_logger.debug(
+                f"training_json - decay_steps: {training_json['decay_steps']}"
+            )
+            arcann_logger.debug(
+                f"current_input_json - decay_steps: {current_input_json['decay_steps']}"
+            )
+
+            # numb_steps and decay_rate
+            arcann_logger.debug(
+                f"training_json - numb_steps / decay_rate: {training_json['numb_steps']} / {training_json['decay_rate']}"
+            )
+            arcann_logger.debug(
+                f"current_input_json - numb_steps / decay_rate: {current_input_json['numb_steps']} / {current_input_json['decay_rate']}"
+            )
+            numb_steps = training_json["numb_steps"]
             decay_rate_new = calculate_decay_rate(
                 numb_steps,
                 training_json["start_lr"],
                 training_json["stop_lr"],
                 training_json["decay_steps"],
             )
-        # Update the training JSON and the merged input JSON
-        training_json["numb_steps"] = int(numb_steps)
-        training_json["decay_rate"] = decay_rate_new
-        current_input_json["numb_steps"] = int(numb_steps)
-        current_input_json["decay_rate"] = decay_rate_new
-        arcann_logger.debug(f"numb_steps: {numb_steps}")
-        arcann_logger.debug(f"decay_rate: {decay_rate_new}")
-        arcann_logger.debug(
-            f"training_json - numb_steps / decay_rate: {training_json['numb_steps']} / {training_json['decay_rate']}"
-        )
-        arcann_logger.debug(
-            f"current_input_json - numb_steps / decay_rate: {current_input_json['numb_steps']} / {current_input_json['decay_rate']}"
-        )
+            while decay_rate_new < training_json["decay_rate"]:
+                arcann_logger.debug(
+                    f"numb_steps is too small to allow for the decay_rate, increasing numb_steps: {decay_rate_new} < {training_json['decay_rate']}"
+                )
+                numb_steps = numb_steps + 10000
+                decay_rate_new = calculate_decay_rate(
+                    numb_steps,
+                    training_json["start_lr"],
+                    training_json["stop_lr"],
+                    training_json["decay_steps"],
+                )
+            # Update the training JSON and the merged input JSON
+            training_json["numb_steps"] = int(numb_steps)
+            training_json["decay_rate"] = decay_rate_new
+            current_input_json["numb_steps"] = int(numb_steps)
+            current_input_json["decay_rate"] = decay_rate_new
+            arcann_logger.debug(f"numb_steps: {numb_steps}")
+            arcann_logger.debug(f"decay_rate: {decay_rate_new}")
+            arcann_logger.debug(
+                f"training_json - numb_steps / decay_rate: {training_json['numb_steps']} / {training_json['decay_rate']}"
+            )
+            arcann_logger.debug(
+                f"current_input_json - numb_steps / decay_rate: {current_input_json['numb_steps']} / {current_input_json['decay_rate']}"
+            )
 
-        del decay_steps, numb_steps, decay_rate_new
-        nnp_input["training"]["numb_steps"] = training_json["numb_steps"]
-        nnp_input["learning_rate"]["decay_steps"] = training_json["decay_steps"]
+            del decay_steps, numb_steps, decay_rate_new
+            nnp_input["training"]["numb_steps"] = training_json["numb_steps"]
+            nnp_input["learning_rate"]["decay_steps"] = training_json["decay_steps"]
+
         nnp_input["learning_rate"]["stop_lr"] = training_json["stop_lr"]
 
     elif nnp_program == "mace":
