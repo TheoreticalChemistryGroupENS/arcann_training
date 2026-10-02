@@ -1,23 +1,69 @@
 name: Documentation Deployment
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+      - develop  # TEMPORARY: deploy docs from develop
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+      - develop
+    types: [opened, reopened, synchronize, closed]
 
 permissions:
   contents: write
+  pull-requests: write  # PR preview action comments the preview link
+
+# Main deploys and PR previews all push to gh-pages; serialize them.
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python 3.x
-        uses: actions/setup-python@v5
+      - name: Install uv and set the Python version
+        if: github.event.action != 'closed'
+        uses: astral-sh/setup-uv@v7
         with:
-          python-version: 3.x
-      - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV 
+          python-version: "3.12"
+          enable-cache: true
+      - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV
+        if: github.event.action != 'closed'
       - uses: actions/cache@v4
+        if: github.event.action != 'closed'
         with:
           key: mkdocs-${{ env.cache_id }}
           path: .cache
           restore-keys: |
             mkdocs-
-      - run: pip install mkdocs mkdocs-awesome-pages-plugin mkdocs-markdownextradata-plugin
-      - run: mkdocs gh-deploy --force --clean --verbose
+      - run: uv sync --locked --group docs
+        if: github.event.action != 'closed'
+      - name: Build docs
+        if: github.event.action != 'closed'
+        run: |
+          uv run mkdocs build --clean --verbose
+          touch site/.nojekyll
+
+      # PR preview: published to gh-pages under pr-preview/pr-<N>/, removed on close.
+      # Skipped for PRs from forks (no write access to gh-pages).
+      - name: Deploy PR preview
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: site/
+          preview-branch: gh-pages
+          umbrella-dir: pr-preview
+
+      # Full deploy; clean-exclude keeps the PR previews alive on gh-pages.
+      - name: Deploy docs
+        if: github.event_name != 'pull_request'
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: site
+          branch: gh-pages
+          clean-exclude: pr-preview/
+          force: false

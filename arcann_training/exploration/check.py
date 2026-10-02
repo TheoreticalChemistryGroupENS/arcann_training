@@ -207,6 +207,12 @@ def main(
                         arcann_logger.critical(
                             f"'{local_path}': missing files: {missing}. Check manually."
                         )
+                        # FIXME: claude - for MACE, missing/truncated per-model rerun trajectories
+                        # (SYSTEM_mace_forces_model*.lammpstrj) only get logged here, not
+                        # blocked. A "force" further down still marks the run completed even
+                        # if the committee reruns are incomplete or have mismatched frame
+                        # counts across models, which crashes exploration/deviate.py when it
+                        # stacks the per-model forces into a single array.
 
                     # Check if DCD is unreadable
                     if not check_dcd_is_valid(traj_file, vmd_bin):

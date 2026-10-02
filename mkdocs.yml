@@ -1,7 +1,24 @@
 site_name: ArcanNN - Training
-Home: index.md
+repo_url: https://github.com/TheoreticalChemistryGroupENS/arcann_training
+repo_name: TheoreticalChemistryGroupENS/arcann_training
 plugins:
     - search
     - awesome-pages
     - markdownextradata
-theme: readthedocs
+theme:
+    name: material
+    icon:
+        repo: fontawesome/brands/github
+    palette:
+        - media: "(prefers-color-scheme: light)"
+          scheme: default
+          toggle:
+              icon: material/brightness-7
+              name: Switch to dark mode
+        - media: "(prefers-color-scheme: dark)"
+          scheme: slate
+          toggle:
+              icon: material/brightness-4
+              name: Switch to light mode
+extra_css:
+    - stylesheets/extra.css

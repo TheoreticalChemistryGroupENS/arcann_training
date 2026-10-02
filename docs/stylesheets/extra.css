@@ -1,0 +1,7 @@
+/* Keep inline code spans (e.g. `transition`) from breaking mid-word
+   inside table cells. mkdocs-material's default table CSS applies
+   word-break: break-word to <td>, which can split short code spans
+   when a column auto-sizes narrow -- independent of window width. */
+.md-typeset table:not([class]) code {
+    white-space: nowrap;
+}
