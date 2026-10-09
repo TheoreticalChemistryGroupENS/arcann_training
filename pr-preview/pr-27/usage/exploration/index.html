@@ -1,0 +1,1611 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../training/">
+      
+      
+        <link rel="next" href="../labeling/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Exploration - ArcanNN - Training</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#exploration" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="ArcanNN - Training" class="md-header__button md-logo" aria-label="ArcanNN - Training" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ArcanNN - Training
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Exploration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/TheoreticalChemistryGroupENS/arcann_training" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    TheoreticalChemistryGroupENS/arcann_training
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="ArcanNN - Training" class="md-nav__button md-logo" aria-label="ArcanNN - Training" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    ArcanNN - Training
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/TheoreticalChemistryGroupENS/arcann_training" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    TheoreticalChemistryGroupENS/arcann_training
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ArcaNN Installation Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ArcaNN Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/hpc_configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HPC Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Usage
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using ArcaNN
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../iter_prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Iterative procedure prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../initialization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Initialization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Training
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exploration
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exploration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#lammps-classical-nuclei-simulations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LAMMPS: classical nuclei simulations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sanderemle-qmmm-exploration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sander/EMLE: QM/MM exploration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#handling-failed-or-borderline-runs-skip-and-force" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Handling failed or borderline runs: skip and force
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference-template-placeholders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference: template placeholders
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reference: template placeholders">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#individual-job-scripts-job_type-program_explore_archtype_myhpckeywordsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Individual job scripts (job_TYPE-PROGRAM_explore_ARCHTYPE_myHPCkeyword.sh)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#job-array-scripts-job-array_type-program_explore_archtype_myhpckeywordsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Job-array scripts (job-array_TYPE-PROGRAM_explore_ARCHTYPE_myHPCkeyword.sh)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#input-file-templates-systemin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Input file templates (SYSTEM.in)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../labeling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Labeling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/sn2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SN2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributions/unexpected_behavior/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unexpected Behavior
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributions/contributions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project details
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project details
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project_details/license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project_details/citation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Citation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project_details/funding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Funding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project_details/acknowledgments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acknowledgements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#lammps-classical-nuclei-simulations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LAMMPS: classical nuclei simulations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sanderemle-qmmm-exploration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sander/EMLE: QM/MM exploration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#handling-failed-or-borderline-runs-skip-and-force" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Handling failed or borderline runs: skip and force
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference-template-placeholders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference: template placeholders
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reference: template placeholders">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#individual-job-scripts-job_type-program_explore_archtype_myhpckeywordsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Individual job scripts (job_TYPE-PROGRAM_explore_ARCHTYPE_myHPCkeyword.sh)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#job-array-scripts-job-array_type-program_explore_archtype_myhpckeywordsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Job-array scripts (job-array_TYPE-PROGRAM_explore_ARCHTYPE_myHPCkeyword.sh)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#input-file-templates-systemin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Input file templates (SYSTEM.in)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="exploration">Exploration</h1>
+<p>In the exploration phase we will generate new configurations (referred to as <strong>candidates</strong>) to include in the training set. For this we will perform MD simulations with the LAMMPS or Sander/EMLE softwares. Go to the current iteration exploration folder <code>XXX-exploration</code> created at the end of the previous training phase and execute the <code>prepare</code> phase to initialize the exploration.</p>
+<p>The exploration phase is driven by the neural network potential you trained, so it uses the architecture you chose with <code>nnp_program</code> (DeePMD-kit or MACE). The commands and phases are the same in both cases. If you train with MACE, the only thing to be aware of is that the <code>pair_style</code> line in each <code>SYSTEM.in</code> LAMMPS input file selects how the MACE model is evaluated: ArcaNN supports <code>pair_style mace</code>, <code>pair_style mliap</code>, and <code>pair_style symmetrix/mace</code> (with the corresponding Kokkos/GPU variants also accepted). Choose the one supported by your LAMMPS build (see <a href="../iter_prerequisites/">Iterative procedure prerequisites</a>); ArcaNN reads it automatically and uses the matching model files prepared during training. Note that converting the trained MACE model(s) into the files LAMMPS needs happens on-demand during <code>prepare</code>, which requires the <code>mace</code>/<code>symmetrix</code> Python package(s) to be importable in the environment you run <code>prepare</code> from — this is a separate requirement from your LAMMPS build itself supporting the pair style.</p>
+<p>Also, unlike DeePMD-kit — where a single LAMMPS run natively evaluates the whole committee of NNPs to get the deviation — MACE/<code>mliap</code>/<code>symmetrix</code> pair styles can only evaluate one model per dynamics run. To still get a committee deviation, ArcaNN runs the dynamics with one model and then automatically appends extra "rerun" passes that replay the resulting trajectory through each of the other trained models. This is handled for you, but it means MACE exploration jobs do noticeably more compute work per trajectory than the LAMMPS run time alone would suggest.</p>
+<p><strong>MACE currently requires <code>exploration_type: "lammps"</code>.</strong> The <code>sander_emle</code> exploration type described below is only implemented for DeePMD-kit; if <code>nnp_program</code> is <code>"mace"</code> and a system's <code>exploration_type</code> is not <code>"lammps"</code>, ArcaNN stops with an error.</p>
+<p>For the first exploration phase we might want to generate only a few candidate configurations to check whether our initial NNP are stable enough to give physically meaningful configurations. We might as well want to use a relatively strict error criterion for candidate selection.
+To change these parameters you can create a <code>input.json</code> file , indicating the values to be updated, and run the <code>prepare</code> phase again. If you want to keep the default values you only need to run the <code>prepare</code> phase once. As for the Initialization and Training steps, this will generate a <code>used_input.json</code> file:</p>
+<pre><code class="language-JSON">{
+    &quot;step_name&quot;: &quot;exploration&quot;,
+    &quot;user_machine_keyword_exp&quot;: &quot;mykeyword1&quot;,
+    &quot;job_email&quot;: &quot;&quot;,
+    &quot;atomsk_path&quot;: &quot;PATH_TO_THE_ATOMSK_BINARY&quot;,
+    &quot;vmd_path&quot;: &quot;PATH_TO_THE_VMD_BINARY&quot;,
+    &quot;exploration_type&quot;: [&quot;lammps&quot;, &quot;lammps&quot;, &quot;lammps&quot;],
+    &quot;traj_count&quot;: [2, 2, 2],
+    &quot;temperature_K&quot;: [273.0, 300.0, 300.0],
+    &quot;timestep_ps&quot;: [0.0005, 0.0005, 0.0005],
+    &quot;previous_start&quot;: [true, true, true],
+    &quot;disturbed_start&quot;: [false, false, false],
+    &quot;print_interval_mult&quot;: [0.01, 0.01, 0.01],
+    &quot;job_walltime_h&quot;: [-1, -1, -1],
+    &quot;exp_time_ps&quot;: [10, 10, 10],
+    &quot;max_exp_time_ps&quot;: [400, 400, 400],
+    &quot;max_candidates&quot;: [50, 50, 100],
+    &quot;sigma_low&quot;: [0.1, 0.1, 0.1],
+    &quot;sigma_high&quot;: [0.8, 0.8, 0.8],
+    &quot;sigma_high_limit&quot;: [1.5, 1.5, 1.5],
+    &quot;ignore_first_x_ps&quot;: [0.5, 0.5, 0.5],
+    &quot;init_exp_time_ps&quot;: [-1, -1, -1],
+    &quot;init_job_walltime_h&quot;: [-1, -1, -1],
+    &quot;disturbed_candidate_value&quot;: [0.5, 0, 0],
+    &quot;disturbed_start_value&quot;: [0.0, 0.0, 0.0],
+    &quot;disturbed_start_indexes&quot;: [[], [], []],
+    &quot;disturbed_candidate_indexes&quot;: [[], [], []]
+}
+</code></pre>
+<ul>
+<li><code>"traj_count"</code>: number of independent MD trajectories launched per <strong>system</strong> and per trained NNP (so the total number of runs for a system is <code>traj_count × nnp_count</code>).</li>
+<li><code>"temperature_K"</code> and <code>"timestep_ps"</code>: temperature (K) and integration timestep (ps) of the MD run.</li>
+<li><code>"exp_time_ps"</code>: the requested simulation length, in ps, for this iteration (<code>-1</code> lets ArcaNN pick a value automatically from previous iterations). <code>"max_exp_time_ps"</code> is a hard ceiling on how long any single run is allowed to run for, regardless of <code>exp_time_ps</code>.</li>
+<li><code>"job_walltime_h"</code>: wall time requested for the MD <code>Slurm</code> job, in hours. <code>-1</code> (the default) lets ArcaNN estimate it automatically — 1 h for the very first exploration of a system, then from the measured time-per-step of the previous iteration's runs, scaled to the new <code>exp_time_ps</code>.</li>
+<li><code>"print_interval_mult"</code>: fraction of the total number of MD steps between two saved frames/deviation evaluations (e.g. <code>0.01</code> means a frame is written roughly every 1% of the trajectory). Lower values sample the trajectory more finely (more candidate opportunities, larger output files).</li>
+<li><code>"ignore_first_x_ps"</code>: an equilibration/burn-in period, in ps, at the start of each trajectory that is excluded from candidate selection in the <code>deviate</code> phase.</li>
+<li><code>"previous_start"</code>: whether this iteration's runs may start from a configuration extracted from the <em>previous</em> iteration's exploration (rather than always from the original <code>SYSTEM.lmp</code>/<code>SYSTEM.xml</code>). <code>"disturbed_start"</code>: same, but starting from a <em>disturbed</em> (randomly perturbed) configuration produced by a previous iteration that used a non-zero <code>disturbed_start_value</code> (see below). Both are ignored on the very first iteration.</li>
+<li><code>"sigma_low"</code>, <code>"sigma_high"</code> and <code>"sigma_high_limit"</code> indicate the deviation acceptance criteria in eV/Ang for the candidate selection: below <code>sigma_low</code> a frame is considered accurate enough to discard; between <code>sigma_low</code> and <code>sigma_high</code> it is a good candidate; between <code>sigma_high</code> and <code>sigma_high_limit</code> it is a candidate but flagged as more borderline/"disturbed"-worthy. <code>sigma_high_limit</code> is not simply a fourth bucket, though: as soon as the deviation of a frame <em>crosses</em> <code>sigma_high_limit</code>, ArcaNN treats the trajectory as having diverged from that point on — all subsequent frames are discarded outright (not even considered as candidates), and if the crossing happens within <code>ignore_first_x_ps</code>, the <em>entire</em> trajectory is discarded from the candidate statistics.</li>
+<li><code>"max_candidates"</code> indicates the maximum number of candidates that can be selected.</li>
+<li>The values in <code>disturbed_start_value</code> are used to disturb the starting structures for the next iteration. A non-zero value sets the maximal amplitude of the random translation vector that will be applied to each atom (a different vector for each atom) in Å. <code>"disturbed_start_indexes"</code> restricts this disturbance to specific (zero-based) atomic indices instead of the whole configuration, the same way <code>"disturbed_candidate_indexes"</code> does for <code>disturbed_candidate_value</code> (see below).</li>
+</ul>
+<p><strong>Note:</strong> the <code>vmd_path</code> keyword is not needed if <code>vmd</code> is immediately available in our path when executing the <code>extract</code> phase (loaded as a module for example). Similarly, we can remove <code>atomsk_path</code> if <code>atomsk</code> is already in the path.</p>
+<h2 id="lammps-classical-nuclei-simulations">LAMMPS: classical nuclei simulations</h2>
+<p>Once you are satisfied with your exploration parameters (see example below) you can execute the next exploration phases: <code>launch</code> to run MD trajectories with each subsystem  and <code>check</code> (once the <code>Slurm</code> MD jobs are done!). If the <code>check</code> phase is successful, you can move on to the <code>deviate</code> phase, where you can set important parameters for candidate selection. Once again you can modify these keywords by the creation (or modification if you already created one for a previous phase) of a <code>default_input.json</code> file and re-executing the <code>deviate</code> phase. In the <code>extract</code> phase an important choice can be made: whether to include "disturbed" candidates in the training set or not. This is done by changing the <code>disturbed_start_value</code> and <code>disturbed_candidate_value</code> variables from the defaults (0.0) and will include a set of candidates generated by applying a random perturbation to those obtained in the MD trajectories (this will multiply by 2 the number of selected candidates, make sure that the <code>disturbed_start_value</code> that you choose will still give physically meaningful configurations, otherwise you will deteriorate your NNP!). Once you execute this phase a <code>candidates_XXX_SUBSYS.xyz</code> file will be created in each subsystem directory containing the candidate configurations that will be added to the training set (you might want to check that they make sense!). You can also disturb only some atoms in the configuration in which case you will need to write their (zero-based) atomic indices in the <code>disturbed_candidate_indexes</code> variable. The <code>clean</code> phase can be executed to clean up all the temporary files. A <code>control/exploration_XXX.json</code> file will be written recording all the exploration parameters. You can now move on to the labeling phase! (Don't forget to keep your local folder updated so that you can analyze all these results)</p>
+<h2 id="sanderemle-qmmm-exploration">Sander/EMLE: QM/MM exploration</h2>
+<p>ArcaNN can also drive QM/MM exploration through <a href="https://ambermd.org/">Sander</a> coupled to <a href="https://github.com/chemle/emle-engine">EMLE</a> (<code>exploration_type: "sander_emle"</code>). The <code>prepare</code>, <code>launch</code>, <code>check</code>, <code>deviate</code>, <code>extract</code> and <code>clean</code> phases are run in the same order as for LAMMPS; no <code>select_beads</code>/<code>rerun</code> step is needed. <strong>Available with DeePMD-kit only</strong> (see the MACE note above).</p>
+<p>For each <strong>system</strong> using this mode, place the following in <code>user_files/</code> (in addition to the usual <code>SYSTEM.lmp</code>; see <a href="../iter_prerequisites/">Iterative procedure prerequisites</a>), using templates from <code>examples/user_files/exploration_sander_emle/</code>:</p>
+<ul>
+<li><code>SYSTEM.in</code>: the Sander MD input file.</li>
+<li><code>SYSTEM.yaml</code>: the EMLE backend configuration (read/updated by ArcaNN — the <code>deepmd_model</code>, <code>deepmd_deviation</code>, <code>model</code>, <code>energy_file</code>, <code>log_file</code>, <code>qm_xyz_file</code> and <code>qm_xyz_frequency</code> keys are filled in automatically, the rest is yours to set).</li>
+<li><code>SYSTEM.prmtop</code>: the Amber topology file for the system.</li>
+<li><code>SYSTEM.mat</code>: the trained EMLE model file.</li>
+<li><code>SYSTEM.ncrst</code>: the starting restart coordinates (Amber <code>ncrst</code> format).</li>
+</ul>
+<p>Optional <code>plumed_SYSTEM.dat</code> / <code>plumed_*_SYSTEM.dat</code> files are supported exactly as for LAMMPS if referenced from <code>SYSTEM.in</code>.</p>
+<p><strong>Limitation:</strong> unlike LAMMPS exploration, Sander/EMLE does not yet pick a new starting structure from the previous iteration's candidates — every iteration restarts from the same <code>SYSTEM.ncrst</code>, and <code>previous_start</code> is ignored for these systems (ArcaNN logs a warning). This is a known gap in the current implementation.</p>
+<h2 id="handling-failed-or-borderline-runs-skip-and-force">Handling failed or borderline runs: <code>skip</code> and <code>force</code></h2>
+<p>During <code>check</code>, a run that ArcaNN cannot validate is handled in one of two ways. This applies the same way regardless of <code>exploration_type</code> (LAMMPS, or Sander/EMLE):</p>
+<ul>
+<li><strong><code>skip</code></strong>: ArcaNN itself creates an empty <code>skip</code> file in a run's folder when the trajectory output (the <code>.dcd</code>/<code>.nc</code> file) exists but is unreadable/corrupted. You can also create this file yourself (<code>touch RUNFOLDER/skip</code>) to discard a run you know is unusable; skipped runs are excluded from candidate selection and counted as <code>skipped_count</code> in <code>control/exploration_XXX.json</code>.</li>
+<li><strong><code>force</code></strong>: create this file yourself (<code>touch RUNFOLDER/force</code>) when a run looks like it failed (e.g., no "Total wall time" line found in the LAMMPS log, or no "Average timings for all steps" line in the <code>sander_emle</code> log) but you have checked it and consider it usable anyway. <code>check</code> then accepts it as completed instead of reporting it as failed, and counts it under <code>forced_count</code>.</li>
+</ul>
+<p>Re-run <code>check</code> after adding either file; it will report how many runs were skipped/forced.</p>
+<p><strong>MACE caveat:</strong> with <code>nnp_program: "mace"</code>, <code>check</code> only inspects the main dynamics LAMMPS log, not the per-model rerun trajectories used to build the committee deviation (see the note on reruns above). Forcing a run whose main log looks incomplete does not guarantee those rerun passes finished for every model in the committee; if one is missing or truncated, the later <code>deviate</code> phase can fail or produce an inconsistent deviation for that run. Check that all <code>SYSTEM_mace_forces_model*.lammpstrj</code> files exist and have matching frame counts before forcing a MACE run.</p>
+<h2 id="reference-template-placeholders">Reference: template placeholders</h2>
+<p>Every <code>_R_</code> placeholder below is filled in by the <code>prepare</code> phase and must be kept as-is in your templates. The generic <code>Slurm</code> header placeholders (<code>_R_PROJECT_</code>, <code>_R_ALLOC_</code>, <code>_R_PARTITION_</code>, <code>_R_SUBPARTITION_</code>, <code>_R_QOS_</code>, <code>_R_WALLTIME_</code>, <code>_R_EMAIL_</code>) apply here too — see <a href="../../getting-started/hpc_configuration/#common-_r_-placeholders-every-slurm-job-script">HPC Configuration</a> — and are not repeated below.</p>
+<h3 id="individual-job-scripts-job_type-program_explore_archtype_myhpckeywordsh">Individual job scripts (<code>job_TYPE-PROGRAM_explore_ARCHTYPE_myHPCkeyword.sh</code>)</h3>
+<p>These apply regardless of <code>exploration_type</code>, on top of the type-specific ones further down:</p>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Filled with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_R_DEEPMD_VERSION_</code> / <code>_R_MACE_VERSION_</code></td>
+<td>The <code>nnp_program</code>-specific model version used for this iteration (whichever of the two matches your <code>nnp_program</code>).</td>
+</tr>
+<tr>
+<td><code>_R_MODEL_FILES_</code></td>
+<td>The NNP model file name(s) for the committee member/trajectory (space-separated, quoted for the shell).</td>
+</tr>
+<tr>
+<td><code>_R_PLUMED_FILES_</code></td>
+<td>The PLUMED input file name(s) used by this run, if any <code>plumed*_SYSTEM.dat</code> file is present; otherwise the line referencing it is removed.</td>
+</tr>
+<tr>
+<td><code>_R_RERUN_FILE_</code></td>
+<td>Reserved placeholder — in the current version it is always stripped out (replaced with an empty string), never populated.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>LAMMPS</strong> (<code>exploration_type: "lammps"</code>) additionally fills:</p>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Filled with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_R_LAMMPS_IN_FILE_</code></td>
+<td>The generated <code>SYSTEM_NNPINDEX_ITER.in</code> LAMMPS input file name.</td>
+</tr>
+<tr>
+<td><code>_R_LAMMPS_LOG_FILE_</code></td>
+<td>The LAMMPS log file name.</td>
+</tr>
+<tr>
+<td><code>_R_LAMMPS_OUT_FILE_</code></td>
+<td>The LAMMPS stdout/stderr file name.</td>
+</tr>
+<tr>
+<td><code>_R_DATA_FILE_</code></td>
+<td>The <code>.lmp</code> starting-configuration file used for this run (the system's own <code>SYSTEM.lmp</code>, or a previous-iteration starting point).</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Sander/EMLE</strong> (<code>exploration_type: "sander_emle"</code>) additionally fills:</p>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Filled with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_R_SANDER_IN_FILE_</code></td>
+<td>The generated Sander <code>.in</code> input file name.</td>
+</tr>
+<tr>
+<td><code>_R_EMLE_IN_FILE_</code></td>
+<td>The generated EMLE <code>.yaml</code> configuration file name.</td>
+</tr>
+<tr>
+<td><code>_R_SANDER_LOG_FILE_</code></td>
+<td>The Sander log file name.</td>
+</tr>
+<tr>
+<td><code>_R_SANDER_OUT_FILE_</code></td>
+<td>The Sander stdout/stderr file name.</td>
+</tr>
+<tr>
+<td><code>_R_SANDER_RESTART_FILE_</code></td>
+<td>The Sander/Amber restart (<code>.ncrst</code>) output file name.</td>
+</tr>
+<tr>
+<td><code>_R_EMLE_OUT_FILE_</code></td>
+<td>The EMLE stdout/stderr file name.</td>
+</tr>
+<tr>
+<td><code>_R_SANDER_TRAJOUT_FILE_</code></td>
+<td>The trajectory (<code>.nc</code>) output file name.</td>
+</tr>
+<tr>
+<td><code>_R_TOP_FILE_</code></td>
+<td>The Amber topology (<code>SYSTEM.prmtop</code>) file name.</td>
+</tr>
+<tr>
+<td><code>_R_SANDER_COORD_FILE_</code></td>
+<td>The starting restart-coordinates (<code>.ncrst</code>) file name.</td>
+</tr>
+<tr>
+<td><code>_R_EMLE_MODEL_FILE_</code></td>
+<td>The trained EMLE model (<code>SYSTEM.mat</code>) file name.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="job-array-scripts-job-array_type-program_explore_archtype_myhpckeywordsh">Job-array scripts (<code>job-array_TYPE-PROGRAM_explore_ARCHTYPE_myHPCkeyword.sh</code>)</h3>
+<p>Used for LAMMPS and Sander/EMLE explorations when more than one run is generated (one array task per <code>system</code> × NNP-committee-member × trajectory combination). Each task reads its own parameters (paths, model files, input file names, ...) from a companion <code>job-array-params_..._.lst</code> file at runtime, one line per task — you should not need to touch that file's format, only keep the <code>sed</code>/array-index parsing logic in the example template.</p>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Filled with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_R_ARRAY_START_</code></td>
+<td><code>0</code> (the <code>Slurm</code> array's starting index).</td>
+</tr>
+<tr>
+<td><code>_R_ARRAY_END_</code></td>
+<td>The total number of runs for this <code>exploration_type</code> minus 1.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="input-file-templates-systemin">Input file templates (<code>SYSTEM.in</code>)</h3>
+<p>Filled directly inside your LAMMPS or Sander input templates (in <code>user_files/</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Filled with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_R_ATOM_LABELS_</code></td>
+<td>The space-separated element symbols, in <code>properties.txt</code> order (LAMMPS only; filled as soon as the template is read, before any other substitution).</td>
+</tr>
+<tr>
+<td><code>_R_TIMESTEP_</code></td>
+<td>The MD timestep, from <code>"timestep_ps"</code>.</td>
+</tr>
+<tr>
+<td><code>_R_TEMPERATURE_</code></td>
+<td>The MD temperature (K), from <code>"temperature_K"</code>.</td>
+</tr>
+<tr>
+<td><code>_R_NUMBER_OF_STEPS_</code></td>
+<td>The number of MD steps for this run, derived from <code>"exp_time_ps"</code>/<code>"timestep_ps"</code> (capped by <code>"max_exp_time_ps"</code>), or from the number of steps of a PLUMED <code>MOVINGRESTRAINTS</code> (SMD) block if present.</td>
+</tr>
+<tr>
+<td><code>_R_PRINT_FREQ_</code></td>
+<td>The number of steps between two saved frames/deviation evaluations, from <code>"print_interval_mult"</code>. Also used inside the cell-tracking <code>fix ... print</code> line and the MACE/<code>mliap</code>/<code>symmetrix</code> <code>dump</code> commands that ArcaNN injects automatically into LAMMPS inputs.</td>
+</tr>
+<tr>
+<td><code>_R_DATA_FILE_</code></td>
+<td>The <code>.lmp</code> starting-configuration file name (LAMMPS).</td>
+</tr>
+<tr>
+<td><code>_R_COORD_FILE_</code></td>
+<td>The starting restart-coordinates (<code>.ncrst</code>) file name (Sander/EMLE).</td>
+</tr>
+<tr>
+<td><code>_R_SEED_VEL_</code> / <code>_R_SEED_THER_</code></td>
+<td>Randomly generated velocity/thermostat seeds (LAMMPS).</td>
+</tr>
+<tr>
+<td><code>_R_DCD_OUT_</code></td>
+<td>The output DCD trajectory file name (LAMMPS).</td>
+</tr>
+<tr>
+<td><code>_R_NC_OUT_</code></td>
+<td>The output NetCDF trajectory file name (Sander/EMLE).</td>
+</tr>
+<tr>
+<td><code>_R_RESTART_OUT_</code></td>
+<td>The output restart file name (LAMMPS/Sander-EMLE).</td>
+</tr>
+<tr>
+<td><code>_R_MODEL_FILES_</code></td>
+<td>The NNP model file(s) used by <code>pair_style</code> (LAMMPS; all committee models for DeePMD-kit, or the first model for MACE/<code>mliap</code>/<code>symmetrix</code>, with the other committee members appended afterwards as <code>rerun</code> blocks).</td>
+</tr>
+<tr>
+<td><code>_R_DEVI_OUT_</code></td>
+<td>The model-deviation output file name (LAMMPS/Sander-EMLE, DeePMD-kit only).</td>
+</tr>
+<tr>
+<td><code>_R_PLUMED_IN_</code> / <code>_R_PLUMED_OUT_</code></td>
+<td>The PLUMED input/log file names, if PLUMED is used.</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
