@@ -283,10 +283,10 @@ def main(
             ]
             main_json["type_map"] = type_map
 
-        # Make sure they are the same
-        if nnp_input["model"]["type_map"] != main_json["type_map"]:
+        # Make sure all required types are included (nnp_input may have a larger type_map, e.g. from a foundation model)
+        if not set(main_json["type_map"]).issubset(set(nnp_input["model"]["type_map"])):
             arcann_logger.error(
-                f"Type map in {dp_train_input_path} does not match the one in config.json."
+                f"Type map in {dp_train_input_path} does not include all types from config.json."
             )
             arcann_logger.error("Aborting...")
             return 1
