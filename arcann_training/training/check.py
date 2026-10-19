@@ -109,12 +109,15 @@ def main(
             training_out = []
         if training_out:
             # Finished correctly
-            if nnp_program == "deepmd" and any(
-                "finished training" in s for s in training_out
+            if nnp_program == "deepmd" and (
+                any("finished training" in s for s in training_out)  # v2/TF
+                or any(
+                    "Trained model has been saved to:" in s for s in training_out
+                )  # v3/PT
             ):
                 if nnp_program == "deepmd" and nnp_version >= version.parse("3.0.0"):
                     training_out_time = [s for s in training_out if "wall time" in s]
-                    batch_pattern = r"batch\s*(\d+)\b"
+                    batch_pattern = r"Batch\s+(\d+)"
                     time_pattern = r"wall time = (\d+\.\d+) s"
 
                 else:
@@ -123,6 +126,9 @@ def main(
                     ]
                     batch_pattern = r"batch\s*(\d+)\s"
                     time_pattern = r"training time (\d+\.\d+) s"
+                arcann_logger.debug(
+                    f"we are here with {nnp_version} and {batch_pattern}"
+                )
 
                 if min_nbor_dist is None or max_nbor_size is None:
                     for log_text in training_out:
@@ -163,8 +169,7 @@ def main(
                     training_out_time,
                 )
                 del time_pattern, batch_pattern
-
-                for suffix in ["index", "meta", "data-00000-of-00001"]:
+                for suffix in ["index", "meta", "data-00000-of-00001", "pt"]:
                     if (
                         local_path / f"model.ckpt-{batch_numbers[-1]}.{suffix}"
                     ).is_file():

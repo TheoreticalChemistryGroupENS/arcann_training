@@ -15,6 +15,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from packaging import version
+
 # Local imports
 from arcann_training.common.check import validate_step_folder
 from arcann_training.common.filesystem import change_directory, check_file_existence
@@ -100,6 +102,10 @@ def main(
     training_json = load_json_file((control_path / f"training_{padded_curr_iter}.json"))
     nnp_program: str = main_json["nnp_program"]
 
+    if nnp_program == "deepmd":
+        nnp_version = version.parse(training_json["deepmd_model_version"])
+    elif nnp_program == "mace":
+        nnp_version = version.parse(training_json["mace_model_version"])
     arcann_logger.info(f"Using {nnp_program} as NNP software")
 
     # Load the previous training JSON
@@ -212,7 +218,10 @@ def main(
         for nnp in range(1, main_json["nnp_count"] + 1):
             local_path = current_path / f"{nnp}"
 
-            check_file_existence(local_path / "model.ckpt.index")
+            if nnp_version >= version.parse("3.0.0"):
+                check_file_existence(local_path / "model.ckpt.pt")
+            else:
+                check_file_existence(local_path / "model.ckpt.index")
 
             job_file = replace_in_slurm_file_general(
                 master_job_file,
