@@ -252,11 +252,17 @@ class LAMMPSInputHandler:
         "",
     ]
 
+    # Stores the forces before any fix (PLUMED, Langevin, ...) adds to them,
+    # so model 1 matches the bias-free reruns of the other models.
+    # Must be defined before every force-modifying fix.
+    mace_store_force = "fix arcann_frc all store/force\n"
+
+    # Full precision: positions are reread by the reruns, forces feed the deviation
     mace_dump_0 = (
         "dump traj_xyz all custom _R_PRINT_FREQ_ _RI_NAME__mace_run_model1.lammpstrj id type x y z",
-        "dump traj_frc all custom _R_PRINT_FREQ_ _RI_NAME__mace_forces_model1.lammpstrj id type x y z fx fy fz",
-        "dump_modify traj_xyz sort id",
-        "dump_modify traj_frc sort id",
+        "dump traj_frc all custom _R_PRINT_FREQ_ _RI_NAME__mace_forces_model1.lammpstrj id type x y z f_arcann_frc[1] f_arcann_frc[2] f_arcann_frc[3]",
+        "dump_modify traj_xyz sort id format float %20.15g",
+        "dump_modify traj_frc sort id format float %20.15g colname f_arcann_frc[1] fx colname f_arcann_frc[2] fy colname f_arcann_frc[3] fz",
         "",
     )
 
@@ -375,11 +381,21 @@ class LAMMPSInputHandler:
             )
 
         run_index = match_run.start()
-        _modified_text = self._raw_text[:run_index] + "\n".join(self.cell_info_lammps)
+        _modified_text = self._raw_text[:run_index]
 
         match self.lmp_pair:
             case LAMMPSPair.MACE | LAMMPSPair.MLIAP | LAMMPSPair.SYMMETRIX:
-                _modified_text += "\n".join(self.mace_dump_0)
+                match_fix = re.search(r"^[ \t]*fix\s", _modified_text, re.MULTILINE)
+                fix_index = match_fix.start() if match_fix else len(_modified_text)
+                _modified_text = (
+                    _modified_text[:fix_index]
+                    + self.mace_store_force
+                    + _modified_text[fix_index:]
+                    + "\n".join(self.cell_info_lammps)
+                    + "\n".join(self.mace_dump_0)
+                )
+            case _:
+                _modified_text += "\n".join(self.cell_info_lammps)
 
         _modified_text += self._raw_text[run_index:] + "\n"
         self._raw_text = _modified_text
@@ -507,7 +523,7 @@ thermo_style custom step pe
 thermo 1
 
 dump traj{i} all custom _R_PRINT_FREQ_ {self._lmp_input.stem}_mace_forces_model{i}.lammpstrj id type x y z fx fy fz
-dump_modify traj{i} sort id
+dump_modify traj{i} sort id format float %20.15g
 
 rerun {self._lmp_input.stem}_mace_run_model1.lammpstrj dump x y z
 """
