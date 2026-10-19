@@ -334,12 +334,11 @@ def main(
                                 for i in range(1, main_json["nnp_count"] + 1)
                             ]
                         )
-                        mace_rerun_forces = np.linalg.norm(
-                            mace_rerun_forces, axis=-1, keepdims=True
+                        # Same as DeePMD: std over NNP per component, then norm over xyz,
+                        # i.e. sqrt(<|F - <F>|^2>), return an array with (Step,Atoms) dim
+                        deviation_per_atom = np.linalg.norm(
+                            np.std(mace_rerun_forces, axis=0), axis=-1
                         )
-                        deviation_per_atom = np.std(
-                            mace_rerun_forces, axis=(0, 3)
-                        )  # (0, 3) -> (NNP, Forces), return an array with (Step,Atoms) dim
 
                         print_every_x_steps = exploration_json["systems_auto"][
                             system_auto
