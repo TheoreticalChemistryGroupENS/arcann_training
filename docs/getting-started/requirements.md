@@ -33,7 +33,7 @@ Different steps in the workflow are supported by specific programs. For the **tr
 - **LAMMPS**: used for classical-nuclei simulations. It must be built with support for the potential you selected:
     - For DeePMD-kit, LAMMPS must be compatible with DeePMD-kit.
     - For MACE, LAMMPS must provide a compatible MACE interface. ArcaNN recognizes the `mace`, `mliap`, and `symmetrix/mace` pair styles (Kokkos/GPU variants are also accepted); you choose which one to use in your LAMMPS input file.
-- **PLUMED**: for enhanced-sampling/biased simulations. **Only DeepMD supported**.
+- **PLUMED**: for enhanced-sampling/biased simulations. Works with DeePMD-kit and with MACE (LAMMPS exploration). With MACE, the bias is excluded from the committee deviation (see [Exploration](../usage/exploration.md)).
 
 **Electronic-structure program (pick one, used in the labeling step):**
 
