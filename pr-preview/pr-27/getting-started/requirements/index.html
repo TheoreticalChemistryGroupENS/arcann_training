@@ -1217,7 +1217,7 @@
 <li>For MACE, LAMMPS must provide a compatible MACE interface. ArcaNN recognizes the <code>mace</code>, <code>mliap</code>, and <code>symmetrix/mace</code> pair styles (Kokkos/GPU variants are also accepted); you choose which one to use in your LAMMPS input file.</li>
 </ul>
 </li>
-<li><strong>PLUMED</strong>: for enhanced-sampling/biased simulations. <strong>Only DeepMD supported</strong>.</li>
+<li><strong>PLUMED</strong>: for enhanced-sampling/biased simulations. Works with DeePMD-kit and with MACE (LAMMPS exploration). With MACE, the bias is excluded from the committee deviation (see <a href="../../usage/exploration/">Exploration</a>).</li>
 </ul>
 <p><strong>Electronic-structure program (pick one, used in the labeling step):</strong></p>
 <ul>

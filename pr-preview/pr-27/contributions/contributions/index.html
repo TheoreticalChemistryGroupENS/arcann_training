@@ -1200,7 +1200,8 @@ pre-commit install
 uv run ruff format .
 uv run python -m unittest discover arcann_training/unittests
 </code></pre>
-<p>CI (see <code>.github/workflows/</code>) runs this same unit test matrix (Python 3.10–3.13) and rebuilds the documentation site on every push, so make sure both pass locally before opening a pull request.</p>
+<p>CI (see <code>.github/workflows/</code>) runs this same unit test matrix (Python 3.10–3.13) and builds the documentation site, so make sure both pass locally before opening a pull request. You can preview the docs locally with <code>uv sync --group docs &amp;&amp; uv run mkdocs serve</code>.</p>
+<p>The docs are deployed to GitHub Pages on every push to <code>main</code> (and, for now, <code>develop</code>). Every pull request targeting <code>main</code> or <code>develop</code> from a branch of this repository also gets a preview. It is published under <code>pr-preview/pr-&lt;N&gt;/</code>, and a bot comment on the PR links to it. The preview is removed when the PR is closed. Pull requests from forks are built but get no preview.</p>
 <h2 id="reporting-bugs">Reporting bugs</h2>
 <p>See <a href="../unexpected_behavior/">Unexpected Behavior</a> for how to report issues.</p>
 
