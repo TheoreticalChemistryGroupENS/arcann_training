@@ -274,8 +274,9 @@ class ExtXYZEnsemble(DataEnsemble):
             )
 
     def get_size(self) -> int | None:
-        if (self.path / f"{self.path.name}.extxyz").is_file():
-            trajectory = read(self.path / f"{self.path.name}.extxyz", index=":")
+        extxyz_file = self.path / f"{self.path.name}.extxyz"
+        if extxyz_file.is_file() and extxyz_file.stat().st_size > 0:
+            trajectory = read(extxyz_file, index=":")
             return len(list(trajectory))
         return None
 
@@ -658,6 +659,11 @@ class Dataset:
         )
 
         nb_of_frames = coord.shape[0]
+        if nb_of_frames == 0:
+            arcann_logger.warning(
+                f"No frames to add for {system_name}_{iteration}, skipping dataset creation."
+            )
+            return
         indices = np.random.permutation(nb_of_frames)
         split_idx = int(nb_of_frames * (1 - self.split))
         train_idx = indices[:split_idx]
@@ -679,20 +685,30 @@ class Dataset:
             for name, arr in arrays.items()
         }
         # TODO probably these wannier not cvg should be splitted too but i dunno how
-        training_data_ensemble.load_from_raw_arrays(
-            type=type,
-            **train_arrays,
-            wannier_not_cvg=wannier_not_cvg,
-            is_periodic=is_periodic,
-        )
-        training_data_ensemble.write()
-        validation_data_ensemble.load_from_raw_arrays(
-            type=type,
-            **val_arrays,
-            wannier_not_cvg=wannier_not_cvg,
-            is_periodic=is_periodic,
-        )
-        validation_data_ensemble.write()
+        if len(train_idx) > 0:
+            training_data_ensemble.load_from_raw_arrays(
+                type=type,
+                **train_arrays,
+                wannier_not_cvg=wannier_not_cvg,
+                is_periodic=is_periodic,
+            )
+            training_data_ensemble.write()
+        else:
+            arcann_logger.warning(
+                f"No training frames for {system_name}_{iteration} after split, skipping training dataset."
+            )
+        if len(val_idx) > 0:
+            validation_data_ensemble.load_from_raw_arrays(
+                type=type,
+                **val_arrays,
+                wannier_not_cvg=wannier_not_cvg,
+                is_periodic=is_periodic,
+            )
+            validation_data_ensemble.write()
+        else:
+            arcann_logger.warning(
+                f"No validation frames for {system_name}_{iteration} after split, skipping validation dataset."
+            )
 
         self.control_file.setdefault("intermediate_datasets", {})
         self.control_file["intermediate_datasets"] |= {
