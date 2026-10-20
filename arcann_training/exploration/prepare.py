@@ -1550,6 +1550,12 @@ def main(
         "is_extracted": False,
     }
     if "i-PI" in exploration_types:
+        # FIXME: claude - bug — these flags are meant to be flipped to True by "select_beads"/
+        # "rerun"/"recheck" phases (see deviate.py's "Execute first: exploration
+        # recheck." message), but no select_beads.py, rerun.py, or recheck.py exists
+        # in this directory, and __main__.py derives valid phases purely from the
+        # filenames present here. So is_rechecked can never become True and i-PI
+        # exploration currently cannot progress past "check" into deviate/extract.
         exploration_json = {
             **exploration_json,
             "is_unbeaded": False,

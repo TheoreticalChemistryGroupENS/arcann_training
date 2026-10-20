@@ -263,6 +263,12 @@ def main(
         return 1
 
     # Check if the data folder is present
+    # FIXME: claude - bug — this checks training_path/"data" ($WORK_DIR/data), but the symlink
+    # actually created per-NNP below (line ~305) points at current_path/"data"
+    # (XXX-test/data), a folder that is never created anywhere in this phase. This
+    # check therefore validates the wrong directory. If XXX-test/data doesn't already
+    # exist, ln -nsf below silently creates a dangling symlink, and check.py's
+    # (current_path / "data").iterdir() then raises an unhandled FileNotFoundError.
     if not (training_path / "data").is_dir():
         arcann_logger.error("Data folder not found.")
         arcann_logger.error("Aborting...")
@@ -285,6 +291,13 @@ def main(
         )
 
         # Replace the inputs/variables in the job file
+        # FIXME: claude - bug — always uses training_json['deepmd_model_version'] (the version
+        # the graph was trained with), never current_input_json['deepmd_model_version']
+        # (what the user set in test's own input.json). The comment above at line ~236
+        # explains this is deliberate for "is_compressed"/inheritance purposes, but it
+        # means the user-facing "deepmd_model_version" test keyword has no effect on
+        # which DeePMD-kit version actually runs `dp test` — it's recorded in
+        # testing_XXX.json but silently ignored here.
         job_file = replace_substring_in_string_list(
             job_file, "_R_DEEPMD_VERSION_", f"{training_json['deepmd_model_version']}"
         )
@@ -302,6 +315,9 @@ def main(
         subprocess.call(
             ["ln", "-nsf", str((training_path / "NNP" / nnp)), str(local_path)]
         )
+        # FIXME: claude - bug (see FIXME above) — this links from current_path/"data"
+        # (XXX-test/data, never created) instead of the validated training_path/"data"
+        # ($WORK_DIR/data). Likely meant to be training_path / "data".
         subprocess.call(["ln", "-nsf", str((current_path / "data")), str(local_path)])
 
         # Update the testing JSON

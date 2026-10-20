@@ -245,13 +245,27 @@ def check_dptrain_properties(user_files_path: Path, properties_dict: Dict):
 
     for dptrain in dptrain_list:
         dptrain_dict = load_json_file(dptrain)
-        if len(dptrain_dict["model"]["type_map"]) != len(properties_dict):
-            error_msg = f"Number of types in {dptrain} does not match the number of types in properties file"
-            raise ValueError(error_msg)
-        for idx, type_dptrain in enumerate(dptrain_dict["model"]["type_map"]):
-            if type_dptrain != properties_dict[idx + 1]["symbol"]:
-                error_msg = f"Type {type_dptrain} not in properties or order is incorrect. Check your {dptrain}"
+        dptrain_type_map = dptrain_dict["model"]["type_map"]
+        required_symbols = [
+            properties_dict[idx + 1]["symbol"] for idx in range(len(properties_dict))
+        ]
+        if len(dptrain_type_map) == len(required_symbols):
+            # Standard case: exact match with order required
+            for idx, type_dptrain in enumerate(dptrain_type_map):
+                if type_dptrain != required_symbols[idx]:
+                    error_msg = f"Type {type_dptrain} not in properties or order is incorrect. Check your {dptrain}"
+                    raise ValueError(error_msg)
+        elif len(dptrain_type_map) > len(required_symbols):
+            # Foundation model case: type_map is a superset, check all required types are included
+            if not set(required_symbols).issubset(set(dptrain_type_map)):
+                missing = set(required_symbols) - set(dptrain_type_map)
+                error_msg = (
+                    f"Types {missing} from properties file are missing in {dptrain}"
+                )
                 raise ValueError(error_msg)
+        else:
+            error_msg = f"Number of types in {dptrain} is less than the number of types in properties file"
+            raise ValueError(error_msg)
 
 
 # TODO: Add tests for this function
