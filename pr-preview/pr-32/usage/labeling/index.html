@@ -1,0 +1,1760 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../exploration/">
+      
+      
+        <link rel="next" href="../test/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Labeling - ArcanNN - Training</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#labeling" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="ArcanNN - Training" class="md-header__button md-logo" aria-label="ArcanNN - Training" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ArcanNN - Training
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Labeling
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/TheoreticalChemistryGroupENS/arcann_training" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    TheoreticalChemistryGroupENS/arcann_training
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="ArcanNN - Training" class="md-nav__button md-logo" aria-label="ArcanNN - Training" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    ArcanNN - Training
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/TheoreticalChemistryGroupENS/arcann_training" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    TheoreticalChemistryGroupENS/arcann_training
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ArcaNN Installation Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/requirements/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ArcaNN Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/hpc_configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HPC Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Usage
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using ArcaNN
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../iter_prerequisites/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Iterative procedure prerequisites
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../initialization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Initialization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Training
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../exploration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exploration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Labeling
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Labeling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#cp2k-labeling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CP2K labeling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CP2K labeling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#input-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Input files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#job-scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Job scripts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checking-convergence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checking convergence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extracting-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extracting data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cleaning-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cleaning up
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#orca-labeling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ORCA labeling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ORCA labeling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#input-files_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Input files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#job-scripts_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Job scripts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checking-convergence_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checking convergence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extracting-data_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extracting data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cleaning-up_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cleaning up
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference-template-placeholders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference: template placeholders
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reference: template placeholders">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#job-scripts-job_program_label_archtype_myhpckeywordsh-and-job-array_program_label_archtype_myhpckeyword_nsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Job scripts (job_PROGRAM_label_ARCHTYPE_myHPCkeyword.sh and job-array_PROGRAM_label_ARCHTYPE_myHPCkeyword_N.sh)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cp2korca-input-file-templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CP2K/ORCA input file templates
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../examples/sn2/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    SN2
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributions
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributions
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributions/unexpected_behavior/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unexpected Behavior
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contributions/contributions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Project details
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Project details
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project_details/license/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    License
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project_details/citation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Citation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project_details/funding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Funding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project_details/acknowledgments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Acknowledgements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#cp2k-labeling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CP2K labeling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CP2K labeling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#input-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Input files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#job-scripts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Job scripts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checking-convergence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checking convergence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extracting-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extracting data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cleaning-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cleaning up
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#orca-labeling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ORCA labeling
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ORCA labeling">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#input-files_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Input files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#job-scripts_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Job scripts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checking-convergence_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checking convergence
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extracting-data_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extracting data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cleaning-up_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cleaning up
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference-template-placeholders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference: template placeholders
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reference: template placeholders">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#job-scripts-job_program_label_archtype_myhpckeywordsh-and-job-array_program_label_archtype_myhpckeyword_nsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Job scripts (job_PROGRAM_label_ARCHTYPE_myHPCkeyword.sh and job-array_PROGRAM_label_ARCHTYPE_myHPCkeyword_N.sh)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cp2korca-input-file-templates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CP2K/ORCA input file templates
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="labeling">Labeling</h1>
+<p>In the labeling phase we compute the electronic energies, atomic forces and (sometimes) the stress tensor of the candidate configurations obtained in the exploration phase, using an electronic-structure program. ArcaNN supports <strong>CP2K</strong> (the default, described below) and <strong>ORCA</strong> (see <a href="#orca-labeling">ORCA labeling</a> at the end of this page); you select the program with the <code>"labeling_program"</code> keyword of the <code>prepare</code> phase (<code>"cp2k"</code> or <code>"orca"</code>).</p>
+<p>In the case you are performing the labeling step in a different HPC machine, don't forget to copy the data (you must also install the ArcaNN software and create a python environment!) beforehand:</p>
+<pre><code class="language-bash">rsync -rvu $WORK_DIR USER@OTHER_HPC_MACHINE:PATH_TO_WORKDIR
+</code></pre>
+<p>For this we need to go to the <code>XXX-labeling</code> folder and as usual run the <code>prepare</code> phase. It is very important to have a look at the <code>default_input.json</code> of the <code>prepare</code> phase to choose the computational resources to be used in the electronic structure calculations (number of nodes and MPI/OpenMP tasks). Note that the default values are insufficient for most condensed systems (due to the large number of atoms), so you should have previously determined the resources required by your specific system(s).</p>
+<pre><code class="language-JSON">{
+    &quot;step_name&quot;: &quot;labeling&quot;,
+    &quot;user_machine_keyword_label&quot;: &quot;mykeyword1&quot;,
+    &quot;job_email&quot;: &quot;&quot;,
+    &quot;labeling_program&quot;: &quot;cp2k&quot;,
+    &quot;walltime_first_job_h&quot;: [0.5, 0.5, 0.5],
+    &quot;walltime_second_job_h&quot;: [1.0, 1.0, 1.5],
+    &quot;nb_nodes&quot;: [1, 1, 1],
+    &quot;nb_mpi_per_node&quot;: [32, 32, 64],
+    &quot;nb_threads_per_mpi&quot;: [2, 2, 2]
+}
+</code></pre>
+<p>The <code>"user_machine_keyword_label"</code> keyword corresponds to the partition in the HPC machine, The <code>"nb_mpi_per_node"</code> and <code>"nb_nodes"</code> keywords set the number of CPU nodes used for the labeling. The wall times should be set for the first iteration but can be guessed automatically later using the average time per CP2K calculation measured in the previous iteration.</p>
+<p>Once you have executed this phase, folders will have been created for each subsystem within which there will be as many folders as candidate configurations (maximum number of 99999 per iteration), containing all required files to run CP2K. Make sure that you have prepared (and correctly named!) Slurm submission files for your machine in the <code>$WORK_DIR/user_files/</code> folder (see <a href="../initialization/">Initialization</a>), from the template files.</p>
+<h2 id="cp2k-labeling">CP2K labeling</h2>
+<h3 id="input-files">Input files</h3>
+<p>Use the templates in <code>user_files/labeling_cp2k/</code>. CP2K labeling can run in <strong>one or two steps</strong>, and ArcaNN detects which one you want per system, automatically, from which template files are present:</p>
+<ul>
+<li><strong>Two steps (the typical/recommended setup, used in the examples):</strong> provide both <code>1_SYSNAME_labeling_XXXXX_[cluster].inp</code> and <code>2_SYSNAME_labeling_XXXXX_[cluster].inp</code>. The first, quick calculation at a lower level of theory (smaller basis set, looser SCF settings) generates a wavefunction, which is then used as the SCF restart guess (<code>SCF_GUESS RESTART</code>) for the second calculation at your reference level of theory (larger basis set, tighter SCF settings). <code>"walltime_first_job_h"</code> and <code>"walltime_second_job_h"</code> set the wall time of each step respectively.</li>
+<li><strong>One step:</strong> provide a single un-prefixed <code>SYSNAME_labeling_XXXXX_[cluster].inp</code> template (no <code>1_</code>/<code>2_</code> prefix) and no <code>2_...</code> template; ArcaNN then runs only that calculation (using <code>"walltime_first_job_h"</code>) and <code>"walltime_second_job_h"</code> is unused, similar to ORCA below.</li>
+</ul>
+<p>A minimal two-step, reference-level (<code>2_...</code>) template looks like:</p>
+<pre><code class="language-text">&amp;FORCE_EVAL
+ METHOD QS
+ &amp;DFT
+  WFN_RESTART_FILE_NAME labeling__R_PADDEDSTEP_-SCF.wfn
+  CHARGE -2
+  MULTIPLICITY 1
+  &amp;SCF
+   SCF_GUESS RESTART
+   ...
+  &amp;END SCF
+  ...
+ &amp;END DFT
+ STRESS_TENSOR DIAGONAL_ANALYTICAL
+ &amp;SUBSYS
+  &amp;CELL
+   ABC [angstrom] _R_CELL_
+  &amp;END CELL
+  &amp;TOPOLOGY
+   COORD_FILE_FORMAT XYZ
+   COORD_FILE_NAME labeling__R_PADDEDSTEP_.xyz
+  &amp;END TOPOLOGY
+  ...
+ &amp;END SUBSYS
+ &amp;PRINT
+  &amp;FORCES
+   FILENAME =2_labeling__R_PADDEDSTEP_-Forces.for
+   ...
+  &amp;END FORCES
+  &amp;STRESS_TENSOR
+   FILENAME =2_labeling__R_PADDEDSTEP_-Stress_Tensor.st
+   ...
+  &amp;END STRESS_TENSOR
+ &amp;END PRINT
+&amp;END FORCE_EVAL
+</code></pre>
+<p>A few points to keep in mind when adapting these templates to your system:</p>
+<ul>
+<li><code>CHARGE</code>/<code>MULTIPLICITY</code> must be set to the correct values for each of your systems, just as for ORCA (see below); ArcaNN does not infer them.</li>
+<li>The <code>&amp;PRINT</code>/<code>&amp;FORCES</code> block is mandatory: ArcaNN parses forces from the <code>{step}_labeling_XXXXX-Forces.for</code> file it produces, not from the main <code>.out</code> file (which is only used for the energy).</li>
+<li><code>STRESS_TENSOR DIAGONAL_ANALYTICAL</code> plus the <code>&amp;PRINT</code>/<code>&amp;STRESS_TENSOR</code> block are only needed if you want stress/virial data in your training set; if present, ArcaNN reads them from <code>{step}_labeling_XXXXX-Stress_Tensor.st</code>. <strong>Stress tensor extraction is only supported for CP2K &lt; 2024</strong> — for CP2K <code>2024.x</code> and above ArcaNN currently cannot parse the stress tensor at all, so stick to an older CP2K version if you need virials.</li>
+<li>Whether a frame is stored as periodic or not is inferred from the <code>PERIODIC</code> keyword inside <code>&amp;CELL</code>/<code>&amp;POISSON</code> (if both are set, they must agree); <code>_R_CELL_</code> is filled in automatically by ArcaNN from the system's box.</li>
+<li><code>_R_WALLTIME_</code>, <code>_R_NB_MPI_</code>, and <code>_R_PADDEDSTEP_</code> are placeholders that ArcaNN fills in automatically at <code>prepare</code> time from <code>"walltime_first_job_h"</code>/<code>"walltime_second_job_h"</code>, <code>"nb_mpi_per_node"</code>/<code>"nb_nodes"</code>, and the candidate index; keep them as-is in the templates.</li>
+<li>Wannier centers can optionally be extracted too (only relevant for DeePMD-kit models that use them): if a <code>{step}_labeling_XXXXX-Wannier.xyz</code> file is produced (via a <code>LOCALIZE</code>/Wannier-centers <code>&amp;PRINT</code> setup in your input), ArcaNN will pick it up automatically.</li>
+</ul>
+<h3 id="job-scripts">Job scripts</h3>
+<p>Use the templates in <code>job_labeling_cp2k_slurm/</code> (see <a href="../iter_prerequisites/">Iterative procedure prerequisites</a>). For two-step labeling, a single job script runs <strong>both</strong> CP2K steps sequentially: it executes the first (quick) calculation, saves its wavefunction, then executes the second (reference) calculation using that wavefunction as the SCF restart guess. For one-step labeling, adapt the script to only run that single calculation.</p>
+<h3 id="checking-convergence">Checking convergence</h3>
+<p>A candidate step is considered converged when its <code>{step}_labeling_XXXXX.out</code> file contains <code>"SCF run converged in"</code>; it is reported as <strong>not converged</strong> (rather than failed) if it instead contains <code>"SCF run NOT converged"</code>. For two-step labeling, <code>check</code> treats the two steps differently: failures in the <strong>first</strong> step alone only produce a warning (since that step is just used to generate a wavefunction guess for the second one — what actually matters for your training data is that the reference-level, second step converges), whereas failures in the <strong>second</strong> step (or in the only step, for one-step labeling) make <code>check</code> abort. As with ORCA, you can either rerun a candidate manually with a different setup or create an empty <code>skip</code> file in its folder to ignore it; keep running <code>check</code> until you get a "Success!" message.</p>
+<h3 id="extracting-data">Extracting data</h3>
+<p>The <code>extract</code> phase reads the energy from the main <code>.out</code> file, forces from the <code>-Forces.for</code> file, and (if present) stress/virial from the <code>-Stress_Tensor.st</code> file and Wannier centers from the <code>-Wannier.xyz</code> file, all using the reference-level (second, for two-step labeling) step's output. Use the <code>extract</code> phase to set up everything for the training phase.</p>
+<h3 id="cleaning-up">Cleaning up</h3>
+<p>Run the <code>clean</code> phase to clean up your folder: it removes symlinks, job scripts, XYZ/input files, and CP2K's job stdout/stderr files (<code>CP2K.*</code>), then compresses everything else (except wavefunction files) into a <code>labeling_XXXXX_noWFN.tar.bz2</code> archive. CP2K wavefunctions (<code>.wfn</code> files) are <strong>not</strong> included in that archive and are not deleted automatically; <code>clean</code> prints ready-to-use commands to archive them separately if you want to keep them, e.g. as starting points for higher-level calculations later:</p>
+<pre><code class="language-bash"># Only the reference (2nd step) wavefunctions:
+find ./ -name '2_*.wfn' | tar -cf labeling_XXXXX_WFN.tar --files-from -
+# All wavefunctions (both steps):
+find ./ -name '*.wfn' | tar -cf labeling_XXXXX_WFN.tar --files-from -
+</code></pre>
+<p>You can then delete the per-candidate subfolders once you are satisfied with the <code>_noWFN</code> archive (and have saved or don't need the wavefunction files). We have now augmented our total training set and might do a new training iteration and keep iterating until convergence is reached!</p>
+<h2 id="orca-labeling">ORCA labeling</h2>
+<p>If you set <code>"labeling_program"</code> to <code>"orca"</code>, ArcaNN drives <a href="https://www.faccts.de/docs/orca/6.1/manual/index.html">ORCA</a> instead of CP2K for the electronic structure calculations. The workflow (<code>prepare</code>, <code>launch</code>, <code>check</code>, <code>extract</code>, <code>clean</code>) and the <code>default_input.json</code> keywords are the same as for CP2K, with the differences described below.</p>
+<p><strong>Important limitation:</strong> ORCA labeling in ArcaNN is always treated as an <strong>isolated (non-periodic) molecular calculation</strong>. Even though each system still has a cell/box defined in its configuration (for bookkeeping and dataset consistency), ArcaNN does not pass periodic boundary conditions to ORCA and the resulting training frames are flagged as non-periodic. If you need PBC in your reference calculations, use CP2K instead.</p>
+<h3 id="input-files_1">Input files</h3>
+<p>Use the templates in <code>user_files/labeling_orca/</code> instead of <code>labeling_cp2k/</code>. Unlike CP2K, ORCA labeling is <strong>single-step</strong>: you only need one input file per candidate, named <code>1_SYSNAME_labeling_XXXXX_[cluster].inp</code> (there is no second, reference-level calculation, so <code>"walltime_second_job_h"</code> is unused for ORCA systems). A minimal template looks like:</p>
+<pre><code class="language-text">! B3LYP D3BJ 6-31G* TightSCF NoFrozenCore KeepDens Engrad
+
+%MaxCore 1024
+
+%pal nprocs _R_NB_MPI_ end
+
+*xyzfile -2 1 labeling_XXXXX.xyz
+</code></pre>
+<p>A few points to keep in mind when adapting this template to your system:</p>
+<ul>
+<li>The <strong><code>Engrad</code></strong> simple-input keyword is mandatory: ArcaNN parses the energy and forces from the <code>.engrad</code> file that ORCA produces when this keyword is set, not from the main <code>.out</code> file.</li>
+<li>The <code>-2 1</code> on the <code>*xyzfile</code> line are the total <strong>charge</strong> and <strong>spin multiplicity</strong> of the system; set them to the correct values for each of your systems (ArcaNN does not infer or set them for you).</li>
+<li><code>_R_NB_MPI_</code> is a placeholder that ArcaNN fills in automatically from <code>"nb_mpi_per_node"</code>/<code>"nb_nodes"</code> at <code>prepare</code> time; keep it as-is in the template.</li>
+<li><code>KeepDens</code> (keep the density/<code>.gbw</code> file) is optional but convenient if you plan to reuse the wavefunctions, e.g. as a starting guess for higher-level calculations later.</li>
+</ul>
+<h3 id="job-scripts_1">Job scripts</h3>
+<p>Use the templates in <code>job_labeling_orca_slurm/</code> instead of <code>job_labeling_cp2k_slurm/</code> (see <a href="../iter_prerequisites/">Iterative procedure prerequisites</a>).</p>
+<h3 id="checking-convergence_1">Checking convergence</h3>
+<p>A candidate is considered converged when its <code>1_labeling_XXXXX.out</code> file contains both <code>"ORCA TERMINATED NORMALLY"</code> and <code>"SCF CONVERGED"</code>. Unlike CP2K, ORCA does not distinguish between "not converged" and "failed" calculations — any candidate missing either string is simply reported as failed. Also, the <code>check</code> phase is <strong>stricter for ORCA than for CP2K</strong>: any failed/not-converged/still-running candidate makes <code>check</code> abort immediately (rather than just warning), so you must resolve or <code>skip</code> every problematic candidate before <code>check</code> can succeed. As with CP2K, you can either rerun the calculation manually with a different setup or create an empty <code>skip</code> file in the candidate's folder to ignore it; keep running <code>check</code> until you get a "Success!" message.</p>
+<h3 id="extracting-data_1">Extracting data</h3>
+<p>The <code>extract</code> phase reads energies and forces for ORCA from the <code>.engrad</code> file. Two things are <strong>not</strong> available for ORCA, unlike CP2K:</p>
+<ul>
+<li><strong>Stress tensor/virial:</strong> ORCA calculations produce no virial, so ORCA-labeled configurations never contribute stress/virial targets to the training set.</li>
+<li><strong>Wannier centers:</strong> not extracted for ORCA (only relevant if you are training models that use Wannier centers/dipoles).</li>
+</ul>
+<h3 id="cleaning-up_1">Cleaning up</h3>
+<p>The <code>clean</code> phase behaves as for CP2K, except that ORCA's wavefunction files use the <code>.gbw</code> extension (instead of <code>.wfn</code>) and are named <code>1_*.gbw</code> (since there is only one step). ArcaNN also removes ORCA's job stdout/stderr files (<code>ORCA.*</code>) instead of CP2K's (<code>CP2K.*</code>). The archive/cleanup command it prints for you to keep only the reference wavefunctions is:</p>
+<pre><code class="language-bash">find ./ -name '1_*.gbw' | tar -cf labeling_XXXXX_WFN.tar --files-from -
+</code></pre>
+<p>Everything else — the overall folder structure, the maximum of 99999 candidates per iteration, and iterating until convergence — works exactly as described above for CP2K.</p>
+<h2 id="reference-template-placeholders">Reference: template placeholders</h2>
+<p>Every <code>_R_</code> placeholder below is filled in by the <code>prepare</code> phase and must be kept as-is in your templates. The generic <code>Slurm</code> header placeholders (<code>_R_PROJECT_</code>, <code>_R_ALLOC_</code>, <code>_R_PARTITION_</code>, <code>_R_SUBPARTITION_</code>, <code>_R_QOS_</code>, <code>_R_WALLTIME_</code>, <code>_R_EMAIL_</code>) apply here too — see <a href="../../getting-started/hpc_configuration/#common-_r_-placeholders-every-slurm-job-script">HPC Configuration</a> — and are not repeated below. <code>PROGRAM</code> below stands for <code>CP2K</code> or <code>ORCA</code> (matching <code>"labeling_program"</code>).</p>
+<h3 id="job-scripts-job_program_label_archtype_myhpckeywordsh-and-job-array_program_label_archtype_myhpckeyword_nsh">Job scripts (<code>job_PROGRAM_label_ARCHTYPE_myHPCkeyword.sh</code> and <code>job-array_PROGRAM_label_ARCHTYPE_myHPCkeyword_N.sh</code>)</h3>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Filled with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_R_nb_NODES_</code></td>
+<td>Number of nodes, from <code>"nb_nodes"</code>.</td>
+</tr>
+<tr>
+<td><code>_R_nb_MPI_</code></td>
+<td>Total number of MPI processes (<code>nb_nodes × nb_mpi_per_node</code>).</td>
+</tr>
+<tr>
+<td><code>_R_nb_MPIPERNODE_</code></td>
+<td>MPI processes per node, from <code>"nb_mpi_per_node"</code>.</td>
+</tr>
+<tr>
+<td><code>_R_nb_THREADSPERMPI_</code></td>
+<td>OpenMP threads per MPI process, from <code>"nb_threads_per_mpi"</code>.</td>
+</tr>
+<tr>
+<td><code>_R_PROGRAM_JOBNAME_</code> (e.g. <code>_R_CP2K_JOBNAME_</code> / <code>_R_ORCA_JOBNAME_</code>)</td>
+<td>A generated job name, <code>PROGRAM_SYSTEM_ITER</code>.</td>
+</tr>
+<tr>
+<td><code>_R_WALLTIME_</code></td>
+<td>The combined wall time for the batch (<code>"walltime_first_job_h"</code> + <code>"walltime_second_job_h"</code>, converted to seconds); note this is the array/individual job's total wall time and is distinct from the per-calculation <code>_R_WALLTIME_</code> filled inside the CP2K/ORCA input files below.</td>
+</tr>
+</tbody>
+</table>
+<p>The job-array script additionally handles <strong>batching and chaining</strong>, needed because a system can have more candidates than the machine's <code>max_array_size</code>/<code>max_jobs</code> allow in a single array: ArcaNN splits the candidates for a system into successive array-job files (<code>job-array_PROGRAM_label_ARCHTYPE_myHPCkeyword_0.sh</code>, <code>_1.sh</code>, ...), and — once all candidates for one system are queued — chains directly into the first batch of the <em>next</em> system with pending candidates, without any user intervention:</p>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Filled with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_R_ARRAY_START_</code> / <code>_R_ARRAY_END_</code></td>
+<td>Start/end index of this batch's <code>Slurm</code> array.</td>
+</tr>
+<tr>
+<td><code>_R_NEW_START_</code></td>
+<td>Offset added to the array task ID when reading the corresponding line of the <code>.lst</code> parameters file (so later batches keep reading further down the same file).</td>
+</tr>
+<tr>
+<td><code>_R_LAUNCHNEXT_</code></td>
+<td><code>"1"</code> if another batch (same or next system) must be submitted once this one finishes, <code>"0"</code> if this was the last batch overall.</td>
+</tr>
+<tr>
+<td><code>_R_NEXT_JOB_FILE_</code></td>
+<td>The numeric suffix of the next batch's job-array script to submit (only meaningful when <code>_R_LAUNCHNEXT_</code> is <code>"1"</code>).</td>
+</tr>
+<tr>
+<td><code>_R_CD_WHERE_</code></td>
+<td>The directory to <code>cd</code> into before submitting the next batch: the current system's folder for a same-system continuation, or <code>../NEXT_SYSTEM</code> when moving on to the next system.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cp2korca-input-file-templates">CP2K/ORCA input file templates</h3>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Filled with</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_R_WALLTIME_</code></td>
+<td>The wall time (in seconds) for that specific calculation — <code>"walltime_first_job_h"</code> for the first/only CP2K step or the single ORCA step, <code>"walltime_second_job_h"</code> for CP2K's second (reference-level) step.</td>
+</tr>
+<tr>
+<td><code>_R_NB_MPI_</code></td>
+<td>Total number of MPI processes (<code>nb_nodes × nb_mpi_per_node</code>), for CP2K's <code>%pal</code>/ORCA's <code>%pal nprocs</code> (or equivalent) directives.</td>
+</tr>
+<tr>
+<td><code>_R_PADDEDSTEP_</code></td>
+<td>The zero-padded (5-digit) candidate index, used to name per-candidate input/output/wavefunction files (<em>e.g.</em> <code>labeling_00003.xyz</code>).</td>
+</tr>
+<tr>
+<td><code>_R_CELL_</code></td>
+<td>The candidate's periodic box lengths (CP2K <code>&amp;CELL</code>/<code>ABC</code> only; ORCA calculations are always treated as non-periodic — see the ORCA limitation note above).</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
