@@ -218,11 +218,6 @@ def main(
         for nnp in range(1, main_json["nnp_count"] + 1):
             local_path = current_path / f"{nnp}"
 
-            if nnp_version >= version.parse("3.0.0"):
-                check_file_existence(local_path / "model.ckpt.pt")
-            else:
-                check_file_existence(local_path / "model.ckpt.index")
-
             job_file = replace_in_slurm_file_general(
                 master_job_file,
                 machine_spec,
@@ -232,16 +227,30 @@ def main(
             )
 
             # Replace the inputs/variables in the job file
+            if nnp_version >= version.parse("3.0.0"):
+                check_file_existence(local_path / "model.ckpt.pt")
+                job_file = replace_substring_in_string_list(
+                    job_file, "_R_DEEPMD_MODEL_FILE_", "model.ckpt.pt"
+                )
+                job_file = replace_substring_in_string_list(
+                    job_file, "_R_DEEPMD_CKPT_FILE_", "model.ckpt.pt"
+                )
+
+            else:
+                check_file_existence(local_path / "model.ckpt.index")
+                job_file = replace_substring_in_string_list(
+                    job_file,
+                    "_R_DEEPMD_MODEL_FILE_",
+                    f"graph_{nnp}_{padded_curr_iter}.pb",
+                )
+                job_file = replace_substring_in_string_list(
+                    job_file, "_R_DEEPMD_CKPT_FILE_", "checkpoint"
+                )
+
             job_file = replace_substring_in_string_list(
                 job_file,
                 "_R_DEEPMD_VERSION_",
                 f"{training_json['deepmd_model_version']}",
-            )
-            job_file = replace_substring_in_string_list(
-                job_file, "_R_DEEPMD_MODEL_FILE_", f"graph_{nnp}_{padded_curr_iter}.pb"
-            )
-            job_file = replace_substring_in_string_list(
-                job_file, "_R_DEEPMD_CKPT_FILE_", "checkpoint"
             )
             job_file = replace_substring_in_string_list(
                 job_file,
