@@ -1,4 +1,4 @@
-# ArcaNN Requirements 
+# ArcaNN Requirements
 
 ## Installation Requirements ##
 
@@ -22,7 +22,6 @@ ArcaNN requires the following external programs for manipulating trajectories an
 Different steps in the workflow are supported by specific programs:
 
 - **DeePMD-kit**: `>= 2.0` (Used in **training** and **testing** steps)
-  - **LAMMPS**: Must be compatible with DeePMD-kit (Used in **exploration**)
-  - **i-PI**: Must be compatible with DeePMD-kit (Used in **exploration**)
-  - **PLUMED**: Must be compatible with DeePMD-kit (Used in **exploration**)
+    - **LAMMPS**: Must be compatible with DeePMD-kit (Used in **exploration**)
+    - **PLUMED**: Must be compatible with DeePMD-kit (Used in **exploration**)
 - **CP2K**: `>= 6.1` (Used in the **labeling** step)

@@ -24,6 +24,7 @@ from arcann_training.common.json import (
     write_json_file,
 )
 from arcann_training.common.utils import natural_sort_key
+from arcann_training.common.yaml import load_yaml_file
 from arcann_training.initialization.utils import (
     check_dptrain_properties,
     check_lmp_properties,
@@ -143,22 +144,30 @@ def main(
             user_files_path / f"{system_auto}.lmp", main_json["properties"]
         )
 
+    main_json["polar_mace"] = False
     if nnp_program == "deepmd":
         # Check the dptrain against the properties
         check_dptrain_properties(user_files_path, main_json["properties"])
     elif nnp_program == "mace":
-        if (
-            len(
-                list(user_files_path.glob("mace_*.yml"))
-                + list(user_files_path.glob("mace_*.yaml"))
-            )
-            == 0
-        ):
+        mace_input_files = list(user_files_path.glob("mace_*.yml")) + list(
+            user_files_path.glob("mace_*.yaml")
+        )
+        if len(mace_input_files) == 0:
             arcann_logger.error(
                 "MACE config file (mace_MACEVERSION.yml) is missing from user_files."
             )
             arcann_logger.error("Aborting...")
             raise FileNotFoundError("MACE config file is missing from user_files.")
+
+        # Auto-detect PolarMACE from the provided MACE config(s), so later steps
+        # (labeling, training) know whether to record the charge/total_spin/
+        # external_field fields without the user having to set anything explicitly
+        main_json["polar_mace"] = any(
+            load_yaml_file(mace_input_file).get("model") == "PolarMACE"
+            for mace_input_file in mace_input_files
+        )
+        arcann_logger.info(f"PolarMACE model detected: {main_json['polar_mace']}")
+        del mace_input_files
     else:
         arcann_logger.error(
             f"NNP program: {nnp_program} not recognized. ArcaNN supports 'deepmd' or 'mace'."
@@ -185,7 +194,7 @@ def main(
 
     try:
         dataset = Dataset(
-            training_dir=training_path, 
+            training_dir=training_path,
             config_file=main_json,
         )
     except Exception as e:
@@ -197,7 +206,9 @@ def main(
     dataset.load_dataset(only_init=True)
     dataset.update_control_file()
 
-    arcann_logger.debug(f"initial_dataset_paths: {dataset.training_paths + dataset.validation_paths}")
+    arcann_logger.debug(
+        f"initial_dataset_paths: {dataset.training_paths + dataset.validation_paths}"
+    )
     arcann_logger.debug(f"dataset_json: {dataset.control_file['initial_datasets']}")
 
     # Dump the JSON files (main, initial datasets and merged input)

@@ -7,5 +7,7 @@
     "walltime_second_job_h" : { "value": null, "_comment": "float or list of float", "_default": [1.0]},
     "nb_nodes" : { "value": null, "_comment": "int or list of int", "_default": [1]},
     "nb_mpi_per_node" : { "value": null, "_comment": "int or list of int", "_default": [10]},
-    "nb_threads_per_mpi" : { "value": null, "_comment": "int or list of int", "_default": [1]}
+    "nb_threads_per_mpi" : { "value": null, "_comment": "int or list of int", "_default": [1]},
+    "systems_charge" : { "value": null, "_comment": "int or list of int, total charge per system. Used as the 'charge' PolarMACE field", "_default": [0]},
+    "systems_total_spin" : { "value": null, "_comment": "int or list of int, total spin per system. Used as the 'total_spin' PolarMACE field", "_default": [1]}
 }
