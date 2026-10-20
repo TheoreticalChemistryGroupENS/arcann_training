@@ -1,5 +1,8 @@
 {
     "step_name": "initialization",
     "systems_auto": { "value": null, "_comment": "list of str", "_default": "auto-populated by taking each *.lmp file in the user_files directory"},
-    "nnp_count": { "value": null, "_comment": "int", "_default": 3}
+    "nnp_count": { "value": null, "_comment": "int", "_default": 3},
+    "nnp_program": { "value": null, "_comment": "str, \"deepmd\" or \"mace\" - selects the NNP architecture for the whole procedure, set once here", "_default": "deepmd"},
+    "validation/training_split": { "value": null, "_comment": "float, fraction of the labeled data set aside for validation (the rest is used for training)", "_default": 0.2},
+    "data_format": { "value": null, "_comment": "str, \"set.000\" (nnp_program: deepmd) or \"extxyz\" (nnp_program: mace) - storage format of the training data", "_default": "set.000"}
 }
