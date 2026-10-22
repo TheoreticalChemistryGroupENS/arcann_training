@@ -488,15 +488,32 @@ class Dataset:
     def read_dataset(self) -> Union[int, int]:
         """Read the datasets from the already processed datasets in the control file"""
 
-        self.training_dataset = {
-            key: self.data_ensemble(**kwargs)
-            for key, kwargs in self.control_file["used_datasets"]["training"].items()
-        }
+        self.training_dataset = {}
+        for key, kwargs in self.control_file["used_datasets"]["training"].items():
+            datadir = Path(kwargs["path"])
+            self._convert_if_needed(
+                datadir,
+                kwargs.get("step"),
+                kwargs.get("training_type"),
+                kwargs.get("system_name"),
+                kwargs.get("iteration"),
+            )
+            kwargs["data_format"] = self.data_format
+            self.training_dataset[key] = self.data_ensemble(**kwargs)
         self.training_paths = list(self.training_dataset.keys())
-        self.validation_dataset = {
-            key: self.data_ensemble(**kwargs)
-            for key, kwargs in self.control_file["used_datasets"]["validation"].items()
-        }
+
+        self.validation_dataset = {}
+        for key, kwargs in self.control_file["used_datasets"]["validation"].items():
+            datadir = Path(kwargs["path"])
+            self._convert_if_needed(
+                datadir,
+                kwargs.get("step"),
+                kwargs.get("training_type"),
+                kwargs.get("system_name"),
+                kwargs.get("iteration"),
+            )
+            kwargs["data_format"] = self.data_format
+            self.validation_dataset[key] = self.data_ensemble(**kwargs)
         self.validation_paths = list(self.validation_dataset.keys())
 
     def load_dataset(
